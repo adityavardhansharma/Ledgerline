@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+# builds
+.next/
+out/
+dist/
+*.tsbuildinfo
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.mypy_cache/
+# env and secrets
+.env
+.env.*
+!.env.example
+# convex
+.convex/
+# os and editors
+.DS_Store
+.idea/
+.vscode/
+# test output
+playwright-report/
+test-results/
+coverage/
