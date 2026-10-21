@@ -8,7 +8,7 @@ export const metadata = { title: "Sign in" };
 export default function SignInPage() {
   if (!clerkConfigured) return <SetupNeeded />;
   return (
-    <AuthFrame title="Welcome back" lede="Sign in with the email you signed up with.">
+    <AuthFrame variant="signIn" title="Welcome back" lede="Sign in to see this morning's figures.">
       <SignIn appearance={clerkAppearance} signUpUrl="/sign-up" fallbackRedirectUrl="/overview" />
     </AuthFrame>
   );
