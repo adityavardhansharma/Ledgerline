@@ -68,11 +68,12 @@ export interface ScenarioSwitcherProps { name?: string }
 export interface TopbarProps extends Children { subtitle?: string; title: string; breadcrumbs?: string[]; status?: React.ReactNode }
 export interface AppShellProps extends Children { sidebar?: Partial<SidebarProps>; rail?: boolean; subtitle?: string; runway?: number | null; syncText?: string; syncing?: boolean; active?: string; title: string; breadcrumbs?: string[]; status?: React.ReactNode; actions?: React.ReactNode; overlay?: React.ReactNode; org?: string }
 export interface PanelProps extends Children { icon?: IconName; tone?: string; title?: string; subtitle?: string; actions?: React.ReactNode; flush?: boolean; className?: string }
-export interface AssumptionFieldProps { id: string; label: string; min: number; max: number; step?: number; unit?: string; value?: number; defaultValue?: number; base?: number; format?: (v: number) => string; help?: string }
-export interface HireRowProps { role: string; start: string; salary: number; count?: number; monthly: number }
+export interface AssumptionFieldProps { onChange?: (value: number) => void; id: string; label: string; min: number; max: number; step?: number; unit?: string; value?: number; defaultValue?: number; base?: number; format?: (v: number) => string; help?: string }
+export interface HireRowProps { onRemove?: () => void; role: string; start: string; salary: number; count?: number; monthly: number }
 export interface Scenario { name: string; base?: boolean; parent?: string; changes?: number; runway: number; cash: number; ebitda: number; minCash?: number; revenue?: number }
-export interface ScenarioCardProps extends Scenario { active?: boolean; compare?: boolean }
-export interface ScenarioCompareProps { a: Required<Pick<Scenario, 'name' | 'runway' | 'cash' | 'ebitda' | 'minCash' | 'revenue'>>; b: ScenarioCompareProps['a'] }
+export interface ScenarioCardProps extends Omit<Scenario, 'runway' | 'cash' | 'ebitda'> { runway: number | null; cash: number | null; ebitda: number | null; active?: boolean; compare?: boolean; horizon?: number; cashLabel?: string; ebitdaLabel?: string; menu?: React.ReactNode; onSelect?: () => void }
+export interface CompareSide { name: string; runway: number | null; cash: number | null; ebitda: number | null; minCash: number | null; revenue: number | null }
+export interface ScenarioCompareProps { a: CompareSide; b: CompareSide; horizon?: number; cashLabel?: string }
 export interface AuditItemProps { actor: string; action: string; target?: string; detail?: string; at: string; icon?: IconName; tone?: 'brand' | 'forecast' | 'positive' | 'negative' }
 export interface AuditTimelineProps { groups: Array<{ day: string; items: AuditItemProps[] }> }
 export interface IntegrationCardProps { name: string; org: string; status: StatusPillProps['status']; facts?: Array<[string, React.ReactNode]>; actions?: React.ReactNode }

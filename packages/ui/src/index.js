@@ -1234,9 +1234,9 @@ function AssumptionField(p) {
       changed ? h('span', { className: 'll-assume-base' }, 'Base ' + (p.format ? p.format(p.base) : p.base)) : null),
     h('div', { className: 'll-assume-row' },
       h('input', { id: p.id + '-r', type: 'range', min: p.min, max: p.max, step: p.step || 1, value: val, 'aria-label': p.label,
-        style: { '--ll-fill': ((val - p.min) / (p.max - p.min) * 100) + '%' }, onChange: function (e) { st[1](+e.target.value); } }),
+        style: { '--ll-fill': ((val - p.min) / (p.max - p.min) * 100) + '%' }, onChange: function (e) { var v = +e.target.value; st[1](v); p.onChange && p.onChange(v); } }),
       h('div', { className: 'll-input is-numeric ll-assume-num' },
-        h('input', { id: p.id, type: 'text', inputMode: 'decimal', value: val, onChange: function (e) { var v = parseFloat(e.target.value); if (!isNaN(v)) st[1](v); } }),
+        h('input', { id: p.id, type: 'text', inputMode: 'decimal', value: val, onChange: function (e) { var v = parseFloat(e.target.value); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
         p.unit ? h('span', { className: 'll-input-affix' }, p.unit) : null)),
     p.help ? h('div', { className: 'll-field-hint' }, p.help) : null);
 }
@@ -1246,30 +1246,38 @@ function HireRow(p) {
     h('span', { className: 'll-hire-icon' }, h(Icon, { name: 'hire', size: 18 })),
     h('div', { className: 'll-hire-main' }, h('div', { className: 'll-hire-role' }, p.role), h('div', { className: 'll-hire-meta' }, 'Starts ' + p.start + ' · ' + (p.count || 1) + ' × ' + formatMoney(p.salary) + ' a year')),
     h('div', { className: 'll-hire-cost' }, h(Amount, { value: -p.monthly, forecast: true }), h('span', null, 'per month, loaded')),
-    h(IconButton, { icon: 'trash', label: 'Remove ' + p.role, size: 'sm' }));
+    p.onRemove ? h(IconButton, { icon: 'trash', label: 'Remove ' + p.role, size: 'sm', onClick: p.onRemove }) : null);
 }
 function ScenarioCard(p) {
-  return h('div', { className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare') },
+  var months = function (v) { return v === null || v === undefined ? (p.horizon ? p.horizon + '+ mo' : '\u2013') : v.toFixed(1) + ' mo'; };
+  return h('div', { className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare', p.onSelect && 'is-selectable'), onClick: p.onSelect, role: p.onSelect ? 'button' : undefined, tabIndex: p.onSelect ? 0 : undefined,
+      onKeyDown: p.onSelect ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.onSelect(); } } : undefined },
     h('div', { className: 'll-scn-head' },
-      h('span', { className: cx('ll-scn-chip', p.compare ? 'is-compare' : p.base ? 'is-base' : '') }, h(Icon, { name: p.base ? 'statement' : 'branch', size: 14 }), p.base ? 'Base' : 'Branch'),
-      h(IconButton, { icon: 'more', label: 'Scenario actions', size: 'sm' })),
+      h('span', { className: cx('ll-scn-chip', p.compare ? 'is-compare' : p.base ? 'is-base' : '') }, h(Icon, { name: p.base ? 'statement' : 'branch', size: 14 }), p.base ? 'Base' : p.compare ? 'Compared' : 'Branch'),
+      p.menu || null),
     h('div', { className: 'll-scn-name' }, p.name),
-    p.parent ? h('div', { className: 'll-scn-parent' }, 'From ' + p.parent + ' · ' + p.changes + (p.changes === 1 ? ' change' : ' changes')) : h('div', { className: 'll-scn-parent' }, 'Built from synced actuals'),
+    p.parent ? h('div', { className: 'll-scn-parent' }, 'From ' + p.parent + ' \u00b7 ' + p.changes + (p.changes === 1 ? ' change' : ' changes')) : h('div', { className: 'll-scn-parent' }, 'Built from synced actuals'),
     h('dl', { className: 'll-scn-stats' },
-      h('div', null, h('dt', null, 'Runway'), h('dd', null, p.runway.toFixed(1) + ' mo')),
-      h('div', null, h('dt', null, 'Cash Sep 2027'), h('dd', null, h(Amount, { value: p.cash, compact: true }))),
-      h('div', null, h('dt', null, 'FY27 EBITDA'), h('dd', null, h(Amount, { value: p.ebitda, compact: true })))));
+      h('div', null, h('dt', null, 'Runway'), h('dd', null, months(p.runway))),
+      h('div', null, h('dt', null, p.cashLabel || 'Cash in 12 months'), h('dd', null, p.cash === null || p.cash === undefined ? '\u2013' : h(Amount, { value: p.cash, compact: true }))),
+      h('div', null, h('dt', null, p.ebitdaLabel || 'EBITDA, next 12 months'), h('dd', null, p.ebitda === null || p.ebitda === undefined ? '\u2013' : h(Amount, { value: p.ebitda, compact: true })))));
 }
 function ScenarioCompare(p) {
   var a = p.a, b = p.b;
-  function row(label, va, vb, kind, invert) {
-    var diff = vb - va;
+  function cell(v, kind) {
+    if (v === null || v === undefined) return kind === 'mo' ? (p.horizon ? p.horizon + '+ mo' : '\u2013') : '\u2013';
+    return kind === 'mo' ? v.toFixed(1) + ' mo' : h(Amount, { value: v, compact: true });
+  }
+  function row(label, va, vb, kind) {
+    var known = va !== null && va !== undefined && vb !== null && vb !== undefined;
+    var diff = known ? vb - va : null;
+    var tone = diff === null || diff === 0 ? 'll-delta-neutral' : diff > 0 ? 'll-delta-positive' : 'll-delta-negative';
     return h('tr', { key: label },
       h('th', { scope: 'row' }, label),
-      h('td', { className: 'is-num' }, kind === 'mo' ? va.toFixed(1) + ' mo' : h(Amount, { value: va, compact: true })),
-      h('td', { className: 'is-num ll-cmp-b' }, kind === 'mo' ? vb.toFixed(1) + ' mo' : h(Amount, { value: vb, compact: true })),
-      h('td', { className: 'is-num' }, h('span', { className: cx('ll-delta', (invert ? diff < 0 : diff > 0) ? 'll-delta-positive' : diff === 0 ? 'll-delta-neutral' : 'll-delta-negative') },
-        (diff > 0 ? '+' : diff < 0 ? '−' : '') + (kind === 'mo' ? Math.abs(diff).toFixed(1) + ' mo' : formatMoney(Math.abs(diff), { compact: true })))));
+      h('td', { className: 'is-num' }, cell(va, kind)),
+      h('td', { className: 'is-num ll-cmp-b' }, cell(vb, kind)),
+      h('td', { className: 'is-num' }, diff === null ? '\u2013' : h('span', { className: cx('ll-delta', tone) },
+        (diff > 0 ? '+' : diff < 0 ? '\u2212' : '') + (kind === 'mo' ? Math.abs(diff).toFixed(1) + ' mo' : formatMoney(Math.abs(diff), { compact: true })))));
   }
   return h('div', { className: 'll-table-wrap' }, h('table', { className: 'll-table ll-cmp' },
     h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Measure'),
@@ -1279,9 +1287,9 @@ function ScenarioCompare(p) {
     h('tbody', null,
       row('Runway', a.runway, b.runway, 'mo'),
       row('Lowest cash balance', a.minCash, b.minCash),
-      row('Cash at Sep 2027', a.cash, b.cash),
-      row('FY27 revenue', a.revenue, b.revenue),
-      row('FY27 EBITDA', a.ebitda, b.ebitda))));
+      row(p.cashLabel || 'Cash in 12 months', a.cash, b.cash),
+      row('Revenue, next 12 months', a.revenue, b.revenue),
+      row('EBITDA, next 12 months', a.ebitda, b.ebitda))));
 }
 function AuditItem(p) {
   return h('li', { className: 'll-audit-item' },

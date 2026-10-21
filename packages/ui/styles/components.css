@@ -863,3 +863,5 @@ g.is-dim { opacity: .3; }
 
 .ll-progress-indeterminate span { width: 35%; animation: ll-indet 1.2s ease-in-out infinite; background: var(--forecast); }
 @keyframes ll-indet { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.ll-scn.is-selectable { cursor: pointer; }
+.ll-scn.is-selectable:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
