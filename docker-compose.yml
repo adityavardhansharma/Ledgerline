@@ -1,0 +1,17 @@
+# Local development: the finance engine in a container. Convex runs with `npx convex dev` and the web app
+# with `npm run dev`; see the README.
+services:
+  engine:
+    build: ./apps/engine
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./apps/engine/.env
+    environment:
+      LL_ALLOW_UNSIGNED: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

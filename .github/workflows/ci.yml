@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  engine:
+    name: Finance engine
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest
+
+  web:
+    name: Web and Convex
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type-check the app
+        run: npx tsc --noEmit
+        working-directory: apps/web
+      - name: Type-check Convex functions
+        run: npx tsc --noEmit -p convex
+        working-directory: apps/web
+      - name: Convex and helper tests
+        run: npx vitest run
+        working-directory: apps/web
+      - name: Build
+        run: npx next build
+        working-directory: apps/web
+
+  engine-image:
+    name: Engine container builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build apps/engine

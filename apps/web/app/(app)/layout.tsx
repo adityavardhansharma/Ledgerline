@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 
+export const dynamic = "force-dynamic";
+
 // Every page in the app needs a signed-in user with an organisation. Data access is also scoped in Convex.
 export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!clerkConfigured || !convexConfigured) return <SetupNeeded />;
