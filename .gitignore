@@ -28,3 +28,6 @@ __pycache__/
 playwright-report/
 test-results/
 coverage/
+.vercel
+.env*
+!.env.example

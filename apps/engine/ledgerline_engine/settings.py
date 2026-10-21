@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     xero_identity_base: str = "https://identity.xero.com"
 
     openrouter_api_key: str = ""
-    openrouter_model: str = "google/gemini-2.5-flash"
+    openrouter_model: str = "openai/gpt-5.6-luna"
     openrouter_base: str = "https://openrouter.ai/api/v1"
 
 
