@@ -237,7 +237,9 @@ function FirstSyncPending({ workspace }: { workspace: Workspace }) {
       >
         {run?.status === "failed"
           ? run.error ?? "Try again from Sync and import."
-          : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as it finishes.`}
+          : run?.mode === "reports"
+            ? `${(run.monthsStored ?? 0).toLocaleString("en-IE")} months read from Xero so far. Reports appear as soon as it finishes.`
+            : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as it finishes.`}
       </EmptyState>
     </div>
   );

@@ -1,10 +1,12 @@
 "use client";
 
-import { Amount, Button, Panel } from "@ledgerline/ui";
+import { Amount, Banner, Button, Panel } from "@ledgerline/ui";
+import Link from "next/link";
 import { usePaginatedQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu, useLedgerCsv } from "@/components/app/ExportMenu";
 import { api } from "@/convex/_generated/api";
+import { ROUTES } from "@/lib/nav";
 
 const fmtDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IE", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -29,7 +31,14 @@ export default function LedgerPage() {
         />
       }
     >
-      {() => (
+      {(workspace) => (
+        <>
+        {workspace.connection?.mode === "reports" && workspace.org.source !== "csv" && workspace.org.source !== "sample" ? (
+          <Banner tone="info" title="Xero shares journals only with approved apps." action={<Link href={ROUTES.pnl}><Button size="sm">Open profit and loss</Button></Link>}>
+            Ledgerline reads your monthly trial balances instead, so there's no journal listing here. Click any figure in a statement to see the invoices, bills,
+            payments and bank transactions behind it.
+          </Banner>
+        ) : null}
         <Panel title="Journals" icon="journal" flush>
           <div style={{ padding: "0 20px 20px" }}>
             <div className="ll-table-wrap">
@@ -67,6 +76,7 @@ export default function LedgerPage() {
             </div>
           </div>
         </Panel>
+        </>
       )}
     </AppPage>
   );

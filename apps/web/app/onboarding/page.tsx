@@ -84,7 +84,7 @@ function Onboarding() {
               {workspace ? <DataSources workspace={workspace} /> : null}
               <Panel title="With Xero, Ledgerline can and can't" icon="lock">
                 <ul className="ll-perm">
-                  <li><Icon name="check" size={18} /><span><strong>Read</strong> journals, accounts, invoices and reports</span></li>
+                  <li><Icon name="check" size={18} /><span><strong>Read</strong> accounts, reports, invoices, payments and bank transactions</span></li>
                   <li><Icon name="check" size={18} /><span><strong>Get notified</strong> when an invoice changes, so reports stay current</span></li>
                   <li className="is-no"><Icon name="close" size={18} /><span><strong>Never write</strong> to Xero, create invoices or move money</span></li>
                   <li className="is-no"><Icon name="close" size={18} /><span><strong>Never see</strong> your bank login or payroll details</span></li>

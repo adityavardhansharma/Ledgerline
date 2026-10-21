@@ -12,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
 
 const PHASES = ["accounts", "journals", "invoices", "reports", "reconcile"];
+const REPORT_PHASES = ["accounts", "balances", "cash", "invoices", "reports", "reconcile"];
 const IMPORT_PHASES = ["accounts", "journals", "reports"];
 const STATUS_PILL: Record<string, { status: "synced" | "syncing" | "error" | "stale" | "mismatch" | "disconnected"; word: string }> = {
   done: { status: "synced", word: "Matches Xero" },
@@ -115,15 +116,26 @@ function SyncScreen() {
             {params.get("connected") ? <Banner tone="positive" title="Xero connected.">Your first sync has started. Reports appear as soon as it finishes.</Banner> : null}
             {error ? <Banner tone="negative" title="Sync not started.">{error}</Banner> : null}
             {live && run ? (
-              <SyncProgress
-                org={connection?.tenantName}
-                title={importing ? `Importing ${workspace.org.sourceLabel ?? "your file"}` : undefined}
-                pagesDone={run.pagesDone}
-                pagesTotal={run.pagesEstimate}
-                journals={run.journalsStored}
-                phase={Math.max(0, (importing ? IMPORT_PHASES : PHASES).indexOf(run.phase))}
-                phases={importing ? ["Chart of accounts", "Journals", "Reports"] : undefined}
-              />
+              run.mode === "reports" && !importing ? (
+                <SyncProgress
+                  org={connection?.tenantName}
+                  pagesDone={run.pagesDone}
+                  pagesTotal={run.pagesTotal}
+                  meta={`${(run.monthsStored ?? 0).toLocaleString("en-IE")} month${run.monthsStored === 1 ? "" : "s"} read from Xero's trial balance`}
+                  phase={Math.max(0, REPORT_PHASES.indexOf(run.phase))}
+                  phases={["Accounts", "Monthly balances", "Daily cash", "Invoices", "Reports", "Check against Xero"]}
+                />
+              ) : (
+                <SyncProgress
+                  org={connection?.tenantName}
+                  title={importing ? `Importing ${workspace.org.sourceLabel ?? "your file"}` : undefined}
+                  pagesDone={run.pagesDone}
+                  pagesTotal={run.pagesEstimate}
+                  journals={run.journalsStored}
+                  phase={Math.max(0, (importing ? IMPORT_PHASES : PHASES).indexOf(run.phase))}
+                  phases={importing ? ["Chart of accounts", "Journals", "Reports"] : undefined}
+                />
+              )
             ) : null}
             <div className="ll-grid-2">
               {imported ? (
@@ -135,8 +147,16 @@ function SyncScreen() {
                   status={connection.status === "connected" ? "connected" : "disconnected"}
                   facts={[
                     ["Last sync", connection.lastSyncAt ? ago(connection.lastSyncAt) : "Not yet"],
-                    ["Journals stored", connection.journalsStored.toLocaleString("en-IE")],
-                    ["Last journal", `#${connection.lastJournalNumber.toLocaleString("en-IE")}`],
+                    ...(connection.mode === "reports"
+                      ? ([
+                          ["Detail", "Monthly balances and documents"],
+                          ["History", connection.historyFrom && connection.balancesThrough ? `${periodLabel(connection.historyFrom)} to ${periodLabel(connection.balancesThrough)}` : "Not yet"],
+                        ] as [string, string][])
+                      : ([
+                          ["Detail", "Every journal line"],
+                          ["Journals stored", connection.journalsStored.toLocaleString("en-IE")],
+                          ["Last journal", `#${connection.lastJournalNumber.toLocaleString("en-IE")}`],
+                        ] as [string, string][])),
                     ["Access", "Read-only"],
                     ["Connected", new Date(connection.connectedAt).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })],
                     ["Token renews", connection.tokenExpiresAt > Date.now() ? `in ${Math.round((connection.tokenExpiresAt - Date.now()) / 60000)} min` : "on next sync"],
@@ -155,14 +175,20 @@ function SyncScreen() {
               ) : (
                 <Panel title="Connect Xero" icon="plug">
                   <div className="ll-stack">
-                    <p>Ledgerline reads your journals, accounts and invoices with read-only access, syncs nightly and checks every figure against Xero.</p>
+                    <p>Ledgerline reads your accounts, monthly balances, invoices and payments with read-only access, syncs nightly and checks every figure against Xero.</p>
                     <ConnectButton />
                   </div>
                 </Panel>
               )}
               <Panel title="How your figures stay current" icon="sync">
                 <ul className="ll-perm" style={{ gridTemplateColumns: "1fr" }}>
-                  <li>Connected to Xero, Ledgerline reads new journals every night at 02:00 and within a minute of a change.</li>
+                  {connection?.mode === "reports" ? (
+                    <li>
+                      Xero shares journals only with apps it has approved for them, so Ledgerline reads each month-end trial balance instead: two years on the first sync, then the last three
+                      months every night. Clicking a figure shows the invoices, bills, payments and bank transactions behind it.
+                    </li>
+                  ) : null}
+                  <li>Connected to Xero, Ledgerline syncs every night at 02:00 and within a minute of a change.</li>
                   <li>Imported from CSV, figures stay as they are until you import again. Each import replaces the last.</li>
                   <li>Either way, every journal must balance, and every month is built into the same three statements.</li>
                   <li>Connecting Xero later replaces imported figures with Xero's own.</li>
