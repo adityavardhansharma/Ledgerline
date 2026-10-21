@@ -9,10 +9,11 @@ import { type ReactNode, useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { ago } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
+import { clerkConfigured, convexConfigured } from "@/lib/config";
 import { ThemeToggle } from "../ThemeToggle";
+import { SetupNeeded } from "./SetupNeeded";
 import { useWorkspace, type Workspace } from "./useWorkspace";
 
-const convexConfigured = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
 
 interface Props {
   active: NavId | "settings";
@@ -31,7 +32,7 @@ function NextLink({ href, ...rest }: { href: string } & Record<string, unknown>)
 }
 
 export function AppPage(props: Props) {
-  if (!convexConfigured) return <SetupNeeded />;
+  if (!convexConfigured || !clerkConfigured) return <SetupNeeded />;
   return <ConnectedPage {...props} />;
 }
 
@@ -185,15 +186,5 @@ function FirstSyncPending({ workspace }: { workspace: Workspace }) {
           : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as the sync finishes.`}
       </EmptyState>
     </div>
-  );
-}
-
-function SetupNeeded() {
-  return (
-    <main style={{ maxWidth: 640, margin: "80px auto", padding: "0 16px" }}>
-      <Banner tone="info" title="Ledgerline needs a Convex backend.">
-        Run <code>npx convex dev</code> in apps/web, set the environment variables listed in .env.example, and start the finance engine. The README walks through it.
-      </Banner>
-    </main>
   );
 }

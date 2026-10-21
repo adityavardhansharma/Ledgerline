@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectButton } from "@/components/app/AppPage";
+import { SetupNeeded } from "@/components/app/SetupNeeded";
 import { useWorkspace } from "@/components/app/useWorkspace";
+import { clerkConfigured, convexConfigured } from "@/lib/config";
 
 const XERO_ERRORS: Record<string, string> = {
   access_denied: "Xero access was declined. Ledgerline needs read-only access to build your reports.",
@@ -94,6 +96,7 @@ function Onboarding() {
 }
 
 export default function OnboardingPage() {
+  if (!clerkConfigured || !convexConfigured) return <SetupNeeded />;
   return (
     <Suspense>
       <Onboarding />
