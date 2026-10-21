@@ -30,6 +30,7 @@ include = ["ledgerline_engine*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:starlette.*", "ignore:Using `httpx`:DeprecationWarning"]
 
 [tool.ruff]
 line-length = 130
