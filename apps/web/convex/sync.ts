@@ -1,8 +1,14 @@
 /**
- * The Xero sync state machine. Each step is one short, retryable action:
- *   accounts → journals (one page per step) → invoices → reports → reconcile → done
- * Journals are append-only in Xero, so the whole sync needs one cursor (the last journal number) and
- * every page is stored idempotently by Xero journal ID.
+ * The Xero sync state machine. Each step is one short, retryable action. Which steps run depends on the
+ * connection's mode, decided from the scopes Xero granted:
+ *
+ *   journals: accounts → journals (one page per step) → invoices → reports → reconcile → done
+ *   reports:  accounts → balances (six month-end trial balances per step) → cash → invoices → reports → reconcile → done
+ *
+ * Journals are append-only in Xero, so journals mode needs one cursor (the last journal number) and stores
+ * every page idempotently by journal ID. Reports mode rereads the last three months each night (late postings
+ * land there) and the whole history on the first sync, after a mode change, or when the check against Xero
+ * finds a difference.
  */
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
@@ -12,11 +18,13 @@ import { type ActionCtx, internalAction, internalMutation, internalQuery, type M
 import { audit } from "./lib/audit";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
-import { periodOf } from "./lib/money";
+import { currentPeriod, periodAdd, periodOf } from "./lib/money";
 import { persistRotated } from "./lib/tokens";
-import type { Tokens } from "./xero";
+import { type Tokens, modeFor } from "./xero";
 
 const MAX_ATTEMPTS = 3;
+const HISTORY_MONTHS = 24; // plus the current month and the opening position before it
+const BALANCES_PER_STEP = 6;
 
 export interface EngineJournal {
   xero_journal_id: string;
@@ -30,8 +38,8 @@ export interface EngineJournal {
 // ---------- starting a sync ----------
 
 export const enqueue = internalMutation({
-  args: { orgId: v.id("organizations"), trigger: v.string() },
-  handler: async (ctx, { orgId, trigger }) => {
+  args: { orgId: v.id("organizations"), trigger: v.string(), full: v.optional(v.boolean()) },
+  handler: async (ctx, { orgId, trigger, full }) => {
     const active = await ctx.db
       .query("syncRuns")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
@@ -61,6 +69,7 @@ export const enqueue = internalMutation({
       journalsStored: 0,
       attempts: 0,
       startedAt: Date.now(),
+      full: full || undefined,
     });
     await ctx.scheduler.runAfter(0, internal.sync.runStep, { runId });
     return runId;
@@ -103,6 +112,12 @@ export const runStep = internalAction({
         case "journals":
           await stepJournals(ctx, run, tenant);
           break;
+        case "balances":
+          await stepBalances(ctx, run, tenant);
+          break;
+        case "cash":
+          await stepCash(ctx, run, tenant);
+          break;
         case "invoices":
           await stepInvoices(ctx, run, tenant);
           break;
@@ -135,6 +150,20 @@ async function stepAccounts(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
     while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: true });
   }
   await ctx.runMutation(internal.sync.storeAccounts, { orgId: run.orgId, accounts: result.accounts.map(toAccount) });
+
+  // Journals or trial balances, from what Xero granted. A change (journal access added or removed)
+  // rebuilds the figures from scratch in the new mode rather than mixing the two.
+  const before = await ctx.runQuery(internal.xero.connectionFor, { orgId: run.orgId });
+  const mode = modeFor(before?.scopes);
+  if (before?.mode && before.mode !== mode) {
+    let more = true;
+    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: false });
+  }
+  await ctx.runMutation(internal.sync.setMode, { runId: run._id, mode });
+  if (mode === "reports") {
+    await ctx.runMutation(internal.sync.startBalances, { runId: run._id });
+    return;
+  }
 
   // The Demo Company resets every 28 days. If the journal we stopped at is gone, start again from zero.
   const connection = await ctx.runQuery(internal.xero.connectionFor, { orgId: run.orgId });
@@ -178,6 +207,50 @@ async function stepJournals(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   if (!result.fullPage) await ctx.runMutation(internal.sync.advance, { runId: run._id, phase: "invoices" });
 }
 
+async function stepBalances(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
+  const now = currentPeriod();
+  const periods: string[] = [];
+  for (let p = run.cursor ?? now; p <= now && periods.length < BALANCES_PER_STEP; p = periodAdd(p, 1)) periods.push(p);
+  const input = await ctx.runQuery(internal.sync.balancesInput, { orgId: run.orgId });
+  const opening = run.full && periods[0] === input.historyFrom ? periods[0] : null;
+  const result = await engine<{
+    periods: { period: string; lines: { xero_account_id: string; net_cents: number }[] }[];
+    syntheticAccounts: Record<string, string>[];
+    tokens?: Tokens;
+  }>("/xero/trial-balances", {
+    ...tenant,
+    periods,
+    opening_period: opening,
+    retained_earnings_id: input.retainedEarningsId,
+    today: new Date().toISOString().slice(0, 10),
+  });
+  await persistRotated(ctx, run.orgId, result.tokens);
+  const last = periods[periods.length - 1];
+  await ctx.runMutation(internal.sync.storeBalances, {
+    runId: run._id,
+    orgId: run.orgId,
+    periods: result.periods,
+    accounts: result.syntheticAccounts.map(toAccount),
+    dropBefore: opening ?? undefined,
+    next: last >= now ? undefined : periodAdd(last, 1),
+  });
+}
+
+async function stepCash(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
+  const from = `${periodAdd(currentPeriod(), -5)}-01`;
+  const to = new Date().toISOString().slice(0, 10);
+  const input = await ctx.runQuery(internal.reports.engineInput, { orgId: run.orgId });
+  const result = await engine<{ days: { date: string; net_cents: number }[]; tokens?: Tokens }>("/xero/daily-cash", {
+    ...tenant,
+    accounts: input.accounts,
+    date_from: from,
+    date_to: to,
+  });
+  await persistRotated(ctx, run.orgId, result.tokens);
+  await ctx.runMutation(internal.sync.storeDailyCash, { orgId: run.orgId, from, to, days: result.days });
+  await ctx.runMutation(internal.sync.advance, { runId: run._id, phase: "invoices" });
+}
+
 async function stepInvoices(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   const today = new Date().toISOString().slice(0, 10);
   const result = await engine<{ ageing: unknown; tokens?: Tokens }>("/xero/open-items", { ...tenant, as_of: today });
@@ -199,6 +272,10 @@ async function stepReconcile(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   const { tokens: _tokens, ...data } = result;
   await ctx.runMutation(internal.reports.storeSnapshot, { orgId: run.orgId, kind: "reconciliation", data: { ...data, checkedAt: Date.now(), asOf: input.asOf } });
   await ctx.runMutation(internal.sync.finish, { runId: run._id, status: result.status === "match" ? "done" : "needsReview" });
+  // An incremental read only covers recent months; a difference usually means an older month changed.
+  if (result.status !== "match" && run.mode === "reports" && !run.full) {
+    await ctx.scheduler.runAfter(1000, internal.sync.enqueue, { orgId: run.orgId, trigger: "Full refresh", full: true });
+  }
 }
 
 async function handleFailure(ctx: Ctx, run: Doc<"syncRuns">, err: unknown) {
@@ -239,9 +316,141 @@ export const patchRun = internalMutation({
 });
 
 export const advance = internalMutation({
-  args: { runId: v.id("syncRuns"), phase: v.union(v.literal("journals"), v.literal("invoices"), v.literal("reports"), v.literal("reconcile")) },
+  args: {
+    runId: v.id("syncRuns"),
+    phase: v.union(v.literal("journals"), v.literal("balances"), v.literal("cash"), v.literal("invoices"), v.literal("reports"), v.literal("reconcile")),
+  },
   handler: async (ctx, { runId, phase }) => {
     await ctx.db.patch(runId, { phase, attempts: 0, error: undefined });
+  },
+});
+
+export const setMode = internalMutation({
+  args: { runId: v.id("syncRuns"), mode: v.union(v.literal("journals"), v.literal("reports")) },
+  handler: async (ctx, { runId, mode }) => {
+    const run = await ctx.db.get(runId);
+    if (!run) return;
+    await ctx.db.patch(runId, { mode });
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", run.orgId))
+      .first();
+    if (!connection || connection.mode === mode) return;
+    const switched = Boolean(connection.mode);
+    await ctx.db.patch(connection._id, { mode, historyFrom: undefined, balancesThrough: undefined, ...(switched ? { lastJournalNumber: 0, lastJournalId: undefined, journalsStored: 0 } : {}) });
+    if (switched) {
+      await audit(ctx, run.orgId, {
+        actor: "Ledgerline",
+        action: mode === "journals" ? "gained journal access to" : "lost journal access to",
+        target: connection.tenantName,
+        detail: mode === "journals" ? "Rebuilding from every journal line" : "Rebuilding from monthly trial balances",
+        icon: "refresh",
+        tone: "forecast",
+      });
+    }
+  },
+});
+
+/** Reports mode: read the whole history on the first sync (or a full refresh), otherwise the last three months. */
+export const startBalances = internalMutation({
+  args: { runId: v.id("syncRuns") },
+  handler: async (ctx, { runId }) => {
+    const run = await ctx.db.get(runId);
+    if (!run) return;
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", run.orgId))
+      .first();
+    const now = currentPeriod();
+    const full = Boolean(run.full || !connection?.balancesThrough || !connection.historyFrom);
+    const cursor = full ? periodAdd(now, -(HISTORY_MONTHS + 1)) : periodAdd(now, -2);
+    await ctx.db.patch(runId, { full, cursor, phase: "balances", monthsStored: 0, attempts: 0, error: undefined });
+    if (connection && full) await ctx.db.patch(connection._id, { historyFrom: cursor });
+  },
+});
+
+export const balancesInput = internalQuery({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, { orgId }) => {
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first();
+    const retained =
+      accounts.find((a) => a.systemAccount === "RETAINEDEARNINGS") ?? accounts.find((a) => a.accountClass === "EQUITY" && /retained/i.test(a.name));
+    return { retainedEarningsId: retained?.xeroAccountId ?? null, historyFrom: connection?.historyFrom ?? null };
+  },
+});
+
+/** Replace whole months of balances. Rereading a month replaces it, so late postings land exactly once. */
+export const storeBalances = internalMutation({
+  args: {
+    runId: v.id("syncRuns"),
+    orgId: v.id("organizations"),
+    periods: v.array(v.object({ period: v.string(), lines: v.array(v.object({ xero_account_id: v.string(), net_cents: v.number() })) })),
+    accounts: v.array(
+      v.object({ xeroAccountId: v.string(), code: v.string(), name: v.string(), type: v.string(), accountClass: v.string(), systemAccount: v.string(), status: v.string() }),
+    ),
+    dropBefore: v.optional(v.string()),
+    next: v.optional(v.string()),
+  },
+  handler: async (ctx, { runId, orgId, periods, accounts, dropBefore, next }) => {
+    await upsertAccounts(ctx, orgId, accounts);
+    if (dropBefore) {
+      const older = await ctx.db
+        .query("accountBalances")
+        .withIndex("by_org_period", (q) => q.eq("orgId", orgId).lt("period", dropBefore))
+        .collect();
+      for (const row of older) await ctx.db.delete(row._id);
+    }
+    for (const { period, lines } of periods) {
+      const existing = await ctx.db
+        .query("accountBalances")
+        .withIndex("by_org_period", (q) => q.eq("orgId", orgId).eq("period", period))
+        .collect();
+      for (const row of existing) await ctx.db.delete(row._id);
+      for (const line of lines) {
+        if (!Number.isSafeInteger(line.net_cents)) throw new Error(`Bad amount for ${line.xero_account_id} in ${period}`);
+        await ctx.db.insert("accountBalances", { orgId, xeroAccountId: line.xero_account_id, period, netCents: BigInt(line.net_cents) });
+      }
+    }
+    const run = await ctx.db.get(runId);
+    if (run) {
+      await ctx.db.patch(runId, {
+        monthsStored: (run.monthsStored ?? 0) + periods.length,
+        pagesDone: run.pagesDone + 1,
+        attempts: 0,
+        error: undefined,
+        ...(next ? { cursor: next } : { phase: "cash" as const, cursor: undefined }),
+      });
+    }
+    const latest = periods.reduce((max, p) => (p.period > max ? p.period : max), "");
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first();
+    if (connection && latest && (!connection.balancesThrough || latest > connection.balancesThrough)) {
+      await ctx.db.patch(connection._id, { balancesThrough: latest });
+    }
+  },
+});
+
+/** Replace the daily cash calendar for a window, from payments and bank transactions. */
+export const storeDailyCash = internalMutation({
+  args: { orgId: v.id("organizations"), from: v.string(), to: v.string(), days: v.array(v.object({ date: v.string(), net_cents: v.number() })) },
+  handler: async (ctx, { orgId, from, to, days }) => {
+    const existing = await ctx.db
+      .query("dailyCash")
+      .withIndex("by_org_date", (q) => q.eq("orgId", orgId).gte("date", from).lte("date", to))
+      .collect();
+    for (const row of existing) await ctx.db.delete(row._id);
+    for (const day of days) {
+      if (day.date >= from && day.date <= to) await ctx.db.insert("dailyCash", { orgId, date: day.date, netCents: BigInt(day.net_cents) });
+    }
   },
 });
 
@@ -370,7 +579,7 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache"] as const;
 
 /** Delete one batch of an organisation's synced or imported figures (and, optionally, its chart). True while more remains. */
 export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean): Promise<boolean> {
@@ -387,7 +596,9 @@ export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, 
               ? await ctx.db.query("journals").withIndex("by_org_number", (q) => q.eq("orgId", orgId)).take(300)
               : table === "commentaries"
                 ? await ctx.db.query("commentaries").withIndex("by_org_period", (q) => q.eq("orgId", orgId)).take(300)
-                : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
+                : table === "activityCache"
+                  ? await ctx.db.query("activityCache").withIndex("by_org_account_period", (q) => q.eq("orgId", orgId)).take(300)
+                  : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
     if (rows.length) {
       for (const row of rows) await ctx.db.delete(row._id);
       return true;
@@ -507,6 +718,8 @@ export const history = query({
       id: r._id,
       trigger: r.trigger,
       source: r.source ?? "xero",
+      mode: r.mode ?? null,
+      monthsStored: r.monthsStored ?? null,
       status: r.status,
       phase: r.phase,
       pagesDone: r.pagesDone,

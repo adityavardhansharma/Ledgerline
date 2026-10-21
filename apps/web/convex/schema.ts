@@ -22,11 +22,17 @@ export const syncPhase = v.union(
   v.literal("queued"),
   v.literal("accounts"),
   v.literal("journals"),
+  v.literal("balances"),
+  v.literal("cash"),
   v.literal("invoices"),
   v.literal("reports"),
   v.literal("reconcile"),
   v.literal("done"),
 );
+// How a Xero connection is read: every journal (apps with journal access) or monthly trial balances plus
+// documents (every other app). Decided from the scopes Xero granted, per connection.
+export const xeroMode = v.union(v.literal("journals"), v.literal("reports"));
+
 export const dataSource = v.union(v.literal("xero"), v.literal("csv"), v.literal("sample"));
 
 export const syncStatus = v.union(
@@ -79,6 +85,11 @@ export default defineSchema({
     connectedAt: v.number(),
     lastSyncAt: v.optional(v.number()),
     rerunRequested: v.optional(v.boolean()),
+    scopes: v.optional(v.array(v.string())),
+    mode: v.optional(xeroMode),
+    // Reports mode: the first period held (the opening position) and the latest period read.
+    historyFrom: v.optional(v.string()),
+    balancesThrough: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_tenant", ["tenantId"])
@@ -133,7 +144,18 @@ export default defineSchema({
     netCents: v.int64(),
   })
     .index("by_org", ["orgId"])
+    .index("by_org_period", ["orgId", "period"])
     .index("by_org_account_period", ["orgId", "xeroAccountId", "period"]),
+
+  // Reports mode: the documents behind one account's month, fetched from Xero on demand.
+  activityCache: defineTable({
+    orgId: v.id("organizations"),
+    xeroAccountId: v.string(),
+    period: v.string(),
+    version: v.number(),
+    data: v.any(),
+    createdAt: v.number(),
+  }).index("by_org_account_period", ["orgId", "xeroAccountId", "period"]),
 
   dailyCash: defineTable({ orgId: v.id("organizations"), date: v.string(), netCents: v.int64() }).index("by_org_date", ["orgId", "date"]),
 
@@ -141,6 +163,11 @@ export default defineSchema({
     orgId: v.id("organizations"),
     trigger: v.string(),
     source: v.optional(dataSource),
+    mode: v.optional(xeroMode),
+    // Reports mode: the next period to read, whether this run rebuilds the whole history, months stored.
+    cursor: v.optional(v.string()),
+    full: v.optional(v.boolean()),
+    monthsStored: v.optional(v.number()),
     phase: syncPhase,
     status: syncStatus,
     pagesDone: v.number(),

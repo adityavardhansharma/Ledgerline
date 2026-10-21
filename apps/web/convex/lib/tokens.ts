@@ -12,5 +12,6 @@ export async function persistRotated(ctx: ActionCtx, orgId: Id<"organizations">,
     accessTokenEnc: await encrypt(tokens.access_token),
     refreshTokenEnc: await encrypt(tokens.refresh_token),
     expiresAt: tokens.expires_at * 1000,
+    scopes: tokens.scope ? tokens.scope.split(" ").filter(Boolean) : undefined,
   });
 }

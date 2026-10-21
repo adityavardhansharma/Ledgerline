@@ -10,7 +10,14 @@ export interface Tokens {
   access_token: string;
   refresh_token: string;
   expires_at: number;
+  /** The scopes Xero granted, space separated (returned with every token). */
+  scope?: string;
 }
+
+export const JOURNALS_SCOPE = "accounting.journals.read";
+
+/** Journal access means every journal line; without it, monthly trial balances and documents. */
+export const modeFor = (scopes: string[] | undefined): "journals" | "reports" => (!scopes || scopes.includes(JOURNALS_SCOPE) ? "journals" : "reports");
 
 const redirectUri = () => `${process.env.CONVEX_SITE_URL}/xero/callback`;
 
@@ -63,7 +70,7 @@ export const finishConnect = internalAction({
   handler: async (ctx, { code, state }): Promise<{ ok: boolean; reason?: string }> => {
     const row = await ctx.runMutation(internal.xero.takeState, { state });
     if (!row) return { ok: false, reason: "expired" };
-    const result = await engine<{ tokens: Tokens; connections: { tenant_id: string; tenant_name: string }[] }>("/xero/token", {
+    const result = await engine<{ tokens: Tokens; scopes: string[]; connections: { tenant_id: string; tenant_name: string }[] }>("/xero/token", {
       code,
       redirect_uri: row.redirectUri,
       code_verifier: row.verifier,
@@ -77,6 +84,7 @@ export const finishConnect = internalAction({
       accessTokenEnc: await encrypt(result.tokens.access_token),
       refreshTokenEnc: await encrypt(result.tokens.refresh_token),
       expiresAt: result.tokens.expires_at * 1000,
+      scopes: result.scopes ?? [],
     });
     return { ok: true };
   },
@@ -90,6 +98,7 @@ export const saveConnection = internalMutation({
     accessTokenEnc: v.bytes(),
     refreshTokenEnc: v.bytes(),
     expiresAt: v.number(),
+    scopes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -136,13 +145,13 @@ export const connectionFor = internalQuery({
 });
 
 export const saveTokens = internalMutation({
-  args: { orgId: v.id("organizations"), accessTokenEnc: v.bytes(), refreshTokenEnc: v.bytes(), expiresAt: v.number() },
-  handler: async (ctx, { orgId, ...tokens }) => {
+  args: { orgId: v.id("organizations"), accessTokenEnc: v.bytes(), refreshTokenEnc: v.bytes(), expiresAt: v.number(), scopes: v.optional(v.array(v.string())) },
+  handler: async (ctx, { orgId, scopes, ...tokens }) => {
     const connection = await ctx.db
       .query("xeroConnections")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .first();
-    if (connection) await ctx.db.patch(connection._id, tokens);
+    if (connection) await ctx.db.patch(connection._id, scopes?.length ? { ...tokens, scopes } : tokens);
   },
 });
 

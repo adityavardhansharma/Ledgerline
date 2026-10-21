@@ -13,3 +13,11 @@ export function lastCompleteMonth(now = new Date()): string {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** "2026-09" plus n months. */
+export function periodAdd(period: string, n: number): string {
+  const index = Number(period.slice(0, 4)) * 12 + Number(period.slice(5, 7)) - 1 + n;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+}
+
+export const currentPeriod = (now = new Date()) => now.toISOString().slice(0, 7);

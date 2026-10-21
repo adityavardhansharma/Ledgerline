@@ -73,6 +73,9 @@ export const current = query({
             lastJournalNumber: connection.lastJournalNumber,
             tokenExpiresAt: connection.expiresAt,
             connectedAt: connection.connectedAt,
+            mode: connection.mode ?? null,
+            historyFrom: connection.historyFrom ?? null,
+            balancesThrough: connection.balancesThrough ?? null,
           }
         : null,
       lastSync: lastSync
@@ -80,6 +83,9 @@ export const current = query({
             id: lastSync._id,
             trigger: lastSync.trigger,
             source: lastSync.source ?? "xero",
+            mode: lastSync.mode ?? null,
+            monthsStored: lastSync.monthsStored ?? null,
+            pagesTotal: lastSync.mode === "reports" && lastSync.full ? Math.ceil((HISTORY + 2) / 6) : null,
             status: lastSync.status,
             phase: lastSync.phase,
             pagesDone: lastSync.pagesDone,
@@ -94,6 +100,8 @@ export const current = query({
     };
   },
 });
+
+const HISTORY = 24;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
