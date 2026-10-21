@@ -1,7 +1,7 @@
 "use client";
 
 import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs";
-import { AppShell, Banner, Button, EmptyState, Skeleton, StatusPill } from "@ledgerline/ui";
+import { AppShell, Banner, Button, EmptyState, Icon, Skeleton, StatusPill } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { ago } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 import { ThemeToggle } from "../ThemeToggle";
+import { ImportProgress, useImport } from "./ImportPanel";
 import { SetupNeeded } from "./SetupNeeded";
 import { useWorkspace, type Workspace } from "./useWorkspace";
 
@@ -45,13 +46,20 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   }, [isLoaded, orgId, router]);
 
   const syncing = workspace?.lastSync && ["queued", "running", "backingOff"].includes(workspace.lastSync.status);
+  const imported = workspace?.org.source === "csv" || workspace?.org.source === "sample";
   const sidebar = {
     linkAs: NextLink,
     items: NAV_ITEMS,
     settingsHref: ROUTES.settings,
     runway: null as number | null,
     syncing: Boolean(syncing),
-    syncText: syncing ? `Syncing · ${workspace?.lastSync?.journalsStored ?? 0} journals` : `Synced ${ago(workspace?.connection?.lastSyncAt)}`,
+    syncText: syncing
+      ? `${workspace?.lastSync?.source === "xero" ? "Syncing" : "Importing"} · ${workspace?.lastSync?.journalsStored ?? 0} journals`
+      : imported
+        ? `Imported ${ago(workspace?.org.importedAt)}`
+        : workspace?.connection
+          ? `Synced ${ago(workspace.connection.lastSyncAt)}`
+          : "No figures yet",
     orgSwitcher: (
       <div className="ll-org" style={{ padding: 4 }}>
         <OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/overview" afterCreateOrganizationUrl="/onboarding" />
@@ -65,7 +73,9 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
     ),
   };
 
-  const status = workspace?.connection ? (
+  const status = imported && !syncing ? (
+    <StatusPill status="synced">{workspace?.org.source === "sample" ? "Sample company" : "Imported"} {ago(workspace?.org.importedAt)}</StatusPill>
+  ) : workspace?.connection ? (
     syncing ? (
       <StatusPill status="syncing">Syncing</StatusPill>
     ) : workspace.connection.status !== "connected" ? (
@@ -85,10 +95,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
         <Skeleton height={280} />
       </div>
     );
-  } else if (needsData && !workspace.connection) {
-    body = <NotConnected />;
   } else if (needsData && !workspace.org.asOf) {
-    body = <FirstSyncPending workspace={workspace} />;
+    body = workspace.connection || workspace.lastSync ? <FirstSyncPending workspace={workspace} /> : <NoFigures workspace={workspace} />;
   } else {
     body = (
       <>
@@ -121,6 +129,13 @@ function ConnectionBanner({ workspace }: { workspace: Workspace }) {
     return (
       <Banner tone="negative" title="Xero disconnected." action={<ConnectButton label="Reconnect" size="sm" />}>
         Ledgerline can no longer read your Xero organisation. Figures below are from the last sync{connection.lastSyncAt ? `, ${ago(connection.lastSyncAt)}` : ""}.
+      </Banner>
+    );
+  }
+  if (run?.status === "failed" && run.source !== "xero") {
+    return (
+      <Banner tone="warning" title="The last import didn't finish." action={<Link href={ROUTES.sync}><Button size="sm">See import</Button></Link>}>
+        {run.error ?? "Import the files again from Sync and import."} Figures below are from before it.
       </Banner>
     );
   }
@@ -166,12 +181,47 @@ export function ConnectButton({ label = "Connect Xero", size = "md" as "sm" | "m
   );
 }
 
-function NotConnected() {
+/** Nothing synced or imported yet: offer every way in. */
+export function DataSources({ workspace }: { workspace: Workspace }) {
+  const router = useRouter();
+  const { sample, progress, error, busy } = useImport();
+  const canWrite = workspace.role !== "accountant";
+  return (
+    <div className="ll-stack">
+      <div className="ll-sources">
+        <div className="ll-source">
+          <h3><Icon name="plug" size={18} />Connect Xero</h3>
+          <p>Read-only access to one Xero organisation. Synced nightly and checked against Xero to the cent.</p>
+          <div><ConnectButton size="sm" /></div>
+        </div>
+        <div className="ll-source">
+          <h3><Icon name="upload" size={18} />Import from CSV</h3>
+          <p>A chart of accounts and a journal listing from any accounting system or spreadsheet.</p>
+          <div><Link href={`${ROUTES.sync}#import`}><Button size="sm" icon="upload">Choose files</Button></Link></div>
+        </div>
+        <div className="ll-source">
+          <h3><Icon name="database" size={18} />Try the sample company</h3>
+          <p>Two years of Kestrel Joinery Ltd, an Irish joinery: 940 journals, every statement tying out.</p>
+          <div>
+            <Button size="sm" disabled={!canWrite || busy} loading={busy} onClick={async () => { if (await sample()) router.push(ROUTES.overview); }}>
+              Load sample
+            </Button>
+          </div>
+        </div>
+      </div>
+      <ImportProgress progress={progress} />
+      {error ? <Banner tone="negative" title="Sample not loaded.">{error}</Banner> : null}
+    </div>
+  );
+}
+
+function NoFigures({ workspace }: { workspace: Workspace }) {
   return (
     <div className="ll-panel">
-      <EmptyState icon="plug" title="Connect Xero to see your figures" action={<ConnectButton />}>
-        Ledgerline reads your journals, accounts and invoices with read-only access, then builds your management accounts and checks them against Xero to the cent.
+      <EmptyState icon="database" title="Add your figures to get started">
+        Ledgerline builds management accounts and a three-statement forecast from your ledger. Choose where the figures come from.
       </EmptyState>
+      <DataSources workspace={workspace} />
     </div>
   );
 }
@@ -180,10 +230,14 @@ function FirstSyncPending({ workspace }: { workspace: Workspace }) {
   const run = workspace.lastSync;
   return (
     <div className="ll-panel">
-      <EmptyState icon="sync" title={run?.status === "failed" ? "The first sync failed" : "Your first sync is running"} action={<Link href={ROUTES.sync}><Button icon="sync">See sync progress</Button></Link>}>
+      <EmptyState
+        icon={run?.source === "xero" ? "sync" : "upload"}
+        title={run?.status === "failed" ? `The ${run.source === "xero" ? "first sync" : "import"} didn't finish` : run?.source === "xero" ? "Your first sync is running" : "Your import is running"}
+        action={<Link href={ROUTES.sync}><Button icon="sync">{run?.status === "failed" ? "Try again" : "See progress"}</Button></Link>}
+      >
         {run?.status === "failed"
-          ? run.error ?? "Try again from Sync and Xero."
-          : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as the sync finishes.`}
+          ? run.error ?? "Try again from Sync and import."
+          : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as it finishes.`}
       </EmptyState>
     </div>
   );

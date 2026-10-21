@@ -5,7 +5,7 @@ import { Badge, Banner, Button, Icon, Logo, Panel, Stepper } from "@ledgerline/u
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { ConnectButton } from "@/components/app/AppPage";
+import { DataSources } from "@/components/app/AppPage";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
 import { useWorkspace } from "@/components/app/useWorkspace";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
@@ -23,7 +23,9 @@ function Onboarding() {
   const params = useSearchParams();
   const xeroError = params.get("xero");
   const workspace = useWorkspace();
-  const step = !orgId ? 1 : workspace?.connection ? (workspace.org.asOf ? 3 : 2) : 1;
+  const started = Boolean(workspace && (workspace.connection || workspace.lastSync || workspace.org.asOf));
+  const step = !orgId ? 1 : started ? (workspace?.org.asOf ? 3 : 2) : 1;
+  const fromXero = !workspace?.org.source || workspace.org.source === "xero";
 
   return (
     <div className="ll-onb">
@@ -36,9 +38,9 @@ function Onboarding() {
           current={step}
           steps={[
             { title: "Create your account", hint: "Done" },
-            { title: "Connect Xero", hint: "Read-only, one organisation" },
-            { title: "First sync", hint: "About 2 minutes" },
-            { title: "Check your figures", hint: "Compared with Xero" },
+            { title: "Add your figures", hint: "Xero, CSV files or the sample" },
+            { title: "Build your reports", hint: "About 2 minutes" },
+            { title: "Check your figures", hint: "Every journal balanced" },
           ]}
         />
         <div className="ll-onb-main">
@@ -54,13 +56,17 @@ function Onboarding() {
                 </div>
               </details>
             </>
-          ) : workspace?.connection ? (
+          ) : workspace && started ? (
             <>
-              <h1>{workspace.org.asOf ? "You're all set" : "Your first sync is running"}</h1>
+              <h1>{workspace.org.asOf ? "You're all set" : fromXero ? "Your first sync is running" : "Your import is running"}</h1>
               <p>
                 {workspace.org.asOf
-                  ? "Your figures are ready and have been checked against Xero."
-                  : `Reading journals from ${workspace.connection.tenantName}. This usually takes a couple of minutes.`}
+                  ? fromXero
+                    ? "Your figures are ready and have been checked against Xero."
+                    : `Your figures from ${workspace.org.sourceLabel ?? "your file"} are ready. Every journal balanced.`
+                  : fromXero
+                    ? `Reading journals from ${workspace.connection?.tenantName ?? "Xero"}. This usually takes a couple of minutes.`
+                    : `Storing journals from ${workspace.org.sourceLabel ?? "your file"}.`}
               </p>
               <div className="ll-row">
                 <Link href={workspace.org.asOf ? "/overview" : "/data/sync"}>
@@ -72,10 +78,11 @@ function Onboarding() {
             </>
           ) : (
             <>
-              <h1>Connect your Xero organisation</h1>
-              <p>Ledgerline reads your journals, accounts and invoices to build your reports. You'll pick the organisation on Xero's own screen.</p>
+              <h1>Add your figures</h1>
+              <p>Connect Xero for figures that stay current, import a chart of accounts and journals from CSV, or explore with the sample company. You can switch later.</p>
               {xeroError ? <Banner tone="negative" title="Xero wasn't connected.">{XERO_ERRORS[xeroError] ?? XERO_ERRORS.failed}</Banner> : null}
-              <Panel title="What Ledgerline can and can't do" icon="lock">
+              {workspace ? <DataSources workspace={workspace} /> : null}
+              <Panel title="With Xero, Ledgerline can and can't" icon="lock">
                 <ul className="ll-perm">
                   <li><Icon name="check" size={18} /><span><strong>Read</strong> journals, accounts, invoices and reports</span></li>
                   <li><Icon name="check" size={18} /><span><strong>Get notified</strong> when an invoice changes, so reports stay current</span></li>
@@ -83,10 +90,6 @@ function Onboarding() {
                   <li className="is-no"><Icon name="close" size={18} /><span><strong>Never see</strong> your bank login or payroll details</span></li>
                 </ul>
               </Panel>
-              <Banner tone="info" title="Trying it out?">Connect Xero's free Demo Company. It resets every 28 days; Ledgerline notices and resyncs on its own.</Banner>
-              <div className="ll-row">
-                <ConnectButton size="lg" />
-              </div>
             </>
           )}
         </div>

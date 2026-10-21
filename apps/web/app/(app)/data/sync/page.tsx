@@ -5,11 +5,14 @@ import { useMutation, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AppPage, ConnectButton } from "@/components/app/AppPage";
+import { ImportPanel } from "@/components/app/ImportPanel";
 import { Reconciliation } from "@/components/app/Reconciliation";
+import { useWorkspace, type Workspace } from "@/components/app/useWorkspace";
 import { api } from "@/convex/_generated/api";
-import { ago } from "@/lib/format";
+import { ago, periodLabel } from "@/lib/format";
 
 const PHASES = ["accounts", "journals", "invoices", "reports", "reconcile"];
+const IMPORT_PHASES = ["accounts", "journals", "reports"];
 const STATUS_PILL: Record<string, { status: "synced" | "syncing" | "error" | "stale" | "mismatch" | "disconnected"; word: string }> = {
   done: { status: "synced", word: "Matches Xero" },
   needsReview: { status: "mismatch", word: "Differs from Xero" },
@@ -27,8 +30,32 @@ const took = (a: number, b: number | null) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
 
+function ImportedCard({ workspace }: { workspace: Workspace }) {
+  const { org, lastSync } = workspace;
+  const sample = org.source === "sample";
+  return (
+    <IntegrationCard
+      name={sample ? "Sample company" : "CSV import"}
+      org={org.sourceLabel ?? (sample ? "Kestrel Joinery Ltd" : "Imported file")}
+      status={lastSync?.status === "failed" ? "error" : "synced"}
+      facts={[
+        ["Imported", org.importedAt ? ago(org.importedAt) : "–"],
+        ["Journals", (lastSync && lastSync.source !== "xero" ? lastSync.journalsStored : 0).toLocaleString("en-IE")],
+        ["Actuals to", org.asOf ? periodLabel(org.asOf) : "Not built yet"],
+        ["Updates", "When you import again"],
+      ]}
+      actions={
+        <a href="#import">
+          <Button variant="ghost" icon="upload">Import a new file</Button>
+        </a>
+      }
+    />
+  );
+}
+
 function SyncScreen() {
   const params = useSearchParams();
+  const current = useWorkspace();
   const history = useQuery(api.sync.history, { limit: 25 });
   const request = useMutation(api.sync.request);
   const disconnect = useMutation(api.xero.disconnect);
@@ -38,24 +65,26 @@ function SyncScreen() {
   return (
     <AppPage
       active="sync"
-      title="Sync and Xero"
-      subtitle="Read-only connection, synced nightly and whenever Xero tells us something changed"
-      breadcrumbs={["Data", "Sync and Xero"]}
+      title="Sync and import"
+      subtitle="Figures come from a read-only Xero connection, or from CSV files you import"
+      breadcrumbs={["Data", "Sync and import"]}
       actions={
-        <Button
-          variant="primary"
-          icon="refresh"
-          onClick={async () => {
-            setError(null);
-            try {
-              await request();
-            } catch (err) {
-              setError(err instanceof Error ? err.message.replace(/^.*ConvexError: /, "") : "Couldn't start a sync.");
-            }
-          }}
-        >
-          Sync now
-        </Button>
+        current?.connection?.status === "connected" ? (
+          <Button
+            variant="primary"
+            icon="refresh"
+            onClick={async () => {
+              setError(null);
+              try {
+                await request();
+              } catch (err) {
+                setError(err instanceof Error ? err.message.replace(/^.*ConvexError: /, "") : "Couldn't start a sync.");
+              }
+            }}
+          >
+            Sync now
+          </Button>
+        ) : null
       }
       overlay={
         confirming ? (
@@ -70,7 +99,7 @@ function SyncScreen() {
               </>
             }
           >
-            <p>Ledgerline stops syncing. Reports keep the figures from the last sync, and you can reconnect at any time.</p>
+            <p>Ledgerline stops syncing. Reports keep the figures from the last sync, and you can reconnect or import a file at any time.</p>
           </Dialog>
         ) : null
       }
@@ -79,6 +108,8 @@ function SyncScreen() {
         const connection = workspace.connection;
         const run = workspace.lastSync;
         const live = run && ["queued", "running", "backingOff"].includes(run.status);
+        const imported = workspace.org.source === "csv" || workspace.org.source === "sample";
+        const importing = Boolean(live && run.source !== "xero");
         return (
           <>
             {params.get("connected") ? <Banner tone="positive" title="Xero connected.">Your first sync has started. Reports appear as soon as it finishes.</Banner> : null}
@@ -86,15 +117,18 @@ function SyncScreen() {
             {live && run ? (
               <SyncProgress
                 org={connection?.tenantName}
+                title={importing ? `Importing ${workspace.org.sourceLabel ?? "your file"}` : undefined}
                 pagesDone={run.pagesDone}
                 pagesTotal={run.pagesEstimate}
                 journals={run.journalsStored}
-                phase={Math.max(0, PHASES.indexOf(run.phase))}
-                phases={["Accounts", "Journals", "Invoices", "Reports", "Check against Xero"]}
+                phase={Math.max(0, (importing ? IMPORT_PHASES : PHASES).indexOf(run.phase))}
+                phases={importing ? ["Chart of accounts", "Journals", "Reports"] : undefined}
               />
             ) : null}
-            {connection ? (
-              <div className="ll-grid-2">
+            <div className="ll-grid-2">
+              {imported ? (
+                <ImportedCard workspace={workspace} />
+              ) : connection ? (
                 <IntegrationCard
                   name="Xero"
                   org={connection.tenantName}
@@ -118,47 +152,51 @@ function SyncScreen() {
                     )
                   }
                 />
-                <Panel title="How syncing works" icon="sync">
-                  <ul className="ll-perm" style={{ gridTemplateColumns: "1fr" }}>
-                    <li>Every night at 02:00 Ledgerline reads new journals since the last one it stored.</li>
-                    <li>When an invoice or contact changes in Xero, a webhook triggers a sync within a minute.</li>
-                    <li>If Xero's Demo Company resets, Ledgerline notices and resyncs from the start.</li>
-                    <li>After every sync, each account is compared with Xero's own reports.</li>
-                  </ul>
+              ) : (
+                <Panel title="Connect Xero" icon="plug">
+                  <div className="ll-stack">
+                    <p>Ledgerline reads your journals, accounts and invoices with read-only access, syncs nightly and checks every figure against Xero.</p>
+                    <ConnectButton />
+                  </div>
                 </Panel>
-              </div>
-            ) : (
-              <Panel title="Connect Xero" icon="plug">
-                <div className="ll-stack">
-                  <p>Ledgerline needs read-only access to one Xero organisation.</p>
-                  <ConnectButton />
-                </div>
+              )}
+              <Panel title="How your figures stay current" icon="sync">
+                <ul className="ll-perm" style={{ gridTemplateColumns: "1fr" }}>
+                  <li>Connected to Xero, Ledgerline reads new journals every night at 02:00 and within a minute of a change.</li>
+                  <li>Imported from CSV, figures stay as they are until you import again. Each import replaces the last.</li>
+                  <li>Either way, every journal must balance, and every month is built into the same three statements.</li>
+                  <li>Connecting Xero later replaces imported figures with Xero's own.</li>
+                </ul>
               </Panel>
-            )}
-            <Reconciliation />
-            <Panel title="Sync history" icon="clock" flush>
+            </div>
+            <div id="import">
+              <ImportPanel workspace={workspace} />
+            </div>
+            {connection && !imported ? <Reconciliation /> : null}
+            <Panel title="History" icon="clock" flush>
               <div style={{ padding: "0 20px 20px" }}>
                 {history && history.length ? (
                   <DataTable
                     columns={[
                       { key: "started", label: "Started", render: (r: { startedAt: number }) => when(r.startedAt) },
                       { key: "trigger", label: "Trigger" },
-                      { key: "pagesDone", label: "Pages", numeric: true },
+                      { key: "pagesDone", label: "Batches", numeric: true },
                       { key: "journalsStored", label: "New journals", numeric: true, render: (r: { journalsStored: number }) => r.journalsStored.toLocaleString("en-IE") },
                       { key: "took", label: "Took", numeric: true, render: (r: { startedAt: number; finishedAt: number | null }) => took(r.startedAt, r.finishedAt) },
                       {
                         key: "status",
                         label: "Result",
-                        render: (r: { status: string; error: string | null }) => {
+                        render: (r: { status: string; source: string; error: string | null }) => {
                           const pill = STATUS_PILL[r.status] ?? STATUS_PILL.queued;
-                          return <span title={r.error ?? undefined}><StatusPill status={pill.status}>{pill.word}</StatusPill></span>;
+                          const word = r.source !== "xero" && r.status === "done" ? "Imported" : pill.word;
+                          return <span title={r.error ?? undefined}><StatusPill status={pill.status}>{word}</StatusPill></span>;
                         },
                       },
                     ]}
                     rows={history}
                   />
                 ) : (
-                  <p className="ll-muted">No syncs yet.</p>
+                  <p className="ll-muted">Nothing synced or imported yet.</p>
                 )}
               </div>
             </Panel>

@@ -26,6 +26,6 @@ export const NAV_ITEMS = [
   { id: "boardpack", label: "Board pack", icon: "boardpack", href: ROUTES.boardpack },
   { heading: "Data" },
   { id: "ledger", label: "Ledger", icon: "ledger", href: ROUTES.ledger },
-  { id: "sync", label: "Sync and Xero", icon: "sync", href: ROUTES.sync },
+  { id: "sync", label: "Sync and import", icon: "sync", href: ROUTES.sync },
   { id: "audit", label: "Audit log", icon: "audit", href: ROUTES.audit },
 ] as const;
