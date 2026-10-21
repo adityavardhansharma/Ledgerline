@@ -4,15 +4,13 @@ import {
   AssumptionField,
   Badge,
   Banner,
-  Button,
-  DataTable,
   FinancialStatement,
-  HireRow,
-  Input,
+  Button,
+  Icon,
+  Select,
   LineChart,
   Panel,
   RunwayGauge,
-  Select,
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
@@ -23,6 +21,7 @@ import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, toCsv } from "@/lib/csv";
 import { BranchDialog } from "@/components/app/BranchDialog";
+import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -113,15 +112,19 @@ function ForecastScreen() {
         const ownHires = scenario.own.hires;
         return (
           <>
-          <div className="ll-grid-2r">
+          <div className="ll-grid-plan">
             <Panel title="Drivers" icon="settings" subtitle={readOnly ? "The base case follows your actuals. Branch it to change drivers." : "Changes from the parent scenario are marked"}>
-              <Tabs label="Forecast sections" value={tab} onChange={setTab} tabs={[
-                { id: "assumptions", label: "Assumptions", count: Object.keys(scenario.own.overrides).length || undefined },
-                { id: "hires", label: "Hires", count: scenario.hires.length || undefined },
-                { id: "oneoffs", label: "One-offs", count: scenario.oneOffs.length || undefined },
-                { id: "financing", label: "Financing", count: scenario.financing.length || undefined },
-              ]} />
-              <div style={{ marginTop: 4 }}>
+              <Sections
+                value={tab}
+                onChange={setTab}
+                items={[
+                  { id: "assumptions", label: "Assumptions", count: Object.keys(scenario.own.overrides).length },
+                  { id: "hires", label: "Hires", count: scenario.hires.length },
+                  { id: "oneoffs", label: "One-offs", count: scenario.oneOffs.length },
+                  { id: "financing", label: "Financing", count: scenario.financing.length },
+                ]}
+              />
+              <div className="ll-drv-body">
                 {tab === "assumptions" &&
                   DRIVERS.map(([key, label, unit, scale, min, max, step, help]) => (
                     <fieldset key={`${scenarioId}-${key}`} disabled={readOnly} style={{ border: 0, padding: 0, margin: 0 }}>
@@ -140,25 +143,38 @@ function ForecastScreen() {
                     </fieldset>
                   ))}
                 {tab === "hires" && (
-                  <div className="ll-stack" style={{ marginTop: 12 }}>
-                    {scenario.hires.map((h) => (
-                      <HireRow
-                        key={h.id}
-                        role={h.role}
-                        start={periodLabel(h.startPeriod)}
-                        salary={h.salaryCents / 100}
-                        count={h.count}
-                        monthly={(h.salaryCents / 100 / 12) * 1.1115 * h.count}
-                        onRemove={ownHires.some((o) => o.id === h.id) ? () => void setPlanItems({ id: scenario.id, hires: ownHires.filter((o) => o.id !== h.id) }) : undefined}
-                      />
-                    ))}
-                    {readOnly ? <p className="ll-muted">Branch the base case to plan hires.</p> : <AddHire start={snapshot.drivers.startPeriod} onAdd={(h) => void setPlanItems({ id: scenario.id, hires: [...ownHires, { ...h, id: uid() }] })} />}
-                  </div>
+                  <PlanList
+                    readOnly={readOnly}
+                    empty="No hires planned. Each hire adds its salary and employer PRSI to the forecast from the month they start."
+                    total={scenario.hires.length ? `${money(Math.round(scenario.hires.reduce((t, h) => t + loaded(h.salaryCents, h.count), 0)))} a month once everyone has started` : undefined}
+                    items={scenario.hires.map((h) => ({
+                      id: h.id,
+                      icon: "hire" as const,
+                      tone: "forecast",
+                      title: h.count > 1 ? `${h.role} × ${h.count}` : h.role,
+                      meta: `Starts ${periodLabel(h.startPeriod)} · ${money(h.salaryCents)} a year${h.count > 1 ? " each" : ""}`,
+                      amount: -loaded(h.salaryCents, h.count),
+                      note: "a month",
+                      own: ownHires.some((o) => o.id === h.id),
+                    }))}
+                    onRemove={(id) => void setPlanItems({ id: scenario.id, hires: ownHires.filter((o) => o.id !== id) })}
+                    form={<AddHire start={snapshot.drivers.startPeriod} onAdd={(h) => void setPlanItems({ id: scenario.id, hires: [...ownHires, { ...h, id: uid() }] })} />}
+                  />
                 )}
                 {tab === "oneoffs" && (
                   <PlanList
                     readOnly={readOnly}
-                    items={scenario.oneOffs.map((o) => ({ id: o.id, what: o.label, when: periodLabel(o.period), kind: o.kind === "capex" ? "Equipment" : o.kind === "income" ? "Income" : "Expense", amount: o.amountCents }))}
+                    empty="No one-offs planned. Add equipment you'll buy, or a single payment in or out."
+                    items={scenario.oneOffs.map((o) => ({
+                      id: o.id,
+                      icon: o.kind === "capex" ? ("settings" as const) : o.kind === "income" ? ("arrow-down" as const) : ("arrow-up" as const),
+                      tone: o.kind === "income" ? "positive" : o.kind === "capex" ? "brand" : "negative",
+                      title: o.label,
+                      meta: `${ONE_OFF[o.kind]} · ${periodLabel(o.period)}`,
+                      amount: o.kind === "income" ? o.amountCents : -o.amountCents,
+                      note: "once",
+                      own: scenario.own.oneOffs.some((x) => x.id === o.id),
+                    }))}
                     onRemove={(id) => void setPlanItems({ id: scenario.id, oneOffs: scenario.own.oneOffs.filter((o) => o.id !== id) })}
                     form={<AddOneOff start={snapshot.drivers.startPeriod} onAdd={(o) => void setPlanItems({ id: scenario.id, oneOffs: [...scenario.own.oneOffs, { ...o, id: uid() }] })} />}
                   />
@@ -166,7 +182,17 @@ function ForecastScreen() {
                 {tab === "financing" && (
                   <PlanList
                     readOnly={readOnly}
-                    items={scenario.financing.map((f) => ({ id: f.id, what: f.kind === "loan" ? "Loan drawn" : f.kind === "equity" ? "Equity raised" : "Dividend paid", when: periodLabel(f.period), kind: f.kind, amount: f.kind === "dividend" ? -f.amountCents : f.amountCents }))}
+                    empty="No financing planned. Add a loan or equity to cover a gap, or a dividend you plan to pay."
+                    items={scenario.financing.map((f) => ({
+                      id: f.id,
+                      icon: f.kind === "dividend" ? ("arrow-up" as const) : ("bank" as const),
+                      tone: f.kind === "dividend" ? "negative" : "positive",
+                      title: FINANCING[f.kind],
+                      meta: periodLabel(f.period),
+                      amount: f.kind === "dividend" ? -f.amountCents : f.amountCents,
+                      note: f.kind === "dividend" ? "paid out" : "cash in",
+                      own: scenario.own.financing.some((x) => x.id === f.id),
+                    }))}
                     onRemove={(id) => void setPlanItems({ id: scenario.id, financing: scenario.own.financing.filter((f) => f.id !== id) })}
                     form={<AddFinancing start={snapshot.drivers.startPeriod} onAdd={(f) => void setPlanItems({ id: scenario.id, financing: [...scenario.own.financing, { ...f, id: uid() }] })} />}
                   />
@@ -177,14 +203,19 @@ function ForecastScreen() {
             <div className="ll-stack">
               {forecast?.cashOutPeriod ? (
                 <Banner tone="negative" title={`Cash runs out in ${periodLabel(forecast.cashOutPeriod)}.`}>
-                  Lowest point {money(forecast.lowestCash)} in {forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}. Add funding under Financing or move costs later.
+                  {(forecast.lowestCash ?? 0) < 0
+                    ? `At its lowest, in ${forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}, the account would be overdrawn by ${money(Math.abs(forecast.lowestCash ?? 0))}. `
+                    : ""}
+                  Add a loan or equity under Financing, or move costs later.
                 </Banner>
               ) : forecast ? (
-                <Banner tone="positive" title="Cash stays positive for the whole forecast.">Lowest point {money(forecast.lowestCash)} in {forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}.</Banner>
+                <Banner tone="positive" title="Cash stays positive for the whole forecast.">
+                  The lowest balance is {money(forecast.lowestCash)}, in {forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}.
+                </Banner>
               ) : null}
               <Panel title="Cash at bank" icon="bank" subtitle={scenario.isBase ? "Base case with its likely range" : "This scenario against the base case and its likely range"} actions={forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}>
                 {forecast ? (
-                  <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
+                  <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
                 ) : (
                   <p className="ll-muted">Running the forecast…</p>
                 )}
@@ -194,7 +225,9 @@ function ForecastScreen() {
                   {forecast ? (
                     <RunwayGauge
                       months={forecast.runwayMonths ?? 24}
-                      cashOut={forecast.cashOutPeriod ? periodLabel(forecast.cashOutPeriod) : "Beyond the forecast"}
+                      capped={!forecast.cashOutPeriod}
+                      cashOut={forecast.cashOutPeriod ? `in ${periodLabel(forecast.cashOutPeriod)}` : undefined}
+                      note={forecast.cashOutPeriod ? undefined : "Lasts the whole 24-month forecast"}
                       compare={!scenario.isBase && baseForecast ? (baseForecast.runwayMonths ?? 24) : undefined}
                       compareLabel="Base case"
                       size={230}
@@ -202,8 +235,13 @@ function ForecastScreen() {
                   ) : null}
                 </Panel>
                 <Panel title="What moves runway most" icon="compare" subtitle="Each driver from its downside to its upside">
-                  {forecast?.sensitivity?.rows.length ? (
-                    <TornadoChart base={forecast.sensitivity.base} rows={forecast.sensitivity.rows.slice(0, 5)} baseLabel={forecast.sensitivity.capped ? "Beyond" : "Base"} />
+                  {forecast?.sensitivity?.rows.length && forecast.sensitivity.rows.some((r) => Math.abs(r.low) >= 0.05 || Math.abs(r.high) >= 0.05) ? (
+                    <TornadoChart base={forecast.sensitivity.base} rows={forecast.sensitivity.rows.slice(0, 5)} baseLabel="Base" />
+                  ) : forecast?.sensitivity?.rows.length ? (
+                    <div className="ll-plan-empty">
+                      <Icon name="success" size={20} />
+                      <p>Cash lasts the whole forecast even at each driver&apos;s downside, so no single driver moves runway. Branch a tougher scenario to stress-test it.</p>
+                    </div>
                   ) : (
                     <p className="ll-muted">Appears once the forecast has run.</p>
                   )}
@@ -258,98 +296,6 @@ function ForecastStatement({ run, kind }: { run: ForecastRun; kind: string }) {
   return (
     <div style={{ padding: "0 20px 20px" }}>
       <FinancialStatement title="Forecast" columns={columns} rows={rows as never} forecastFrom={0} drillable={false} dense />
-    </div>
-  );
-}
-
-function PlanList({ items, onRemove, form, readOnly }: { items: { id: string; what: string; when: string; kind: string; amount: number }[]; onRemove: (id: string) => void; form: React.ReactNode; readOnly: boolean }) {
-  return (
-    <div className="ll-stack" style={{ marginTop: 12 }}>
-      {items.length ? (
-        <DataTable
-          columns={[
-            { key: "what", label: "Item" },
-            { key: "when", label: "Month" },
-            { key: "amount", label: "Amount", numeric: true, render: (r: { amount: number }) => money(r.amount) },
-            { key: "x", label: "", render: (r: { id: string }) => (readOnly ? null : <Button size="sm" variant="ghost" icon="trash" onClick={() => onRemove(r.id)}>Remove</Button>) },
-          ]}
-          rows={items}
-        />
-      ) : (
-        <p className="ll-muted">Nothing planned yet.</p>
-      )}
-      {readOnly ? <p className="ll-muted">Branch the base case to add plans.</p> : form}
-    </div>
-  );
-}
-
-function monthOptions(start: string) {
-  const out = [];
-  let [y, m] = start.split("-").map(Number);
-  for (let i = 0; i < 24; i++) {
-    const p = `${y}-${String(m).padStart(2, "0")}`;
-    out.push({ value: p, label: periodLabel(p) });
-    m++;
-    if (m > 12) { m = 1; y++; }
-  }
-  return out;
-}
-
-function AddHire({ start, onAdd }: { start: string; onAdd: (h: { role: string; salaryCents: number; startPeriod: string; count: number }) => void }) {
-  const [role, setRole] = useState("");
-  const [salary, setSalary] = useState("");
-  const [period, setPeriod] = useState(start);
-  const [count, setCount] = useState("1");
-  const valid = role.trim() && Number(salary) > 0 && Number(count) >= 1;
-  return (
-    <div className="ll-stack" style={{ padding: 12, border: "1px dashed var(--rule)", borderRadius: 12 }}>
-      <Input id="hire-role" label="Role" placeholder="Cabinet maker" value={role} onChange={(e) => setRole(e.target.value)} />
-      <div className="ll-grid-halves" style={{ gap: 12 }}>
-        <Input id="hire-salary" label="Annual salary" prefix="€" numeric value={salary} onChange={(e) => setSalary(e.target.value.replace(/[^\d.]/g, ""))} hint="Employer PRSI of 11.15% is added" />
-        <Input id="hire-count" label="How many" numeric value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))} />
-      </div>
-      <Select id="hire-start" label="Starts" value={period} onChange={(e) => setPeriod(e.target.value)} options={monthOptions(start)} />
-      <Button icon="plus" disabled={!valid} onClick={() => { onAdd({ role: role.trim(), salaryCents: Math.round(Number(salary) * 100), startPeriod: period, count: Number(count) }); setRole(""); setSalary(""); }}>
-        Add hire
-      </Button>
-    </div>
-  );
-}
-
-function AddOneOff({ start, onAdd }: { start: string; onAdd: (o: { label: string; period: string; amountCents: number; kind: "capex" | "income" | "expense" }) => void }) {
-  const [label, setLabel] = useState("");
-  const [amount, setAmount] = useState("");
-  const [period, setPeriod] = useState(start);
-  const [kind, setKind] = useState<"capex" | "income" | "expense">("capex");
-  return (
-    <div className="ll-stack" style={{ padding: 12, border: "1px dashed var(--rule)", borderRadius: 12 }}>
-      <Input id="oneoff-label" label="What" placeholder="CNC router" value={label} onChange={(e) => setLabel(e.target.value)} />
-      <div className="ll-grid-halves" style={{ gap: 12 }}>
-        <Select id="oneoff-kind" label="Type" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} options={[{ value: "capex", label: "Equipment (depreciated)" }, { value: "income", label: "One-off income" }, { value: "expense", label: "One-off expense" }]} />
-        <Input id="oneoff-amount" label="Amount" prefix="€" numeric value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
-      </div>
-      <Select id="oneoff-period" label="Month" value={period} onChange={(e) => setPeriod(e.target.value)} options={monthOptions(start)} />
-      <Button icon="plus" disabled={!label.trim() || !(Number(amount) > 0)} onClick={() => { onAdd({ label: label.trim(), period, amountCents: Math.round(Number(amount) * 100), kind }); setLabel(""); setAmount(""); }}>
-        Add item
-      </Button>
-    </div>
-  );
-}
-
-function AddFinancing({ start, onAdd }: { start: string; onAdd: (f: { period: string; amountCents: number; kind: "loan" | "equity" | "dividend" }) => void }) {
-  const [amount, setAmount] = useState("");
-  const [period, setPeriod] = useState(start);
-  const [kind, setKind] = useState<"loan" | "equity" | "dividend">("loan");
-  return (
-    <div className="ll-stack" style={{ padding: 12, border: "1px dashed var(--rule)", borderRadius: 12 }}>
-      <div className="ll-grid-halves" style={{ gap: 12 }}>
-        <Select id="fin-kind" label="Type" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} options={[{ value: "loan", label: "Draw a loan" }, { value: "equity", label: "Raise equity" }, { value: "dividend", label: "Pay a dividend" }]} />
-        <Input id="fin-amount" label="Amount" prefix="€" numeric value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
-      </div>
-      <Select id="fin-period" label="Month" value={period} onChange={(e) => setPeriod(e.target.value)} options={monthOptions(start)} />
-      <Button icon="plus" disabled={!(Number(amount) > 0)} onClick={() => { onAdd({ period, amountCents: Math.round(Number(amount) * 100), kind }); setAmount(""); }}>
-        Add
-      </Button>
     </div>
   );
 }

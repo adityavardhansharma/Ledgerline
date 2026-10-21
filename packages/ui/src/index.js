@@ -102,7 +102,7 @@ function formatMoney(v, o) {
     s = a.toLocaleString('en-IE', { minimumFractionDigits: d, maximumFractionDigits: d });
   }
   s = sym + s;
-  return neg ? '(' + s + ')' : s;
+  return neg ? (o.minus ? '\u2212' + s : '(' + s + ')') : s;
 }
 function formatPct(v, d) {
   if (v === null || v === undefined || isNaN(v)) return '';
@@ -363,8 +363,10 @@ function HatchDef(p) {
 }
 function ChartTooltip(p) {
   if (!p.show) return null;
-  var left = p.x, flip = p.x > p.width - 200;
-  return h('div', { className: 'll-ctip', style: { left: left, top: p.y, transform: flip ? 'translate(calc(-100% - 14px), -50%)' : 'translate(14px, -50%)' } },
+  var left = p.x, flip = p.x > p.width - 200, top = p.y, dy = '-50%';
+  // Keep the whole tooltip inside the plot: it's clipped otherwise, which hides low (negative) points.
+  if (p.height) { var th = 40 + p.rows.length * 22; top = Math.max(4, Math.min(p.height - th - 4, p.y - th / 2)); dy = '0'; }
+  return h('div', { className: 'll-ctip', style: { left: left, top: top, transform: flip ? 'translate(calc(-100% - 14px), ' + dy + ')' : 'translate(14px, ' + dy + ')' } },
     h('div', { className: 'll-ctip-title' }, p.title, p.badge ? h('span', { className: cx('ll-ctip-badge', 'is-' + p.badge) }, p.badge === 'forecast' ? 'Forecast' : 'Actual') : null),
     p.rows.map(function (r, i) {
       return h('div', { key: i, className: 'll-ctip-row' },
@@ -421,7 +423,7 @@ function LineChart(p) {
   var step = (W - pl - pr) / (n - 1);
   function X(i) { return pl + i * step; }
   function Y(v) { return pt + (1 - (v - sc.lo) / (sc.hi - sc.lo)) * (H - pt - pb); }
-  var fmt = p.format || function (v) { return formatMoney(v, { compact: true }); };
+  var fmt = p.format || function (v) { return formatMoney(v, { compact: true, minus: true }); };
   var ff = p.forecastFrom, kids = [], over = [];
   var defs = [h(HatchDef, { key: 'h', id: uid + 'h' }),
     h('linearGradient', { key: 'ga', id: uid + 'a', x1: 0, y1: 0, x2: 0, y2: 1 }, h('stop', { offset: '0%', className: 'll-stop-brand', stopOpacity: 0.32 }), h('stop', { offset: '100%', className: 'll-stop-brand', stopOpacity: 0 })),
@@ -502,7 +504,7 @@ function LineChart(p) {
   if (hi != null) {
     p.series.forEach(function (s) {
       if (s.kind === 'band') { if (s.lower[hi] != null) tipRows.push({ name: s.name, kind: 'band', text: fmt(s.lower[hi]) + ' – ' + fmt(s.upper[hi]) }); return; }
-      if (s.values[hi] != null) tipRows.push({ name: s.name, kind: s.kind, value: s.values[hi], text: fmt(s.values[hi]) });
+      if (s.values[hi] != null) tipRows.push({ name: s.name, kind: s.kind, value: s.values[hi], text: fmt(s.values[hi]) + (p.negativeNote && s.values[hi] < 0 ? ' ' + p.negativeNote : '') });
     });
     var ys = p.series.filter(function (s) { return s.kind !== 'band' && s.values[hi] != null; }).map(function (s) { return Y(s.values[hi]); });
     if (ys.length) tipY = Math.min.apply(null, ys);
@@ -512,7 +514,7 @@ function LineChart(p) {
     h('div', { className: 'll-chart-plot', ref: mw[0] },
       h('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, className: 'll-chart-svg', role: 'img', 'aria-label': p.label || 'Line chart', onMouseMove: onMove, onMouseLeave: function () { hv[1](null); } },
         h('defs', null, defs), h('g', { className: 'll-ch-reveal' }, kids), over),
-      h(ChartTooltip, { show: hi != null && tipRows.length, x: hi != null ? X(hi) : 0, y: tipY, width: W, title: labels[hi], badge: ff != null ? (hi >= ff ? 'forecast' : 'actual') : null, rows: tipRows })),
+      h(ChartTooltip, { show: hi != null && tipRows.length, x: hi != null ? X(hi) : 0, y: tipY, width: W, height: H, title: labels[hi], badge: ff != null ? (hi >= ff ? 'forecast' : 'actual') : null, rows: tipRows })),
     p.caption ? h('figcaption', { className: 'll-chart-cap' }, p.caption) : null);
 }
 
@@ -532,7 +534,7 @@ function BarChart(p) {
   var sc = niceScale(Math.min(0, Math.min.apply(null, totals)), Math.max.apply(null, totals.concat(p.target != null ? [p.target] : [])), 4);
   var slot = (W - pl - pr) / n, bw = Math.min(40, slot * 0.62);
   function Y(v) { return pt + (1 - (v - sc.lo) / (sc.hi - sc.lo)) * (H - pt - pb); }
-  var fmt = p.format || function (v) { return formatMoney(v, { compact: true }); };
+  var fmt = p.format || function (v) { return formatMoney(v, { compact: true, minus: true }); };
   var kids = [], ff = p.forecastFrom;
   var defs = [h(HatchDef, { key: 'h', id: uid + 'h', ground: 'll-hatch-ground-fc', line: 'll-hatch-line-fc' }),
     h('linearGradient', { key: 'g', id: uid + 'g', x1: 0, y1: 0, x2: 0, y2: 1 }, h('stop', { offset: '0%', className: 'll-stop-brand', stopOpacity: 1 }), h('stop', { offset: '100%', className: 'll-stop-brand', stopOpacity: 1 }))];
@@ -577,7 +579,7 @@ function BarChart(p) {
     h('div', { className: 'll-chart-plot', ref: mw[0] },
       h('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, className: 'll-chart-svg', role: 'img', 'aria-label': p.label || 'Bar chart', onMouseLeave: function () { hv[1](null); } },
         h('defs', null, defs), h('g', { className: 'll-ch-grow' }, kids)),
-      h(ChartTooltip, { show: hi != null, x: hi != null ? pl + hi * slot + slot / 2 : 0, y: hi != null ? Math.max(pt + 30, Y(totals[hi]) + 10) : 0, width: W, title: p.labels[hi], badge: ff != null ? (hi >= ff ? 'forecast' : 'actual') : null, rows: tipRows })),
+      h(ChartTooltip, { show: hi != null, x: hi != null ? pl + hi * slot + slot / 2 : 0, y: hi != null ? Math.max(pt + 30, Y(totals[hi]) + 10) : 0, width: W, height: H, title: p.labels[hi], badge: ff != null ? (hi >= ff ? 'forecast' : 'actual') : null, rows: tipRows })),
     p.caption ? h('figcaption', { className: 'll-chart-cap' }, p.caption) : null);
 }
 
@@ -595,7 +597,7 @@ function WaterfallChart(p) {
   var sc = niceScale(Math.min.apply(null, vals.concat([0])), Math.max.apply(null, vals), 4);
   var n = bars.length, slot = (W - pl - pr) / n, bw = Math.min(56, slot * 0.64), compact = slot < 68;
   function Y(v) { return pt + (1 - (v - sc.lo) / (sc.hi - sc.lo)) * (H - pt - pb); }
-  var fmt = function (v) { return formatMoney(v, { compact: true }); };
+  var fmt = function (v) { return formatMoney(v, { compact: true, minus: true }); };
   var kids = [];
   var defs = [h('linearGradient', { key: 't', id: uid + 't', x1: 0, y1: 0, x2: 0, y2: 1 }, h('stop', { offset: '0%', className: 'll-stop-ink', stopOpacity: 0.85 }), h('stop', { offset: '100%', className: 'll-stop-ink', stopOpacity: 0.55 }))];
   sc.ticks.forEach(function (t, i) {
@@ -633,7 +635,7 @@ function WaterfallChart(p) {
 function SankeyChart(p) {
   var mw = useWidth(720), W = mw[1], H = p.height || 380, pl = 16, pr = p.labelWidth || 168, pt = 30, pb = 12, nodeW = 12, gap = 10;
   var uid = useUid('sk'), hv = useState(null), hot = hv[0];
-  var fmt = p.format || function (v) { return formatMoney(v, { compact: true }); };
+  var fmt = p.format || function (v) { return formatMoney(v, { compact: true, minus: true }); };
   var byId = {}; p.nodes.forEach(function (nd) { byId[nd.id] = Object.assign({ ins: [], outs: [], value: 0 }, nd); });
   p.links.forEach(function (l) { byId[l.source].outs.push(l); byId[l.target].ins.push(l); });
   Object.keys(byId).forEach(function (k) {
@@ -677,12 +679,13 @@ function SankeyChart(p) {
     rects.push(h('rect', { key: 'n' + id, x: nd.x, y: nd.y, width: nodeW, height: nd.h, rx: Math.min(3, nd.h / 2), className: cx('ll-sk-node', 'll-fill-' + (nd.tone || 'chart-1').replace('chart-', ''), !on && 'is-dim'), onMouseEnter: function () { hv[1](nd.id); } }));
     (byCol[nd.col] = byCol[nd.col] || []).push(nd);
   });
+  var labelBottom = 0;
   Object.keys(byCol).forEach(function (c) {
     var list = byCol[c].slice().sort(function (a, b) { return a.y - b.y; }), last = -1e9;
     list.forEach(function (nd) {
       var terminal = !nd.outs.length;
       if (terminal) {
-        var ly = Math.max(nd.y + nd.h / 2 - 7, last + 30); last = ly;
+        var ly = Math.max(nd.y + nd.h / 2 - 7, last + 30); last = ly; labelBottom = Math.max(labelBottom, ly + 26);
         labels.push(h('g', { key: 'l' + nd.id, transform: 'translate(' + (nd.x + nodeW + 8) + ',' + ly + ')', className: hot != null && hot !== nd.id ? 'is-dim' : undefined },
           h('text', { className: 'll-sk-label', y: 4 }, nd.label),
           h('text', { className: cx('ll-sk-value', nd.emphasis && 'is-strong'), y: 19 }, fmt(nd.value), h('tspan', { className: 'll-sk-pct', dx: 6 }, formatPct(nd.value / root[0].value, 0)))));
@@ -692,6 +695,7 @@ function SankeyChart(p) {
       }
     });
   });
+  H = Math.max(H, Math.ceil(labelBottom));
   return h('figure', { className: 'll-chart' },
     h('div', { className: 'll-chart-plot', ref: mw[0] },
       h('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, className: 'll-chart-svg', role: 'img', 'aria-label': p.label || 'Flow of revenue', onMouseLeave: function () { hv[1](null); } },
@@ -727,10 +731,10 @@ function RunwayGauge(p) {
       ticks,
       mk ? h('g', null, h('circle', { className: 'll-g-marker', cx: mk[0], cy: mk[1], r: 7 }), h('circle', { className: 'll-g-markerdot', cx: mk[0], cy: mk[1], r: 3 })) : null),
     h('div', { className: 'll-gauge-center' },
-      h('div', { className: 'll-gauge-value' }, p.months.toFixed(1)),
+      h('div', { className: 'll-gauge-value' }, p.capped ? max + '+' : p.months.toFixed(1)),
       h('div', { className: 'll-gauge-unit' }, 'months of runway'),
-      p.cashOut ? h('div', { className: cx('ll-gauge-out', 'is-' + tone) }, 'Cash out ' + p.cashOut) : null),
-    p.compare != null ? h('div', { className: 'll-gauge-cmp' }, h('span', { className: 'll-legend-key ll-key-scenario' }), (p.compareLabel || 'Scenario') + ' · ' + p.compare.toFixed(1) + ' mo') : null);
+      p.cashOut ? h('div', { className: cx('ll-gauge-out', 'is-' + tone) }, 'Cash runs out ' + p.cashOut) : p.note ? h('div', { className: cx('ll-gauge-out', 'is-' + tone) }, p.note) : null),
+    p.compare != null ? h('div', { className: 'll-gauge-cmp' }, h('span', { className: 'll-legend-key ll-key-scenario' }), (p.compareLabel || 'Scenario') + ' · ' + (p.compare >= max ? max + '+' : p.compare.toFixed(1)) + ' mo') : null);
 }
 function RunwayBar(p) {
   var max = p.max || 24, pct = Math.min(1, p.months / max) * 100;
@@ -858,7 +862,7 @@ function DonutChart(p) {
 /* BulletChart: actual against target with qualitative bands. */
 function BulletChart(p) {
   return h('div', { className: 'll-bullets' }, p.rows.map(function (r) {
-    var max = r.max, f = r.format || function (v) { return formatMoney(v, { compact: true }); };
+    var max = r.max, f = r.format || function (v) { return formatMoney(v, { compact: true, minus: true }); };
     var good = r.invert ? r.actual <= r.target : r.actual >= r.target;
     return h('div', { key: r.label, className: 'll-bullet' },
       h('div', { className: 'll-bullet-head' }, h('span', { className: 'll-bullet-label' }, r.label),

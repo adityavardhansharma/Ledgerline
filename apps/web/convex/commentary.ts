@@ -25,8 +25,13 @@ export const facts = internalQuery({
     const list = [
       { id: "revenue", label: "Revenue", value: money(m.revenue), source: `Sales accounts, ${month}` },
       { id: "grossMargin", label: "Gross margin", value: m.grossMargin == null ? "n/a" : pct(m.grossMargin), source: "Gross profit ÷ revenue" },
-      { id: "ebitda", label: "EBITDA", value: money(m.ebitda), source: `Profit and loss, ${month}` },
-      { id: "netProfit", label: "Net profit", value: money(m.netProfit), source: `Profit and loss, ${month}` },
+      // With no depreciation, interest or tax the two are the same figure; one fact keeps the prose from saying it twice.
+      ...(m.ebitda === m.netProfit
+        ? [{ id: "netProfit", label: "EBITDA and net profit (equal: no depreciation, interest or tax)", value: money(m.netProfit), source: `Profit and loss, ${month}` }]
+        : [
+            { id: "ebitda", label: "EBITDA", value: money(m.ebitda), source: `Profit and loss, ${month}` },
+            { id: "netProfit", label: "Net profit", value: money(m.netProfit), source: `Profit and loss, ${month}` },
+          ]),
       { id: "cash", label: "Cash at bank", value: money(m.cash), source: `Bank accounts at month end` },
       { id: "debtors", label: "Trade debtors", value: money(m.debtors), source: "Balance sheet" },
     ];
