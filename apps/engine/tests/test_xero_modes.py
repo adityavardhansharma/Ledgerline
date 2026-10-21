@@ -27,6 +27,7 @@ from ledgerline_engine.xero.activity import (
 )
 from ledgerline_engine.xero.balances import RETAINED_ID, monthly_movements, parse_trial_balance
 from ledgerline_engine.xero.client import JOURNALS_SCOPE, XeroClient, granted_scopes, requested_scopes
+from ledgerline_engine.xero.models import Tokens
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("sample_company", ROOT / "scripts" / "sample_company.py")
@@ -391,3 +392,34 @@ def test_activity_endpoint_skips_sources_the_app_cannot_read(api):
     assert [line["net_cents"] for line in body["lines"]] == [-100_000]
     assert body["unexplained_cents"] == 0
     assert "DateTime(2026, 09, 01)" in invoices.calls[0].request.url.params["where"]
+
+
+@respx.mock
+def test_the_organisation_just_authorised_comes_first():
+    respx.get("https://api.xero.com/connections").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "tenantId": "trial",
+                    "tenantName": "LedgerLine",
+                    "tenantType": "ORGANISATION",
+                    "updatedDateUtc": "2026-10-21T13:00:00",
+                },
+                {
+                    "tenantId": "practice",
+                    "tenantName": "Practice",
+                    "tenantType": "PRACTICE",
+                    "updatedDateUtc": "2026-10-21T15:00:00",
+                },
+                {
+                    "tenantId": "demo",
+                    "tenantName": "Demo Company (Global)",
+                    "tenantType": "ORGANISATION",
+                    "updatedDateUtc": "2026-10-21T14:30:00",
+                },
+            ],
+        )
+    )
+    client = XeroClient(Settings(), tokens=Tokens(access_token="a", refresh_token="r", expires_at=4_000_000_000))
+    assert [c.tenant_id for c in client.connections()] == ["demo", "trial"]

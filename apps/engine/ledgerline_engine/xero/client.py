@@ -148,11 +148,13 @@ class XeroClient:
             self.refresh()
 
     def connections(self) -> list[Connection]:
+        """Organisations this app can read, the one most recently authorised first (the one just chosen)."""
         data = self._get_json(f"{self.settings.xero_api_base}/connections", tenant=False)
+        organisations = [c for c in data if c.get("tenantType", "ORGANISATION") == "ORGANISATION"]
+        organisations.sort(key=lambda c: c.get("updatedDateUtc") or c.get("createdDateUtc") or "", reverse=True)
         return [
             Connection(tenant_id=c["tenantId"], tenant_name=c.get("tenantName") or "", tenant_type=c.get("tenantType") or "")
-            for c in data
-            if c.get("tenantType", "ORGANISATION") == "ORGANISATION"
+            for c in organisations
         ]
 
     # ---------- accounting ----------
