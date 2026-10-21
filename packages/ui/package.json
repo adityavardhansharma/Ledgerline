@@ -1,0 +1,16 @@
+{
+  "name": "@ledgerline/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ledgerline design system: tokens, components and charts.",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
+    "./styles/tokens.css": "./styles/tokens.css",
+    "./styles/components.css": "./styles/components.css"
+  },
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "react": ">=18" }
+}
