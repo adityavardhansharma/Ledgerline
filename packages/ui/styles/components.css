@@ -959,3 +959,6 @@ g.is-dim { opacity: .3; }
   .ll-auth-form { padding: 16px; }
   .ll-auth-card h1 { font-size: 36px; line-height: 40px; }
 }
+.ll-onb-trust { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 0; padding-top: var(--space-4); border-top: 1px solid var(--rule); font-size: 13px; line-height: 19px; color: var(--ink-muted); }
+.ll-onb-trust .ll-icon { flex: none; margin-top: 1px; color: var(--brand); }
+.ll-onb-trust strong { color: var(--ink); font-weight: 600; }

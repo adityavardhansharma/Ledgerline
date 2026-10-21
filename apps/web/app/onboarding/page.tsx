@@ -1,11 +1,12 @@
 "use client";
 
 import { CreateOrganization, OrganizationList, useAuth } from "@clerk/nextjs";
-import { Badge, Banner, Button, Icon, Logo, Panel, Stepper } from "@ledgerline/ui";
+import { Badge, Banner, Button, Icon, Logo, Stepper } from "@ledgerline/ui";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { DataSources } from "@/components/app/AppPage";
+import { BackendStatus } from "@/components/app/BackendStatus";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
 import { useWorkspace } from "@/components/app/useWorkspace";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
@@ -81,15 +82,14 @@ function Onboarding() {
               <h1>Add your figures</h1>
               <p>Connect Xero for figures that stay current, import a chart of accounts and journals from CSV, or explore with the sample company. You can switch later.</p>
               {xeroError ? <Banner tone="negative" title="Xero wasn't connected.">{XERO_ERRORS[xeroError] ?? XERO_ERRORS.failed}</Banner> : null}
-              {workspace ? <DataSources workspace={workspace} /> : null}
-              <Panel title="With Xero, Ledgerline can and can't" icon="lock">
-                <ul className="ll-perm">
-                  <li><Icon name="check" size={18} /><span><strong>Read</strong> accounts, reports, invoices, payments and bank transactions</span></li>
-                  <li><Icon name="check" size={18} /><span><strong>Get notified</strong> when an invoice changes, so reports stay current</span></li>
-                  <li className="is-no"><Icon name="close" size={18} /><span><strong>Never write</strong> to Xero, create invoices or move money</span></li>
-                  <li className="is-no"><Icon name="close" size={18} /><span><strong>Never see</strong> your bank login or payroll details</span></li>
-                </ul>
-              </Panel>
+              {workspace ? <DataSources workspace={workspace} /> : <BackendStatus waiting />}
+              <p className="ll-onb-trust">
+                <Icon name="lock" size={16} />
+                <span>
+                  <strong>Read-only.</strong> Ledgerline reads your accounts, reports and transactions to build your figures. It never writes to Xero, moves money or
+                  sees your bank login.
+                </span>
+              </p>
             </>
           )}
         </div>
