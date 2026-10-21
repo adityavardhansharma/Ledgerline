@@ -73,6 +73,25 @@ erDiagram
 
 ## The Xero sync
 
+Every Xero organisation connects through one Ledgerline app, so what can be read depends on the scopes
+Xero has granted **the app**, not on the customer's Xero plan. Xero gives journal access only to apps it has
+approved for it; every other app gets reports and documents. Each connection stores the scopes Xero granted
+and syncs in one of two modes, chosen per connection:
+
+| Mode | When | Monthly movements from | Drill-down | Daily cash |
+| --- | --- | --- | --- | --- |
+| `journals` | The app holds `accounting.journals.read` (`LL_XERO_JOURNALS=true` on the engine) | Every posted journal | Journal lines | Bank lines in journals |
+| `reports` | Every other app (the default) | One Trial Balance per month end: month columns for movements, year-to-date columns for the opening position | Invoices, bills, credit notes, payments, bank transactions and manual journals, read on demand and cached; the remainder shown as other postings | Payments and bank transactions |
+
+Both modes fill the same `accountBalances` table, so statements, forecasts, scenarios, the board pack and
+the check against Xero don't know which one ran. In reports mode, Xero's year-end roll-over of profit into
+retained earnings (which journals never contain) is removed by requiring every month to sum to zero and
+moving any residual to retained earnings; an engine test rebuilds two years of the sample company from
+Xero-shaped trial balances and gets identical statements to the cent. If a connection gains or loses
+journal access, the next sync clears the figures and rebuilds them in the new mode.
+
+### Journals mode
+
 Xero's Journals endpoint returns every posted journal in journal-number order, 100 per page. Journals are
 never edited, so the whole sync needs one cursor: the last journal number stored.
 
@@ -91,6 +110,13 @@ stateDiagram-v2
   accounts --> reauth: refresh token rejected
   journals --> failed: three attempts, or an unbalanced journal
 ```
+
+### Reports mode
+
+`accounts → balances → cash → invoices → reports → reconcile`. The first sync reads 26 month ends (the
+opening position, 24 months and the current month to date), six per step; each night rereads the last three
+months, replacing them whole so late postings land once. If the check against Xero then finds a difference
+(an older month changed), one full refresh runs automatically.
 
 | Case | Behaviour |
 | --- | --- |
