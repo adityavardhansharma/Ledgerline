@@ -64,6 +64,9 @@ def test_five_years_of_history_give_every_comparison(board):
     # Changes are a size and a direction: the label says which way, the value is never negative.
     assert all(not f.value.startswith("−") for f in facts if f.id.endswith(("VsPrev", "VsLastYear", "VsPrior")))
     assert found["revenueVsPrev"].label.split(":")[1].strip().startswith(("up", "down"))
+    # Changes read as a percentage, with the amount alongside; a mover says both levels in one figure.
+    assert found["revenueVsPrev"].value.endswith("%") and found["revenueVsPrevAmount"].value.startswith("€")
+    assert found["mover1"].value.startswith("from €") and " to €" in found["mover1"].value
 
 
 def test_a_short_history_skips_comparisons_it_cannot_make(board):
@@ -172,6 +175,7 @@ def test_sections_render_citations_with_their_fact_ids():
         {**GOOD, "risks": [{"level": "red", "title": "Top 3 customers", "detail": []}]},
         {**GOOD, "outlook": [[seg("Unknown ", "ebitda")]]},
         {**GOOD, "headline": []},
+        {**GOOD, "headline": [[seg("A ", "revenue"), seg(" B ", "cash"), seg(" C ", "month")]]},
     ],
 )
 def test_sections_reject_numbers_unknown_facts_and_an_empty_headline(bad):

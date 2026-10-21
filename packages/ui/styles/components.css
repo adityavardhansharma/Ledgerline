@@ -1035,11 +1035,15 @@ g.is-dim { opacity: .3; }
 .ll-bc-section:hover .ll-bc-tools, .ll-bc-section:focus-within .ll-bc-tools, .ll-bc-section.is-editing .ll-bc-tools { opacity: 1; }
 @media (hover: none) { .ll-bc-tools { opacity: 1; } }
 .ll-bc-headline { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.ll-bc-headline li { position: relative; padding-left: 22px; font: 400 19px/29px var(--font-display); letter-spacing: -0.005em; color: var(--ink); }
-.ll-bc-headline li::before { content: ''; position: absolute; left: 2px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+.ll-bc-headline li { position: relative; padding-left: 20px; font: 500 16.5px/27px var(--font-sans); letter-spacing: -0.005em; color: var(--ink); }
+.ll-bc-headline li::before { content: ''; position: absolute; left: 2px; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
 .ll-bc-prose p { margin: 0 0 var(--space-3); font: 400 15.5px/26px var(--font-sans); color: var(--ink); max-width: 72ch; }
 .ll-bc-prose p:last-child { margin: 0; }
-.ll-bc .ll-cite { font-size: 13px; vertical-align: 1px; }
+/* In running prose a figure reads as part of the sentence: tabular, a touch heavier, with a dotted rule that
+   says "hover for the source", rather than a boxed chip on every number. */
+.ll-bc .ll-cite, .ll-ask .ll-cite { font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); background: none; padding: 0 1px; border-radius: 3px; vertical-align: baseline; border-bottom: 1px dotted var(--brand); }
+.ll-bc .ll-cite:hover, .ll-ask .ll-cite:hover { box-shadow: none; background: var(--brand-tint); color: var(--brand); }
+.ll-bc .ll-cite.is-locked { background: var(--brand-tint); padding: 0 4px; border-bottom: 0; }
 .ll-bc-risks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .ll-bc-risks li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 14.5px; line-height: 23px; }
 .ll-bc-risks strong { font-weight: 600; }

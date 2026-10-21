@@ -92,10 +92,13 @@ class Pack:
             self.add(group, id, f"{what}: unchanged on {basis}", eur(0), source)
             return
         word = "up" if diff > 0 else "down"
-        value = eur(abs(to_cents(diff)))
+        amount = eur(abs(to_cents(diff)))
+        # The percentage reads best in prose; the amount is there when the size in euro matters more.
         if before > 0:
-            value += f" ({pct(diff / before)})"
-        self.add(group, id, f"{what}: {word} on {basis}", value, source)
+            self.add(group, id, f"{what}: {word} on {basis} (percentage)", pct(diff / before), source)
+            self.add(group, f"{id}Amount", f"{what}: {word} on {basis} (amount)", amount, source)
+        else:
+            self.add(group, id, f"{what}: {word} on {basis}", amount, source)
 
 
 def _measures(ledger: Ledger, start: str, end: str) -> dict[str, Decimal]:
@@ -321,23 +324,9 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "performance",
                 f"mover{index}",
-                f"{name} ({kind}): size of the {'increase' if a > b else 'decrease'} on the previous month (a change, not a level)",
-                eur(to_cents(abs(a - b))),
+                f"{name} ({kind}), {'up' if a > b else 'down'} from the previous month to this month",
+                f"from {eur(to_cents(b))} to {eur(to_cents(a))}",
                 "Largest movements by account",
-            )
-            pack.add(
-                "performance",
-                f"mover{index}Prev",
-                f"{name} in {month_name(prev_p)} (the level before)",
-                eur(to_cents(b)),
-                "Account total for the month",
-            )
-            pack.add(
-                "performance",
-                f"mover{index}Now",
-                f"{name} in {month} (the level now)",
-                eur(to_cents(a)),
-                "Account total for the month",
             )
 
     # ---------- cash and working capital ----------

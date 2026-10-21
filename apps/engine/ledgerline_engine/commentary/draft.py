@@ -105,21 +105,26 @@ TONES = {
 }
 LENGTHS = {
     "short": "Keep each prose section to one short paragraph.",
-    "standard": "Keep each prose section to one or two paragraphs.",
+    "standard": "Keep each prose section to one or two short paragraphs.",
     "detailed": "Each prose section may have up to three paragraphs; use more of the comparisons.",
 }
 
 SYSTEM = (
-    "You write the commentary for a small company's monthly management accounts. Explain what changed, why, and "
-    "what deserves attention, using the facts given. Every piece of prose is a list of segments {text, fact}: the "
-    "words of the segment, then the id of the fact whose value comes straight after those words (or an empty "
-    'fact). For example [{"text": "Revenue was ", "fact": "revenue"}, {"text": ", ", "fact": "revenueVsPrev"}, '
-    '{"text": " on the previous month.", "fact": ""}]. Never write a number, a year, a currency sign or a '
-    "percentage in text: every figure, date with a year, and amount must come from a fact (the month itself is the "
-    "fact 'month'). Read each fact's label so the words around it make sense: a label saying 'down' means a fall, and a change is a difference, never a starting or ending level. "
-    "Cite each figure at most once per section and do not repeat a figure the headline already gave unless it adds "
-    "a comparison. Management notes are context from the team: use them to explain causes, never quote figures "
-    "from them, and never contradict the facts. Do not speculate beyond the facts and notes."
+    "You write the commentary for a small company's monthly management accounts, as a good finance director "
+    "would: plain British English, short sentences, one idea per sentence, and only the figures that carry the "
+    "story. Explain what changed, why, and what deserves attention, using the facts given. Every piece of prose is "
+    "a list of segments {text, fact}: the words of the segment, then the id of the fact whose value comes straight "
+    'after those words (or an empty fact). For example [{"text": "Revenue was ", "fact": "revenue"}, {"text": ", '
+    'up ", "fact": "revenueVsPrev"}, {"text": " on August.", "fact": ""}]. Never write a number, a year, a currency '
+    "sign or a percentage in text: every figure, date with a year, and amount must come from a fact (the month "
+    "itself is the fact 'month'). Read each fact's label so the words around it make sense: 'down' means a fall, "
+    "and a fact marked (percentage) or (amount) is a change, not a level. Be selective: a facts pack is a menu, not "
+    "a checklist. Use at most three figures in a paragraph and one or two in a headline bullet; prefer a "
+    "percentage for a change and leave out figures that don't change the reader's view. Never chain figures (no "
+    "'by X to Y from Z'); a fact that reads 'from X to Y' already says both. Cite each figure at most once in the "
+    "whole pack unless it adds a comparison. Management notes are context from the team: use them to explain "
+    "causes, never quote figures from them, and never contradict the facts. Do not speculate beyond the facts and "
+    "notes."
 )
 
 
@@ -134,6 +139,9 @@ def _schema(sections: list[str]) -> dict:
         "required": sections,
         "properties": {key: SECTIONS[key]["schema"] for key in sections},
     }
+
+
+LIMITS = {"headline": 2, "performance": 4, "cash": 4, "outlook": 4, "decisions": 2, "risks": 2, "an answer": 3, "the answer": 4}
 
 
 def _render(segments: list[dict], known: dict[str, Fact], where: str) -> tuple[list[str | dict], int]:
@@ -152,6 +160,9 @@ def _render(segments: list[dict], known: dict[str, Fact], where: str) -> tuple[l
                 raise CommentaryInvalid(f"unknown fact {fact_id!r} in {where}")
             parts.append({"text": fact.value, "source": f"{fact.label} · {fact.source}", "fact": fact.id})
             cited += 1
+    limit = LIMITS.get(where)
+    if limit and cited > limit:
+        raise CommentaryInvalid(f"too many figures in one {where} item ({cited}); keep to the {limit} that matter most")
     return parts, cited
 
 
