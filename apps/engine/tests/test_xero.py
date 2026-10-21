@@ -54,7 +54,9 @@ def test_unbalanced_journal_is_refused():
 
 def test_open_items_skip_paid():
     assert normalise_open_item({"Type": "ACCREC", "AmountDue": 0}) is None
-    item = normalise_open_item({"Type": "ACCPAY", "AmountDue": "120.50", "Contact": {"Name": "Timber Co"}, "DueDate": "2026-10-01T00:00:00"})
+    item = normalise_open_item(
+        {"Type": "ACCPAY", "AmountDue": "120.50", "Contact": {"Name": "Timber Co"}, "DueDate": "2026-10-01T00:00:00"}
+    )
     assert item.kind == "payable" and item.amount_due_cents == 12050 and item.due_date == "2026-10-01"
 
 
@@ -103,7 +105,10 @@ def test_rejected_refresh_requires_reauth(settings):
 @respx.mock
 def test_server_errors_are_retried(settings, tokens):
     route = respx.get(f"{API}/Accounts").mock(
-        side_effect=[httpx.Response(503), httpx.Response(200, json={"Accounts": [{"AccountID": "x", "Name": "Sales", "Type": "REVENUE"}]})]
+        side_effect=[
+            httpx.Response(503),
+            httpx.Response(200, json={"Accounts": [{"AccountID": "x", "Name": "Sales", "Type": "REVENUE"}]}),
+        ]
     )
     client = XeroClient(settings, tokens=tokens, tenant_id="t")
     assert client.accounts()[0]["AccountID"] == "x"

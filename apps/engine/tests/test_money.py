@@ -25,6 +25,6 @@ def test_half_even_rounding():
     assert to_cents(Decimal("-2150.00")) == -215000
 
 
-@given(st.integers(min_value=-10**12, max_value=10**12))
+@given(st.integers(min_value=-(10**12), max_value=10**12))
 def test_cents_round_trip(cents):
     assert to_cents(from_cents(cents)) == cents

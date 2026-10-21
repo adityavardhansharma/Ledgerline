@@ -23,6 +23,7 @@ class Account(BaseModel):
     name: str
     type: str
     account_class: str = ""
+    system_account: str = ""
     status: str = "ACTIVE"
 
 

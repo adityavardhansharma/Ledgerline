@@ -34,6 +34,7 @@ def normalise_account(raw: dict) -> Account:
         name=raw.get("Name") or "",
         type=raw.get("Type") or "",
         account_class=raw.get("Class") or "",
+        system_account=raw.get("SystemAccount") or "",
         status=raw.get("Status") or "ACTIVE",
     )
 

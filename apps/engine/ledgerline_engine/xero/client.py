@@ -157,7 +157,7 @@ class XeroClient:
     @retry(
         retry=retry_if_exception_type(_Transient),
         stop=stop_after_attempt(3),
-        wait=wait_exponential_jitter(initial=0.5, max=4),
+        wait=wait_exponential_jitter(multiplier=0.5, max=4),
         reraise=True,
     )
     def _get_json(self, url: str, params: dict | None = None, tenant: bool = True):
