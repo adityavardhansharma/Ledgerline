@@ -101,6 +101,26 @@ stateDiagram-v2
 | Webhook bursts | Each webhook schedules a sync 30 seconds later; a run already in progress sets `rerunRequested` instead |
 | Crash mid-page | The cursor moves in the same mutation as the page, so a retry refetches at most one page |
 
+## CSV import
+
+The browser parses both files (`lib/importCsv.ts`) and explains every problem by row before anything is sent.
+`imports.start` clears the organisation's figures and chart and stores the new chart; `imports.page` stores
+journals in batches of about 800 lines through `storeJournals`, the same function a Xero sync uses, so balances
+and daily cash are maintained identically; `imports.complete` builds the statements. An import is recorded as a
+sync run with `source: "csv" | "sample"`, so progress, history and the audit log are shared.
+
+- Imported IDs are prefixed `csv:` and an import refuses lines on accounts outside its own chart.
+- Importing is refused while Xero is connected, so the nightly sync can't overwrite a file.
+- Connecting Xero later replaces imported figures (`sync.claimForXero`) rather than mixing them.
+- If the engine can't be reached, the journals are kept and the report step can be retried.
+
+## Exports
+
+Every report has an Export menu. **CSV** comes from the snapshot data (amounts in euro, two decimals; text that a
+spreadsheet would treat as a formula is escaped). **HTML** clones the page on screen, drops controls, inlines the
+stylesheets and the Latin font files as data URLs, and saves one file with no scripts, so charts stay sharp SVG
+and the page looks the same offline. The ledger and chart of accounts export in the import format.
+
 ## Statements
 
 Built in `statements/build.py` from monthly movements and the Xero account class and type

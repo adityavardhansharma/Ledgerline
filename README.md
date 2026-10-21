@@ -1,6 +1,6 @@
 # Ledgerline
 
-**Management accounts and three-statement forecasts for small businesses, straight from Xero.**
+**Management accounts and three-statement forecasts for small businesses, straight from Xero or a CSV file.**
 
 Ledgerline reads a company's Xero ledger, builds its profit and loss, balance sheet and cash flow by month,
 checks every account against Xero's own reports to the cent, and runs a driver-based three-statement
@@ -19,17 +19,19 @@ docs            Architecture, setup and decisions
 | Area | What it does |
 | --- | --- |
 | **Xero sync** | OAuth 2.0 with PKCE, encrypted tokens, a retryable Convex state machine (accounts → journals → invoices → reports → reconcile), one page per step, idempotent by Xero journal ID, rate-limit back-off, Demo Company reset detection, signature-checked webhooks, nightly sync |
+| **CSV import** | A chart of accounts and a journal listing from any system, checked in the browser (types, unknown accounts, impossible dates, unbalanced journals, with row numbers) and stored through the same code as a Xero sync; a one-click sample company (Kestrel Joinery Ltd, 940 journals over two years) |
 | **Statements** | P&L, balance sheet and indirect cash flow from monthly account movements, each asserting its own integrity (the balance sheet balances, the cash flow closes to the bank) |
 | **Reconciliation** | Every account compared with Xero's Profit and Loss and Balance Sheet reports, month by month |
 | **Forecast** | Three statements per month from drivers (growth, margin, overheads, hires, debtor/creditor/stock days, capex, loans, equity, tax); refuses to run if assets − liabilities ≠ equity; runway, P10–P90 bands, tornado sensitivity |
 | **Scenarios** | Branches that store only their changes, inherited along a parent chain like Git branches; forecasts cached by the hash of every input |
 | **Board pack** | Commentary drafted through OpenRouter with structured output; a validator rejects any number that isn't a citation; a person accepts it before export |
+| **Exports** | Every report as CSV for spreadsheets; any page as one self-contained HTML file with its charts as SVG and the fonts embedded; the ledger and chart of accounts in the import format, so a file round-trips |
 | **App** | Overview, P&L with drill-down to journal lines, balance sheet, cash flow, forecast, scenarios, board pack, sync, ledger, audit log, team settings |
 | **Landing page** | Built from live design-system components, including a working runway what-if |
 
 ## Quality
 
-- **Engine**: 47 pytest tests, including Hypothesis property tests that generate random balanced ledgers and
+- **Engine**: 49 pytest tests, including Hypothesis property tests that generate random balanced ledgers and
   random drivers and assert every statement and every forecast month ties out. `ruff` lint and format.
 - **Backend**: `convex-test` tests for organisation scoping, roles, idempotent journal storage, drill-down
   isolation, scenario inheritance, forecast caching with signed engine calls, and webhook signatures.
@@ -68,7 +70,7 @@ npm run dev
 ```
 
 The landing page runs with no configuration at all; the app pages explain what's missing until Clerk and
-Convex are set up. To try it without your own books, connect Xero's free Demo Company.
+Convex are set up. To try it without your own books, load the sample company or connect Xero's free Demo Company.
 
 ## Design
 
