@@ -1,0 +1,29 @@
+Code,Name,Type,System
+090,Bank: business current account,BANK,
+610,Trade debtors,CURRENT,DEBTORS
+620,Prepayments,PREPAYMENT,
+630,Stock: timber and fittings,INVENTORY,
+710,Plant and machinery,FIXED,
+711,Plant and machinery: depreciation,FIXED,
+720,Vans,FIXED,
+721,Vans: depreciation,FIXED,
+800,Trade creditors,CURRLIAB,CREDITORS
+820,VAT,CURRLIAB,GST
+825,PAYE and PRSI,CURRLIAB,
+830,Corporation tax,CURRLIAB,
+900,Bank loan,TERMLIAB,
+960,Retained earnings,EQUITY,RETAINEDEARNINGS
+970,Share capital,EQUITY,
+200,Sales: fitted kitchens,REVENUE,
+210,Sales: doors and joinery,REVENUE,
+310,Timber and materials,DIRECTCOSTS,
+320,Subcontract fitters,DIRECTCOSTS,
+400,Marketing,OVERHEADS,
+412,Accountancy and legal,OVERHEADS,
+429,General,OVERHEADS,
+469,Rent and rates,OVERHEADS,
+477,Wages and salaries,WAGESEXPENSE,
+485,Software,OVERHEADS,
+416,Depreciation,DEPRECIATN,
+437,Interest paid,EXPENSE,
+500,Corporation tax expense,EXPENSE,
