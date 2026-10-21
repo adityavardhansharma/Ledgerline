@@ -59,9 +59,9 @@ export interface MenuProps { items: MenuItem[]; label?: string }
 export interface CommandPaletteProps { query?: string; groups: Array<{ label: string; items: Array<{ icon: IconName; label: string; meta?: string; kbd?: string; active?: boolean }> }> }
 export interface BreadcrumbsProps { items: string[] }
 export interface PaginationProps { page: number; pages: number; from: number; to: number; total: number }
-export interface NavItemProps { href?: string; linkAs?: React.ElementType; rail?: boolean; id: string; label: string; icon: IconName; active?: boolean; badge?: string }
+export interface NavItemProps { kbd?: string; href?: string; linkAs?: React.ElementType; rail?: boolean; id: string; label: string; icon: IconName; active?: boolean; badge?: string }
 export interface OrgSwitcherProps { name: string; meta?: string }
-export interface SidebarProps { linkAs?: React.ElementType; settingsHref?: string; orgSwitcher?: React.ReactNode; userMenu?: React.ReactNode; onSearch?: () => void; onSettings?: () => void; rail?: boolean; runway?: number | null; syncText?: string; syncing?: boolean; active?: string; org?: string; orgMeta?: string; user?: string; role?: string; items?: Array<NavItemProps | { heading: string }> }
+export interface SidebarProps { linkAs?: React.ElementType; settingsHref?: string; orgSwitcher?: React.ReactNode; userMenu?: React.ReactNode; onSearch?: () => void; onSettings?: () => void; rail?: boolean; runway?: number | null; syncText?: string; syncing?: boolean; active?: string; org?: string; orgMeta?: string; user?: string; role?: string; items?: ReadonlyArray<NavItemProps | { heading: string }> }
 export interface PeriodPickerProps { label?: string }
 export interface MonthGridProps { year?: number; from: number; to: number; forecastFrom?: number }
 export interface ScenarioSwitcherProps { name?: string }
