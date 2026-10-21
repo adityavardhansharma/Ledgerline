@@ -27,6 +27,8 @@ export const syncPhase = v.union(
   v.literal("reconcile"),
   v.literal("done"),
 );
+export const dataSource = v.union(v.literal("xero"), v.literal("csv"), v.literal("sample"));
+
 export const syncStatus = v.union(
   v.literal("queued"),
   v.literal("running"),
@@ -46,6 +48,10 @@ export default defineSchema({
     basis: v.union(v.literal("accrual"), v.literal("cash")),
     actualsVersion: v.number(),
     asOf: v.optional(v.string()),
+    // Where the figures came from: a Xero sync, an imported CSV file or the sample company.
+    source: v.optional(dataSource),
+    sourceLabel: v.optional(v.string()),
+    importedAt: v.optional(v.number()),
     alerts: v.object({ runwayUnder6: v.boolean(), syncFailsTwice: v.boolean(), differsFromXero: v.boolean() }),
     createdAt: v.number(),
   }).index("by_clerk", ["clerkOrgId"]),
@@ -134,6 +140,7 @@ export default defineSchema({
   syncRuns: defineTable({
     orgId: v.id("organizations"),
     trigger: v.string(),
+    source: v.optional(dataSource),
     phase: syncPhase,
     status: syncStatus,
     pagesDone: v.number(),

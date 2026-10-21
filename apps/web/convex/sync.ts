@@ -7,7 +7,8 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { type ActionCtx, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { type ActionCtx, internalAction, internalMutation, internalQuery, type MutationCtx, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
@@ -17,7 +18,7 @@ import type { Tokens } from "./xero";
 
 const MAX_ATTEMPTS = 3;
 
-interface EngineJournal {
+export interface EngineJournal {
   xero_journal_id: string;
   journal_number: number;
   date: string;
@@ -128,6 +129,11 @@ type Tenant = { tokens: Tokens; tenant_id: string };
 async function stepAccounts(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   const result = await engine<{ accounts: Record<string, string>[]; tokens?: Tokens }>("/xero/accounts", tenant);
   await persistRotated(ctx, run.orgId, result.tokens);
+  // Figures imported from a file are replaced, not mixed with Xero's.
+  if (await ctx.runMutation(internal.sync.claimForXero, { orgId: run.orgId })) {
+    let more = true;
+    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: true });
+  }
   await ctx.runMutation(internal.sync.storeAccounts, { orgId: run.orgId, accounts: result.accounts.map(toAccount) });
 
   // The Demo Company resets every 28 days. If the journal we stopped at is gone, start again from zero.
@@ -239,98 +245,115 @@ export const advance = internalMutation({
   },
 });
 
-export const storeAccounts = internalMutation({
-  args: {
-    orgId: v.id("organizations"),
-    accounts: v.array(
-      v.object({ xeroAccountId: v.string(), code: v.string(), name: v.string(), type: v.string(), accountClass: v.string(), systemAccount: v.string(), status: v.string() }),
-    ),
-  },
-  handler: async (ctx, { orgId, accounts }) => {
-    for (const account of accounts) {
-      const existing = await ctx.db
-        .query("accounts")
-        .withIndex("by_org_xero", (q) => q.eq("orgId", orgId).eq("xeroAccountId", account.xeroAccountId))
-        .unique();
-      if (existing) await ctx.db.patch(existing._id, account);
-      else await ctx.db.insert("accounts", { orgId, ...account });
-    }
-  },
+export const accountFields = v.object({
+  xeroAccountId: v.string(),
+  code: v.string(),
+  name: v.string(),
+  type: v.string(),
+  accountClass: v.string(),
+  systemAccount: v.string(),
+  status: v.string(),
 });
 
-/** Store one page of journals. Journals already stored are skipped, so a retried page changes nothing. */
-export const storePage = internalMutation({
-  args: { runId: v.id("syncRuns"), orgId: v.id("organizations"), journals: v.array(v.any()) },
-  handler: async (ctx, { runId, orgId, journals }) => {
-    const bankAccounts = new Set(
-      (
-        await ctx.db
-          .query("accounts")
-          .withIndex("by_org", (q) => q.eq("orgId", orgId))
-          .collect()
-      )
-        .filter((a) => a.type === "BANK")
-        .map((a) => a.xeroAccountId),
-    );
-    const balanceDeltas = new Map<string, bigint>();
-    const cashDeltas = new Map<string, bigint>();
-    let stored = 0;
-    let last: EngineJournal | null = null;
-    for (const journal of journals as EngineJournal[]) {
-      last = journal;
-      const exists = await ctx.db
-        .query("journals")
-        .withIndex("by_org_xero", (q) => q.eq("orgId", orgId).eq("xeroJournalId", journal.xero_journal_id))
-        .unique();
-      if (exists) continue;
-      const total = journal.lines.reduce((sum, line) => sum + line.net_cents, 0);
-      if (total !== 0) throw new Error(`Journal ${journal.journal_number} does not balance`);
-      const journalId = await ctx.db.insert("journals", {
+export async function upsertAccounts(ctx: MutationCtx, orgId: Id<"organizations">, accounts: (typeof accountFields.type)[]) {
+  for (const account of accounts) {
+    const existing = await ctx.db
+      .query("accounts")
+      .withIndex("by_org_xero", (q) => q.eq("orgId", orgId).eq("xeroAccountId", account.xeroAccountId))
+      .unique();
+    if (existing) await ctx.db.patch(existing._id, account);
+    else await ctx.db.insert("accounts", { orgId, ...account });
+  }
+}
+
+export const storeAccounts = internalMutation({
+  args: { orgId: v.id("organizations"), accounts: v.array(accountFields) },
+  handler: (ctx, { orgId, accounts }) => upsertAccounts(ctx, orgId, accounts),
+});
+
+/**
+ * Store journals with their lines, and keep monthly balances and daily cash in step, in one transaction.
+ * Journals already stored are skipped, so storing the same page twice changes nothing. With `knownAccounts`,
+ * a line on any other account is refused (imports check this; Xero's own references are trusted).
+ */
+export async function storeJournals(ctx: MutationCtx, orgId: Id<"organizations">, journals: EngineJournal[], knownAccounts?: Set<string>) {
+  const accounts = await ctx.db
+    .query("accounts")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const bankAccounts = new Set(accounts.filter((a) => a.type === "BANK").map((a) => a.xeroAccountId));
+  const balanceDeltas = new Map<string, bigint>();
+  const cashDeltas = new Map<string, bigint>();
+  let stored = 0;
+  let last: EngineJournal | null = null;
+  for (const journal of journals) {
+    last = journal;
+    const exists = await ctx.db
+      .query("journals")
+      .withIndex("by_org_xero", (q) => q.eq("orgId", orgId).eq("xeroJournalId", journal.xero_journal_id))
+      .unique();
+    if (exists) continue;
+    const total = journal.lines.reduce((sum, line) => sum + line.net_cents, 0);
+    if (total !== 0 || journal.lines.some((line) => !Number.isSafeInteger(line.net_cents))) throw new Error(`Journal ${journal.journal_number} does not balance`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(journal.date)) throw new Error(`Journal ${journal.journal_number} has no valid date`);
+    if (knownAccounts) {
+      const unknown = journal.lines.find((line) => !knownAccounts.has(line.xero_account_id));
+      if (unknown) throw new Error(`Journal ${journal.journal_number} uses an account that isn't in the chart: ${unknown.xero_account_id}`);
+    }
+    const journalId = await ctx.db.insert("journals", {
+      orgId,
+      xeroJournalId: journal.xero_journal_id,
+      journalNumber: journal.journal_number,
+      date: journal.date,
+      sourceType: journal.source_type,
+      reference: journal.reference,
+    });
+    const period = periodOf(journal.date);
+    for (const line of journal.lines) {
+      const cents = BigInt(line.net_cents);
+      await ctx.db.insert("ledgerLines", {
         orgId,
-        xeroJournalId: journal.xero_journal_id,
+        journalId,
         journalNumber: journal.journal_number,
+        xeroAccountId: line.xero_account_id,
+        period,
         date: journal.date,
+        netCents: cents,
+        description: line.description,
         sourceType: journal.source_type,
         reference: journal.reference,
       });
-      const period = periodOf(journal.date);
-      for (const line of journal.lines) {
-        const cents = BigInt(line.net_cents);
-        await ctx.db.insert("ledgerLines", {
-          orgId,
-          journalId,
-          journalNumber: journal.journal_number,
-          xeroAccountId: line.xero_account_id,
-          period,
-          date: journal.date,
-          netCents: cents,
-          description: line.description,
-          sourceType: journal.source_type,
-          reference: journal.reference,
-        });
-        const key = `${line.xero_account_id}|${period}`;
-        balanceDeltas.set(key, (balanceDeltas.get(key) ?? 0n) + cents);
-        if (bankAccounts.has(line.xero_account_id)) cashDeltas.set(journal.date, (cashDeltas.get(journal.date) ?? 0n) + cents);
-      }
-      stored++;
+      const key = `${line.xero_account_id}|${period}`;
+      balanceDeltas.set(key, (balanceDeltas.get(key) ?? 0n) + cents);
+      if (bankAccounts.has(line.xero_account_id)) cashDeltas.set(journal.date, (cashDeltas.get(journal.date) ?? 0n) + cents);
     }
-    for (const [key, delta] of balanceDeltas) {
-      const [xeroAccountId, period] = key.split("|");
-      const row = await ctx.db
-        .query("accountBalances")
-        .withIndex("by_org_account_period", (q) => q.eq("orgId", orgId).eq("xeroAccountId", xeroAccountId).eq("period", period))
-        .unique();
-      if (row) await ctx.db.patch(row._id, { netCents: row.netCents + delta });
-      else await ctx.db.insert("accountBalances", { orgId, xeroAccountId, period, netCents: delta });
-    }
-    for (const [date, delta] of cashDeltas) {
-      const row = await ctx.db
-        .query("dailyCash")
-        .withIndex("by_org_date", (q) => q.eq("orgId", orgId).eq("date", date))
-        .unique();
-      if (row) await ctx.db.patch(row._id, { netCents: row.netCents + delta });
-      else await ctx.db.insert("dailyCash", { orgId, date, netCents: delta });
-    }
+    stored++;
+  }
+  for (const [key, delta] of balanceDeltas) {
+    const [xeroAccountId, period] = key.split("|");
+    const row = await ctx.db
+      .query("accountBalances")
+      .withIndex("by_org_account_period", (q) => q.eq("orgId", orgId).eq("xeroAccountId", xeroAccountId).eq("period", period))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { netCents: row.netCents + delta });
+    else await ctx.db.insert("accountBalances", { orgId, xeroAccountId, period, netCents: delta });
+  }
+  for (const [date, delta] of cashDeltas) {
+    const row = await ctx.db
+      .query("dailyCash")
+      .withIndex("by_org_date", (q) => q.eq("orgId", orgId).eq("date", date))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { netCents: row.netCents + delta });
+    else await ctx.db.insert("dailyCash", { orgId, date, netCents: delta });
+  }
+  return { stored, last };
+}
+
+/** Store one page of journals from Xero and move the cursor in the same transaction. */
+export const storePage = internalMutation({
+  args: { runId: v.id("syncRuns"), orgId: v.id("organizations"), journals: v.array(v.any()) },
+  handler: async (ctx, { runId, orgId, journals }) => {
+    const { stored, last } = await storeJournals(ctx, orgId, journals as EngineJournal[]);
     const run = await ctx.db.get(runId);
     if (run) await ctx.db.patch(runId, { pagesDone: run.pagesDone + 1, journalsStored: run.journalsStored + stored, attempts: 0, error: undefined });
     const connection = await ctx.db
@@ -347,33 +370,63 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries"] as const;
 
-/** Delete one batch of an organisation's synced data. Returns true while more remains. */
+/** Delete one batch of an organisation's synced or imported figures (and, optionally, its chart). True while more remains. */
+export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean): Promise<boolean> {
+  const tables = withAccounts ? [...RESET_TABLES, "accounts" as const] : RESET_TABLES;
+  for (const table of tables) {
+    const rows =
+      table === "forecastRuns"
+        ? await ctx.db.query("forecastRuns").withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300)
+        : table === "reportSnapshots"
+          ? await ctx.db.query("reportSnapshots").withIndex("by_org_kind", (q) => q.eq("orgId", orgId)).take(300)
+          : table === "dailyCash"
+            ? await ctx.db.query("dailyCash").withIndex("by_org_date", (q) => q.eq("orgId", orgId)).take(300)
+            : table === "journals"
+              ? await ctx.db.query("journals").withIndex("by_org_number", (q) => q.eq("orgId", orgId)).take(300)
+              : table === "commentaries"
+                ? await ctx.db.query("commentaries").withIndex("by_org_period", (q) => q.eq("orgId", orgId)).take(300)
+                : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
+    if (rows.length) {
+      for (const row of rows) await ctx.db.delete(row._id);
+      return true;
+    }
+  }
+  const connection = await ctx.db
+    .query("xeroConnections")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .first();
+  if (connection) await ctx.db.patch(connection._id, { lastJournalNumber: 0, lastJournalId: undefined, journalsStored: 0 });
+  return false;
+}
+
+export const clearBatch = internalMutation({
+  args: { orgId: v.id("organizations"), accounts: v.boolean() },
+  handler: (ctx, { orgId, accounts }) => deleteBatch(ctx, orgId, accounts),
+});
+
+/** Mark the organisation's figures as Xero's. True when they came from a file and must be cleared first. */
+export const claimForXero = internalMutation({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, { orgId }) => {
+    const org = await ctx.db.get(orgId);
+    if (!org) return false;
+    const imported = org.source === "csv" || org.source === "sample";
+    if (org.source !== "xero") await ctx.db.patch(orgId, { source: "xero", sourceLabel: undefined, importedAt: undefined, ...(imported ? { asOf: undefined } : {}) });
+    return imported;
+  },
+});
+
+/** The Demo Company was reset under us: delete one batch of synced data. Returns true while more remains. */
 export const resetBatch = internalMutation({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, { orgId }) => {
-    for (const table of RESET_TABLES) {
-      const rows =
-        table === "forecastRuns"
-          ? await ctx.db.query("forecastRuns").withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300)
-          : table === "reportSnapshots"
-            ? await ctx.db.query("reportSnapshots").withIndex("by_org_kind", (q) => q.eq("orgId", orgId)).take(300)
-            : table === "dailyCash"
-              ? await ctx.db.query("dailyCash").withIndex("by_org_date", (q) => q.eq("orgId", orgId)).take(300)
-              : table === "journals"
-                ? await ctx.db.query("journals").withIndex("by_org_number", (q) => q.eq("orgId", orgId)).take(300)
-                : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
-      if (rows.length) {
-        for (const row of rows) await ctx.db.delete(row._id);
-        return true;
-      }
-    }
+    if (await deleteBatch(ctx, orgId, false)) return true;
     const connection = await ctx.db
       .query("xeroConnections")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .first();
-    if (connection) await ctx.db.patch(connection._id, { lastJournalNumber: 0, lastJournalId: undefined, journalsStored: 0 });
     await audit(ctx, orgId, {
       actor: "Ledgerline",
       action: "detected a reset of",
@@ -401,6 +454,23 @@ export const finish = internalMutation({
       .query("xeroConnections")
       .withIndex("by_org", (q) => q.eq("orgId", run.orgId))
       .first();
+    const imported = run.source === "csv" || run.source === "sample";
+    if (imported) {
+      const org = await ctx.db.get(run.orgId);
+      if (status === "done") {
+        await audit(ctx, run.orgId, {
+          actor: "Ledgerline",
+          action: "imported",
+          target: `${run.journalsStored.toLocaleString("en-IE")} journals`,
+          detail: `${run.trigger}${org?.sourceLabel ? ` · ${org.sourceLabel}` : ""}`,
+          icon: "upload",
+          tone: "positive",
+        });
+      } else {
+        await audit(ctx, run.orgId, { actor: "Ledgerline", action: "could not finish importing", target: org?.sourceLabel ?? "the file", detail: error, icon: "warning", tone: "negative" });
+      }
+      return;
+    }
     if (status === "done" || status === "needsReview") {
       if (connection) await ctx.db.patch(connection._id, { lastSyncAt: now });
       await audit(ctx, run.orgId, {
@@ -436,6 +506,7 @@ export const history = query({
     return runs.map((r) => ({
       id: r._id,
       trigger: r.trigger,
+      source: r.source ?? "xero",
       status: r.status,
       phase: r.phase,
       pagesDone: r.pagesDone,

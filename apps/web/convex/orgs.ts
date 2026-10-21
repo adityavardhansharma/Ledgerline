@@ -57,6 +57,9 @@ export const current = query({
         basis: org.basis,
         asOf: org.asOf ?? null,
         actualsVersion: org.actualsVersion,
+        source: org.source ?? null,
+        sourceLabel: org.sourceLabel ?? null,
+        importedAt: org.importedAt ?? null,
         alerts: org.alerts,
       },
       role: who.role,
@@ -75,6 +78,8 @@ export const current = query({
       lastSync: lastSync
         ? {
             id: lastSync._id,
+            trigger: lastSync.trigger,
+            source: lastSync.source ?? "xero",
             status: lastSync.status,
             phase: lastSync.phase,
             pagesDone: lastSync.pagesDone,
