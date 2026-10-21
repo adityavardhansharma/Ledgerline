@@ -1011,7 +1011,7 @@ function SyncProgress(p) {
   return h('div', { className: 'll-syncp' },
     h('div', { className: 'll-syncp-head' },
       h('div', null, h('div', { className: 'll-syncp-title' }, p.title || 'Syncing ' + (p.org || 'your organisation')),
-        h('div', { className: 'll-syncp-meta' }, 'Page ' + p.pagesDone + (p.pagesTotal ? ' of ' + p.pagesTotal : '') + ' · ' + (p.journals || 0).toLocaleString('en-IE') + ' journals' + (p.eta ? ' · about ' + p.eta + ' left' : ''))),
+        h('div', { className: 'll-syncp-meta' }, p.meta || 'Page ' + p.pagesDone + (p.pagesTotal ? ' of ' + p.pagesTotal : '') + ' · ' + (p.journals || 0).toLocaleString('en-IE') + ' journals' + (p.eta ? ' · about ' + p.eta + ' left' : ''))),
       h(StatusPill, { status: 'syncing' })),
     p.pagesTotal ? h(ProgressBar, { value: pct, label: 'Sync progress', tone: 'forecast' }) : h('div', { className: 'll-progress ll-progress-indeterminate', role: 'progressbar', 'aria-label': 'Sync progress' }, h('span', null)),
     h('ol', { className: 'll-syncp-steps' }, phases.map(function (ph, i) {

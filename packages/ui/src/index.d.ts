@@ -50,7 +50,7 @@ export interface ReconcileCheckProps { status: 'match' | 'mismatch'; report?: st
 export interface BannerProps extends Children { tone?: 'info' | 'positive' | 'warning' | 'negative'; title?: string; action?: React.ReactNode; onClose?: () => void; icon?: IconName }
 export interface ToastProps extends Children { tone?: 'info' | 'positive' | 'warning' | 'negative'; title: string; action?: React.ReactNode; onClose?: () => void }
 export interface EmptyStateProps extends Children { icon?: IconName; title: string; action?: React.ReactNode; compact?: boolean }
-export interface SyncProgressProps { org?: string; title?: string; pagesDone: number; pagesTotal?: number | null; journals?: number; eta?: string; phase: number; phases?: string[] }
+export interface SyncProgressProps { org?: string; title?: string; pagesDone: number; pagesTotal?: number | null; journals?: number; eta?: string; phase: number; phases?: string[]; /** Replaces the page and journal count line. */ meta?: string }
 export interface StepperProps { steps: Array<{ title: string; hint?: string }>; current: number }
 export interface DialogProps extends Children { title: string; footer?: React.ReactNode; onClose?: () => void; size?: 'sm' | 'md'; inline?: boolean }
 export interface DrawerProps extends Children { title: string; eyebrow?: string; subtitle?: string; footer?: React.ReactNode; onClose?: () => void; inline?: boolean }
