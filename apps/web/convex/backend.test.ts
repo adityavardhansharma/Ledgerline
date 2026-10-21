@@ -42,6 +42,18 @@ describe("organisations", () => {
     expect(current?.connection).toBeNull();
   });
 
+  it("accepts Clerk's compact session token, which carries the organisation as { o: { id, rol } }", async () => {
+    const t = convexTest(schema, modules);
+    const compact = t.withIdentity({ subject: "user_aoife", o: { id: "org_kestrel", rol: "admin", slg: "kestrel" } } as never);
+    const orgId = await compact.mutation(api.orgs.ensure, {});
+    expect(orgId).not.toBeNull();
+    const current = await compact.query(api.orgs.current, {});
+    expect(current).toMatchObject({ role: "owner", org: { name: "Your organisation" } });
+    // The full template token later fills in the real name.
+    await t.withIdentity(OWNER as never).mutation(api.orgs.ensure, {});
+    expect((await compact.query(api.orgs.current, {}))?.org.name).toBe("Kestrel Joinery Ltd");
+  });
+
   it("only owners change settings", async () => {
     const { t, owner } = await setup();
     await owner.mutation(api.orgs.updateSettings, { fyStartMonth: 4 });

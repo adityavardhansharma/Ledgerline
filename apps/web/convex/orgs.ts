@@ -14,12 +14,12 @@ export const ensure = mutation({
       .withIndex("by_clerk", (q) => q.eq("clerkOrgId", who.clerkOrgId))
       .unique();
     if (existing) {
-      if (existing.name !== who.orgName) await ctx.db.patch(existing._id, { name: who.orgName });
+      if (who.orgName && existing.name !== who.orgName) await ctx.db.patch(existing._id, { name: who.orgName });
       return existing._id;
     }
     const orgId = await ctx.db.insert("organizations", {
       clerkOrgId: who.clerkOrgId,
-      name: who.orgName,
+      name: who.orgName || "Your organisation",
       currency: "EUR",
       fyStartMonth: 1,
       basis: "accrual",
@@ -27,7 +27,7 @@ export const ensure = mutation({
       alerts: { runwayUnder6: true, syncFailsTwice: true, differsFromXero: false },
       createdAt: Date.now(),
     });
-    await audit(ctx, orgId, { actor: who.name, action: "created", target: who.orgName, icon: "organisation", tone: "brand" });
+    await audit(ctx, orgId, { actor: who.name, action: "created", target: who.orgName || "Your organisation", icon: "organisation", tone: "brand" });
     return orgId;
   },
 });

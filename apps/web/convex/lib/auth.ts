@@ -13,9 +13,16 @@ export interface Caller {
 }
 
 function roleOf(claim: unknown): Role {
-  if (claim === "org:admin") return "owner";
-  if (claim === "org:accountant") return "accountant";
+  const role = typeof claim === "string" ? claim.replace(/^org:/, "") : "";
+  if (role === "admin") return "owner";
+  if (role === "accountant") return "accountant";
   return "editor";
+}
+
+/** Clerk's session token v2 carries the active organisation compactly: { o: { id, rol, slg } }. */
+function compactOrg(claims: Record<string, unknown>): { id?: string; rol?: string } {
+  const o = claims.o;
+  return o && typeof o === "object" ? (o as { id?: string; rol?: string }) : {};
 }
 
 /** Who is calling, in which organisation. Null when signed out or no organisation is active. */
@@ -23,14 +30,15 @@ export async function caller(ctx: QueryCtx | MutationCtx): Promise<Caller | null
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
   const claims = identity as unknown as Record<string, unknown>;
-  const clerkOrgId = typeof claims.org_id === "string" ? claims.org_id : "";
+  const compact = compactOrg(claims);
+  const clerkOrgId = typeof claims.org_id === "string" && claims.org_id ? claims.org_id : (compact.id ?? "");
   if (!clerkOrgId) return null;
   return {
     userId: identity.subject,
     name: identity.name ?? identity.email ?? "Someone",
     clerkOrgId,
-    orgName: typeof claims.org_name === "string" ? claims.org_name : "Your organisation",
-    role: roleOf(claims.org_role),
+    orgName: typeof claims.org_name === "string" && claims.org_name ? claims.org_name : "",
+    role: roleOf(claims.org_role ?? compact.rol),
   };
 }
 
