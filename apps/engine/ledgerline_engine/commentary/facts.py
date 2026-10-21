@@ -324,8 +324,8 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "performance",
                 f"mover{index}",
-                f"{name} ({kind}), {'up' if a > b else 'down'} from the previous month to this month",
-                f"from {eur(to_cents(b))} to {eur(to_cents(a))}",
+                f"{name} ({kind}), {'up' if a > b else 'down'}: last month's and this month's totals; write 'from' just before it",
+                f"{eur(to_cents(b))} to {eur(to_cents(a))}",
                 "Largest movements by account",
             )
 

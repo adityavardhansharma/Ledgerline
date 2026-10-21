@@ -121,7 +121,7 @@ SYSTEM = (
     "and a fact marked (percentage) or (amount) is a change, not a level. Be selective: a facts pack is a menu, not "
     "a checklist. Use at most three figures in a paragraph and one or two in a headline bullet; prefer a "
     "percentage for a change and leave out figures that don't change the reader's view. Never chain figures (no "
-    "'by X to Y from Z'); a fact that reads 'from X to Y' already says both. Cite each figure at most once in the "
+    "'by X to Y from Z'); a fact whose value reads 'X to Y' already gives both levels, so write 'from' just before it. Cite each figure at most once in the "
     "whole pack unless it adds a comparison. Management notes are context from the team: use them to explain "
     "causes, never quote figures from them, and never contradict the facts. Do not speculate beyond the facts and "
     "notes."

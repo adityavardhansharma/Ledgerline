@@ -8,7 +8,7 @@ import type { Citation, Commentary, Prose, Question, Risk, Section, Sections } f
 import type { Id } from "@/convex/_generated/dataModel";
 
 const TITLES: Record<Section, string> = {
-  headline: "Headline",
+  headline: "At a glance",
   performance: "Performance",
   cash: "Cash and working capital",
   outlook: "Outlook",
@@ -165,7 +165,9 @@ function SectionBody({ name, value, editing, onChange }: { name: Section; value:
       <ol className="ll-bc-decisions">
         {items.map((p, i) => (
           <li key={i}>
-            <T parts={p} set={set(i)} />
+            <span>
+              <T parts={p} set={set(i)} />
+            </span>
           </li>
         ))}
       </ol>
@@ -231,19 +233,18 @@ export function BoardCommentary({ commentary, busy, onRedraft }: { commentary: C
   return (
     <article className="ll-bc">
       <header className="ll-bc-head">
-        <span className="ll-comm-tag">
-          <Icon name="sparkle" size={14} /> {commentary.status === "accepted" ? "Commentary" : "Draft commentary"}
-        </span>
-        <span className="ll-comm-meta">
-          {commentary.status === "accepted" ? `Accepted by ${commentary.acceptedBy}` : "Every figure is a citation of the accounts · hover one to see its source"}
+        <span className="ll-bc-kicker">{commentary.status === "accepted" ? "Commentary" : "Draft commentary"}</span>
+        <span className="ll-bc-meta">
+          {commentary.status === "accepted" ? `Accepted by ${commentary.acceptedBy} · ` : ""}Every figure comes from the accounts; hover one for its source
         </span>
       </header>
-      {ORDER.map((name) => {
+      {ORDER.map((name, index) => {
         const isEditing = editing === name;
         const redrafting = busy === name;
         return (
           <section key={name} className={`ll-bc-section is-${name}${isEditing ? " is-editing" : ""}`}>
             <div className="ll-bc-section-head">
+              {name === "headline" ? null : <span className="ll-bc-num">{String(index).padStart(2, "0")}</span>}
               <h3>{TITLES[name]}</h3>
               {draft ? (
                 <span className="ll-bc-tools no-print">

@@ -66,7 +66,7 @@ def test_five_years_of_history_give_every_comparison(board):
     assert found["revenueVsPrev"].label.split(":")[1].strip().startswith(("up", "down"))
     # Changes read as a percentage, with the amount alongside; a mover says both levels in one figure.
     assert found["revenueVsPrev"].value.endswith("%") and found["revenueVsPrevAmount"].value.startswith("€")
-    assert found["mover1"].value.startswith("from €") and " to €" in found["mover1"].value
+    assert found["mover1"].value.startswith("€") and " to €" in found["mover1"].value
 
 
 def test_a_short_history_skips_comparisons_it_cannot_make(board):
