@@ -1,0 +1,22 @@
+@import "@ledgerline/ui/styles/tokens.css";
+@import "@ledgerline/ui/styles/components.css";
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+::selection { background: var(--brand-tint); color: var(--ink); }
+
+@media print {
+  .ll-sidebar, .ll-topbar-r, .no-print { display: none !important; }
+  .ll-main { margin: 0; border: 0; }
+  body { background: #ffffff; }
+}
