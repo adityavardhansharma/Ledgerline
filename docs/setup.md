@@ -38,7 +38,10 @@ a tunnel (for example `cloudflared tunnel --url http://localhost:8000`) or run C
 
 ## 3. Xero
 
-1. Create a **Web app** at <https://developer.xero.com/app/manage>.
+1. Create a **Web app** at <https://developer.xero.com/app/manage>. Ledgerline requests the granular scopes
+   `accounting.settings.read`, `accounting.journals.read`, `accounting.invoices.read`,
+   `accounting.reports.profitandloss.read` and `accounting.reports.balancesheet.read`. Xero may not grant
+   `accounting.journals.read` to new apps; if authorisation fails with `invalid_scope`, ask Xero for journals access.
 2. Redirect URI: `https://<your-deployment>.convex.site/xero/callback` (the Convex HTTP actions URL).
 3. Put the client ID and secret in `apps/engine/.env` as `LL_XERO_CLIENT_ID` and `LL_XERO_CLIENT_SECRET`.
 4. Optional: under **Webhooks**, subscribe to Invoices and Contacts with the delivery URL

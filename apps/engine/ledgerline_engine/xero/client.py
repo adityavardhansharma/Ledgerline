@@ -18,9 +18,12 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from ..settings import Settings
 from .models import Connection, Tokens
 
+# Granular scopes (Xero assigns these to every app created since March 2026), one per endpoint used:
+# Accounts, Journals, Invoices, Reports/ProfitAndLoss and Reports/BalanceSheet.
 SCOPES = (
     "openid profile email offline_access "
-    "accounting.transactions.read accounting.reports.read accounting.settings.read accounting.contacts.read"
+    "accounting.settings.read accounting.journals.read accounting.invoices.read "
+    "accounting.reports.profitandloss.read accounting.reports.balancesheet.read"
 )
 REFRESH_MARGIN_SECONDS = 120
 
