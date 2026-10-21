@@ -57,7 +57,20 @@ cp .env.example .env
 .venv/bin/uvicorn ledgerline_engine.api:app --reload --port 8000
 ```
 
-Or `docker compose up engine` from the repository root. `LL_OPENROUTER_API_KEY` is optional; without it the
+Or `docker compose up engine` from the repository root.
+
+**Hosting the engine on Vercel.** `apps/engine` deploys as its own Vercel project (FastAPI preset, set in
+`vercel.json`; `app.py` is the entry point). From `apps/engine`:
+
+```bash
+npx vercel link --project ledgerline-engine
+npx vercel env add LL_ENGINE_SECRET --environment production --sensitive        # same value as on Convex
+npx vercel env add LL_OPENROUTER_API_KEY --environment production --sensitive   # optional: commentary
+npx vercel deploy --prod
+cd ../web && npx convex env set LL_ENGINE_URL https://<engine>.vercel.app --prod
+```
+
+Add `LL_XERO_CLIENT_ID` and `LL_XERO_CLIENT_SECRET` the same way to connect Xero. `LL_OPENROUTER_API_KEY` is optional; without it the
 board pack explains that commentary isn't configured.
 
 ## 5. Web app

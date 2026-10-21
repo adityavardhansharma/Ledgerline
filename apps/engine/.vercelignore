@@ -1,0 +1,11 @@
+.venv
+.env
+tests
+scripts
+*.egg-info
+__pycache__
+.pytest_cache
+.ruff_cache
+Dockerfile
+.hypothesis
+.env.local
