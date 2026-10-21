@@ -105,8 +105,26 @@ export const saveConnection = internalMutation({
       .query("xeroConnections")
       .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
       .first();
-    if (existing && existing.tenantId !== args.tenantId) {
-      throw new ConvexError("This Ledgerline organisation is already linked to a different Xero organisation.");
+    const switched = Boolean(existing && existing.tenantId !== args.tenantId);
+    if (existing && switched) {
+      // A different Xero organisation: its figures replace the old ones, starting from nothing.
+      await ctx.db.patch(existing._id, {
+        ...args,
+        status: "connected",
+        resetPending: true,
+        mode: undefined,
+        historyFrom: undefined,
+        balancesThrough: undefined,
+        lastJournalNumber: 0,
+        lastJournalId: undefined,
+        journalsStored: 0,
+        lastSyncAt: undefined,
+        connectedAt: Date.now(),
+      });
+      await ctx.db.patch(args.orgId, { asOf: undefined });
+      await audit(ctx, args.orgId, { actor: "Ledgerline", action: "switched to Xero organisation", target: args.tenantName, detail: `Replacing figures from ${existing.tenantName}`, icon: "link", tone: "forecast" });
+      await ctx.scheduler.runAfter(0, internal.sync.enqueue, { orgId: args.orgId, trigger: "Switched organisation", full: true });
+      return;
     }
     if (existing) {
       await ctx.db.patch(existing._id, { ...args, status: "connected" });

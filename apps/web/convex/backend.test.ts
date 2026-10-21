@@ -406,6 +406,35 @@ describe("Xero without journal access", () => {
     expect(events.page.map((e: { action: string }) => e.action)).toContain("gained journal access to");
   });
 
+  it("switching to a different Xero organisation replaces the figures instead of refusing", async () => {
+    stubEngine();
+    const { t, orgId, owner } = await connect(REPORTS_SCOPES);
+    await settle(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("accountBalances", { orgId, xeroAccountId: "old-only", period: "2026-01", netCents: 5n });
+    });
+    const { encrypt } = await import("./lib/crypto");
+    const calls = stubEngine();
+    await t.mutation(internal.xero.saveConnection, {
+      orgId,
+      tenantId: "tenant-demo",
+      tenantName: "Demo Company (Global)",
+      accessTokenEnc: await encrypt("access2"),
+      refreshTokenEnc: await encrypt("refresh2"),
+      expiresAt: Date.now() + 30 * 60_000,
+      scopes: REPORTS_SCOPES,
+    });
+    await settle(t);
+    const rows = await balances(t);
+    expect(rows.some((r) => r.xeroAccountId === "old-only")).toBe(false);
+    expect(calls.filter((c) => c.path === "/xero/trial-balances")[0].body.opening_period).toBe("2024-09");
+    const current = await owner.query(api.orgs.current, {});
+    expect(current?.connection).toMatchObject({ tenantName: "Demo Company (Global)", mode: "reports" });
+    expect(current?.lastSync).toMatchObject({ trigger: "Switched organisation", status: "done" });
+    const events = await owner.query(api.audit.list, { paginationOpts: { numItems: 20, cursor: null } });
+    expect(events.page.map((e: { action: string }) => e.action)).toContain("switched to Xero organisation");
+  });
+
   it("drill-down reads the documents behind a figure from Xero once, then from the cache", async () => {
     stubEngine();
     const { t, owner } = await connect(REPORTS_SCOPES);

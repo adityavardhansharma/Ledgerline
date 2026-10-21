@@ -151,6 +151,15 @@ async function stepAccounts(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   }
   await ctx.runMutation(internal.sync.storeAccounts, { orgId: run.orgId, accounts: result.accounts.map(toAccount) });
 
+  // A different Xero organisation was connected: clear the previous one's figures and chart first.
+  const pending = await ctx.runQuery(internal.xero.connectionFor, { orgId: run.orgId });
+  if (pending?.resetPending) {
+    let more = true;
+    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: true });
+    await ctx.runMutation(internal.sync.resetDone, { orgId: run.orgId });
+    await ctx.runMutation(internal.sync.storeAccounts, { orgId: run.orgId, accounts: result.accounts.map(toAccount) });
+  }
+
   // Journals or trial balances, from what Xero granted. A change (journal access added or removed)
   // rebuilds the figures from scratch in the new mode rather than mixing the two.
   const before = await ctx.runQuery(internal.xero.connectionFor, { orgId: run.orgId });
@@ -322,6 +331,17 @@ export const advance = internalMutation({
   },
   handler: async (ctx, { runId, phase }) => {
     await ctx.db.patch(runId, { phase, attempts: 0, error: undefined });
+  },
+});
+
+export const resetDone = internalMutation({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, { orgId }) => {
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first();
+    if (connection) await ctx.db.patch(connection._id, { resetPending: false });
   },
 });
 

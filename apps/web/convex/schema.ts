@@ -86,6 +86,8 @@ export default defineSchema({
     lastSyncAt: v.optional(v.number()),
     rerunRequested: v.optional(v.boolean()),
     scopes: v.optional(v.array(v.string())),
+    // Set when a different Xero organisation replaces this one; the next sync clears the old figures first.
+    resetPending: v.optional(v.boolean()),
     mode: v.optional(xeroMode),
     // Reports mode: the first period held (the opening position) and the latest period read.
     historyFrom: v.optional(v.string()),
