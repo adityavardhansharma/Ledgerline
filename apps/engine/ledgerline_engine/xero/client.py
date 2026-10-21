@@ -8,6 +8,7 @@ sleeping inside a serverless function.
 from __future__ import annotations
 
 import base64
+import json
 import time
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -18,13 +19,41 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 from ..settings import Settings
 from .models import Connection, Tokens
 
-# Granular scopes (Xero assigns these to every app created since March 2026), one per endpoint used:
-# Accounts, Journals, Invoices, Reports/ProfitAndLoss and Reports/BalanceSheet.
-SCOPES = (
-    "openid profile email offline_access "
-    "accounting.settings.read accounting.journals.read accounting.invoices.read "
-    "accounting.reports.profitandloss.read accounting.reports.balancesheet.read"
+# Granular scopes (Xero assigns these to every app created since March 2026), one per endpoint used.
+BASE_SCOPES = (
+    "openid",
+    "profile",
+    "email",
+    "offline_access",
+    "accounting.settings.read",  # Accounts, Organisation
+    "accounting.reports.trialbalance.read",  # monthly movements
+    "accounting.reports.profitandloss.read",  # the check against Xero
+    "accounting.reports.balancesheet.read",
+    "accounting.invoices.read",  # invoices, bills and credit notes: drill-down and ageing
+    "accounting.payments.read",  # payments: drill-down and daily cash
+    "accounting.banktransactions.read",  # bank transactions: drill-down and daily cash
+    "accounting.manualjournals.read",  # manual journals: drill-down
 )
+JOURNALS_SCOPE = "accounting.journals.read"
+
+
+def requested_scopes(journals: bool) -> str:
+    return " ".join((*BASE_SCOPES, JOURNALS_SCOPE) if journals else BASE_SCOPES)
+
+
+def granted_scopes(body: dict) -> str:
+    """Xero returns the granted scopes with the tokens; the access token's ``scope`` claim says the same."""
+    if body.get("scope"):
+        return str(body["scope"])
+    try:
+        payload = body["access_token"].split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+        scope = claims.get("scope", "")
+        return " ".join(scope) if isinstance(scope, list) else str(scope)
+    except (KeyError, IndexError, ValueError):
+        return ""
+
+
 REFRESH_MARGIN_SECONDS = 120
 
 
@@ -67,7 +96,7 @@ class XeroClient:
                 "response_type": "code",
                 "client_id": self.settings.xero_client_id,
                 "redirect_uri": redirect_uri,
-                "scope": SCOPES,
+                "scope": requested_scopes(self.settings.xero_journals),
                 "state": state,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",
@@ -94,6 +123,7 @@ class XeroClient:
             access_token=body["access_token"],
             refresh_token=body["refresh_token"],
             expires_at=time.time() + int(body.get("expires_in", 1800)),
+            scope=granted_scopes(body),
         )
 
     def exchange_code(self, code: str, redirect_uri: str, code_verifier: str) -> Tokens:
@@ -136,6 +166,37 @@ class XeroClient:
     def open_invoices(self, page: int) -> list[dict]:
         params = {"where": 'Status=="AUTHORISED"', "page": page, "summaryOnly": "true"}
         return self._get_json(self._api("Invoices"), params=params).get("Invoices", [])
+
+    def organisation(self) -> dict:
+        return (self._get_json(self._api("Organisation")).get("Organisations") or [{}])[0]
+
+    def trial_balance(self, date: str) -> dict:
+        """Movements for the month up to ``date``, with year-to-date columns."""
+        return self._get_json(self._api("Reports/TrialBalance"), params={"date": date})["Reports"][0]
+
+    def documents(
+        self, resource: str, key: str, date_from: str, date_to: str, max_pages: int = 10, extra: str = ""
+    ) -> list[dict]:
+        """Every document of one kind dated within a range, with line items (Xero includes them when paging)."""
+        y1, m1, d1 = (int(x) for x in date_from.split("-"))
+        y2, m2, d2 = (int(x) for x in date_to.split("-"))
+        where = f"Date >= DateTime({y1}, {m1:02d}, {d1:02d}) && Date <= DateTime({y2}, {m2:02d}, {d2:02d}){extra}"
+        out: list[dict] = []
+        for page in range(1, max_pages + 1):
+            batch = self._get_json(self._api(resource), params={"where": where, "page": page}).get(key, [])
+            out.extend(batch)
+            if len(batch) < 100:
+                break
+        return out
+
+    def optional_documents(self, resource: str, key: str, date_from: str, date_to: str, max_pages: int = 10) -> list[dict]:
+        """As ``documents``, but a source the app may not read (403) is skipped rather than failing."""
+        try:
+            return self.documents(resource, key, date_from, date_to, max_pages)
+        except XeroError as exc:
+            if exc.status in (401, 403) and not isinstance(exc, ReauthRequired):
+                return []
+            raise
 
     def profit_and_loss(self, from_date: str, to_date: str, periods: int) -> dict:
         params = {"fromDate": from_date, "toDate": to_date, "periods": periods, "timeframe": "MONTH"}

@@ -9,6 +9,7 @@ class Tokens(BaseModel):
     access_token: str
     refresh_token: str
     expires_at: float = Field(description="Unix seconds when the access token expires")
+    scope: str = Field(default="", description="The scopes Xero granted, space separated")
 
 
 class Connection(BaseModel):

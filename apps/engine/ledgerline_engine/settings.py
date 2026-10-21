@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     allow_unsigned: bool = False
     signature_window_seconds: int = 300
 
+    # Ask Xero for journal access. Only apps Xero has granted it may ask: requesting a scope the app
+    # lacks makes Xero refuse the whole sign-in. Without it, syncs use monthly trial balances.
+    xero_journals: bool = False
     xero_client_id: str = ""
     xero_client_secret: str = ""
     xero_api_base: str = "https://api.xero.com"
