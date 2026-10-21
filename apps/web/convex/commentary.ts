@@ -42,7 +42,7 @@ export const draft = action({
   args: {},
   handler: async (ctx) => {
     const input = await ctx.runQuery(internal.commentary.facts, {});
-    if (!input) throw new ConvexError("Sync Xero before drafting commentary.");
+    if (!input) throw new ConvexError("Add your figures before drafting commentary: sync Xero, import a CSV or load the sample company.");
     const result = await engine<{ paragraphs: unknown }>("/commentary/draft", { facts: input.facts });
     await ctx.runMutation(internal.commentary.save, { orgId: input.orgId, period: input.period, paragraphs: result.paragraphs });
   },
