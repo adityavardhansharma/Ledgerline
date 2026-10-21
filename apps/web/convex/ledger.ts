@@ -1,8 +1,12 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { query } from "./_generated/server";
-import { currentOrg } from "./lib/auth";
+import { internal } from "./_generated/api";
+import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import { currentOrg, requireOrg } from "./lib/auth";
+import { EngineError, engine } from "./lib/engine";
 import { toNumber } from "./lib/money";
+import { persistRotated } from "./lib/tokens";
+import type { Tokens } from "./xero";
 
 /** The journal lines behind one statement figure: one account, one month. */
 export const lines = query({
@@ -100,5 +104,122 @@ export const chart = query({
     return accounts
       .map((a) => ({ code: a.code, name: a.name, type: a.type, systemAccount: a.systemAccount }))
       .sort((a, b) => a.code.localeCompare(b.code, "en", { numeric: true }));
+  },
+});
+
+export interface ActivityLine {
+  date: string;
+  source: string;
+  reference: string;
+  contact: string;
+  description: string;
+  net_cents: number;
+}
+
+export interface Activity {
+  lines: ActivityLine[];
+  explained_cents: number;
+  unexplained_cents: number;
+  movementCents: number;
+  fetchedAt: number;
+}
+
+const CACHE_MS = 6 * 60 * 60 * 1000;
+
+export const activityInput = internalQuery({
+  args: { xeroAccountId: v.string(), period: v.string() },
+  handler: async (ctx, { xeroAccountId, period }) => {
+    const { org } = await requireOrg(ctx);
+    const connection = await ctx.db
+      .query("xeroConnections")
+      .withIndex("by_org", (q) => q.eq("orgId", org._id))
+      .first();
+    const balance = await ctx.db
+      .query("accountBalances")
+      .withIndex("by_org_account_period", (q) => q.eq("orgId", org._id).eq("xeroAccountId", xeroAccountId).eq("period", period))
+      .unique();
+    const cached = await ctx.db
+      .query("activityCache")
+      .withIndex("by_org_account_period", (q) => q.eq("orgId", org._id).eq("xeroAccountId", xeroAccountId).eq("period", period))
+      .order("desc")
+      .first();
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_org", (q) => q.eq("orgId", org._id))
+      .collect();
+    return {
+      orgId: org._id,
+      version: org.actualsVersion,
+      mode: connection?.mode ?? null,
+      connected: connection?.status === "connected",
+      movementCents: balance ? toNumber(balance.netCents) : 0,
+      cached: cached ? { version: cached.version, createdAt: cached.createdAt, data: cached.data as Activity } : null,
+      accounts: accounts.map((a) => ({
+        xero_account_id: a.xeroAccountId,
+        code: a.code,
+        name: a.name,
+        type: a.type,
+        account_class: a.accountClass,
+        system_account: a.systemAccount,
+      })),
+    };
+  },
+});
+
+export const saveActivity = internalMutation({
+  args: { orgId: v.id("organizations"), xeroAccountId: v.string(), period: v.string(), version: v.number(), data: v.any() },
+  handler: async (ctx, args) => {
+    const old = await ctx.db
+      .query("activityCache")
+      .withIndex("by_org_account_period", (q) => q.eq("orgId", args.orgId).eq("xeroAccountId", args.xeroAccountId).eq("period", args.period))
+      .collect();
+    for (const row of old) await ctx.db.delete(row._id);
+    await ctx.db.insert("activityCache", { ...args, createdAt: Date.now() });
+  },
+});
+
+/**
+ * Reports mode: the invoices, bills, payments, bank transactions and manual journals behind one account's
+ * month, read from Xero on demand and cached until the figures change. Null in journals mode or for imported
+ * figures, where the stored journal lines answer instead.
+ */
+export const activity = action({
+  args: { xeroAccountId: v.string(), period: v.string() },
+  handler: async (ctx, { xeroAccountId, period }): Promise<(Activity & { stale?: boolean; error?: string }) | null> => {
+    const input = await ctx.runQuery(internal.ledger.activityInput, { xeroAccountId, period });
+    if (input.mode !== "reports") return null;
+    const cached = input.cached;
+    if (cached && cached.version === input.version && Date.now() - cached.createdAt < CACHE_MS) return cached.data;
+    if (!input.connected) {
+      return cached
+        ? { ...cached.data, stale: true }
+        : { lines: [], explained_cents: 0, unexplained_cents: input.movementCents, movementCents: input.movementCents, fetchedAt: 0, error: "Reconnect Xero to see the transactions behind this figure." };
+    }
+    const auth = await ctx.runAction(internal.xero.tokensFor, { orgId: input.orgId });
+    if (!auth) return null;
+    try {
+      const result = await engine<Omit<Activity, "movementCents" | "fetchedAt"> & { tokens?: Tokens }>("/xero/account-activity", {
+        tokens: auth.tokens,
+        tenant_id: auth.tenantId,
+        accounts: input.accounts,
+        account_id: xeroAccountId,
+        period,
+        movement_cents: input.movementCents,
+      });
+      await persistRotated(ctx, input.orgId, result.tokens);
+      const data: Activity = {
+        lines: result.lines,
+        explained_cents: result.explained_cents,
+        unexplained_cents: result.unexplained_cents,
+        movementCents: input.movementCents,
+        fetchedAt: Date.now(),
+      };
+      await ctx.runMutation(internal.ledger.saveActivity, { orgId: input.orgId, xeroAccountId, period, version: input.version, data });
+      return data;
+    } catch (err) {
+      const message = err instanceof EngineError && err.status === 429 ? "Xero is busy. Try again in a minute." : "Xero didn't answer. Try again shortly.";
+      if (cached) return { ...cached.data, stale: true, error: message };
+      return { lines: [], explained_cents: 0, unexplained_cents: input.movementCents, movementCents: input.movementCents, fetchedAt: 0, error: message };
+    }
   },
 });
