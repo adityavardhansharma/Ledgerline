@@ -323,11 +323,9 @@ function useWidth(initial) {
   }, []);
   return [ref, Math.max(300, st[0])];
 }
-var uidN = 0;
+// Stable across server and client render, so SVG gradient and pattern ids hydrate cleanly.
 function useUid(prefix) {
-  var r = React.useRef(null);
-  if (r.current === null) r.current = (prefix || 'll') + (++uidN);
-  return r.current;
+  return (prefix || 'll') + React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
 }
 // Monotone cubic interpolation (Fritsch–Carlson): smooth, never overshoots a month's value.
 function smoothPath(pts) {
@@ -595,7 +593,7 @@ function WaterfallChart(p) {
   var closes = Math.abs(bars[bars.length - 1].b - bars[bars.length - 2].b) < 0.5;
   var vals = []; bars.forEach(function (b) { vals.push(b.a, b.b); });
   var sc = niceScale(Math.min.apply(null, vals.concat([0])), Math.max.apply(null, vals), 4);
-  var n = bars.length, slot = (W - pl - pr) / n, bw = Math.min(56, slot * 0.64);
+  var n = bars.length, slot = (W - pl - pr) / n, bw = Math.min(56, slot * 0.64), compact = slot < 68;
   function Y(v) { return pt + (1 - (v - sc.lo) / (sc.hi - sc.lo)) * (H - pt - pb); }
   var fmt = function (v) { return formatMoney(v, { compact: true }); };
   var kids = [];
@@ -611,13 +609,19 @@ function WaterfallChart(p) {
     kids.push(h('rect', { key: 'b' + i, className: cx('ll-wf-bar', cls, dim && 'is-dim'), x: x, y: top, width: bw, height: hgt, rx: Math.min(6, hgt / 2), fill: total ? 'url(#' + uid + 't)' : undefined }));
     if (i < n - 1) kids.push(h('line', { key: 'c' + i, className: 'll-wf-conn', x1: x + bw, x2: x + slot, y1: Y(b.b), y2: Y(b.b) }));
     var label = total ? fmt(b.s.value) : (b.s.value >= 0 ? '+' : '') + fmt(b.s.value), lw = textW(label, 11) + 10;
-    kids.push(h('g', { key: 'v' + i, transform: 'translate(' + (x + bw / 2 - lw / 2) + ',' + (top - 24) + ')' },
+    // In narrow panels only totals and the hovered step carry a chip, so chips never collide.
+    if (!compact || total || hi === i) kids.push(h('g', { key: 'v' + i, transform: 'translate(' + (x + bw / 2 - lw / 2) + ',' + (top - 24) + ')' },
       h('rect', { className: cx('ll-wf-chip', cls), width: lw, height: 18, rx: 9 }),
       h('text', { className: cx('ll-wf-chiptext', cls), x: lw / 2, y: 12.5, textAnchor: 'middle' }, label)));
     var words = b.s.label.split(' '), half = Math.ceil(words.length / 2);
-    kids.push(h('text', { key: 'x' + i, className: cx('ll-ch-xlabel', hi === i && 'is-hot'), x: x + bw / 2, y: H - 30, textAnchor: 'middle' },
-      h('tspan', { x: x + bw / 2, dy: 0 }, words.slice(0, half).join(' ')),
-      words.length > 1 ? h('tspan', { x: x + bw / 2, dy: 14 }, words.slice(half).join(' ')) : null));
+    if (compact) {
+      var short = b.s.label.length > 11 ? b.s.label.slice(0, 10) + '\u2026' : b.s.label;
+      kids.push(h('text', { key: 'x' + i, className: cx('ll-ch-xlabel', hi === i && 'is-hot'), x: x + bw / 2, y: H - 40, textAnchor: 'end', transform: 'rotate(-35 ' + (x + bw / 2) + ' ' + (H - 40) + ')' }, short));
+    } else {
+      kids.push(h('text', { key: 'x' + i, className: cx('ll-ch-xlabel', hi === i && 'is-hot'), x: x + bw / 2, y: H - 30, textAnchor: 'middle' },
+        h('tspan', { x: x + bw / 2, dy: 0 }, words.slice(0, half).join(' ')),
+        words.length > 1 ? h('tspan', { x: x + bw / 2, dy: 14 }, words.slice(half).join(' ')) : null));
+    }
     kids.push(h('rect', { key: 'hit' + i, x: pl + i * slot, y: pt - 30, width: slot, height: H - pt + 30, fill: 'transparent', onMouseEnter: function () { hv[1](i); } }));
   });
   return h('figure', { className: 'll-chart' },
@@ -932,7 +936,7 @@ function LedgerTable(p) {
           h('td', { className: 'll-nowrap' }, l.date),
           h('td', null, h('span', { className: 'll-code' }, l.journal)),
           hide.indexOf('account') < 0 ? h('td', { className: 'll-nowrap' }, h('span', { className: 'll-fs-code' }, l.code), ' ', l.account) : null,
-          h('td', null, l.contact || h('span', { className: 'll-muted' }, '—')),
+          hide.indexOf('contact') < 0 ? h('td', null, l.contact || h('span', { className: 'll-muted' }, '\u2014')) : null,
           h('td', { className: 'll-desc' }, l.description),
           h('td', { className: 'is-num' }, l.debit ? h(Amount, { value: l.debit, decimals: 2 }) : null),
           h('td', { className: 'is-num' }, l.credit ? h(Amount, { value: l.credit, decimals: 2 }) : null));

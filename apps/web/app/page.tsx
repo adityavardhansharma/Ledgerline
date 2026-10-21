@@ -1,3 +1,11 @@
+import { Landing } from "@/components/landing/Landing";
+import "./landing.css";
+
+export const metadata = {
+  title: { absolute: "Ledgerline · Management accounts and forecasts from Xero" },
+  description: "Your profit and loss, balance sheet, cash flow and runway, every morning, checked against Xero to the cent.",
+};
+
 export default function Home() {
-  return <main style={{ padding: 48, fontFamily: "var(--font-display)", fontSize: 48 }}>Ledgerline</main>;
+  return <Landing />;
 }
