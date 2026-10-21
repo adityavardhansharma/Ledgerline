@@ -30,8 +30,10 @@ export const facts = internalQuery({
       { id: "cash", label: "Cash at bank", value: money(m.cash), source: `Bank accounts at month end` },
       { id: "debtors", label: "Trade debtors", value: money(m.debtors), source: "Balance sheet" },
     ];
-    if (m.revenueDelta != null) list.push({ id: "revenueDelta", label: "Revenue change on previous month", value: pct(m.revenueDelta), source: "Revenue, month on month" });
-    if (m.cashDelta != null) list.push({ id: "cashDelta", label: "Cash change on previous month", value: pct(m.cashDelta), source: "Bank, month on month" });
+    // A change is a size and a direction: "fall of 4.5%", never "-4.5%", so the prose can't say "down by -4.5%".
+    const change = (x: number) => (x < 0 ? "fall" : "rise");
+    if (m.revenueDelta != null) list.push({ id: "revenueDelta", label: `Revenue ${change(m.revenueDelta)} on previous month`, value: pct(Math.abs(m.revenueDelta)), source: "Revenue, month on month" });
+    if (m.cashDelta != null) list.push({ id: "cashDelta", label: `Cash ${change(m.cashDelta)} on previous month`, value: pct(Math.abs(m.cashDelta)), source: "Bank, month on month" });
     if (m.debtorDays != null) list.push({ id: "debtorDays", label: "Debtor days", value: `${m.debtorDays} days`, source: "Debtors ÷ last three months' revenue" });
     if (m.runwayMonths != null) list.push({ id: "runway", label: "Cash runway", value: `${m.runwayMonths} months`, source: "Cash ÷ average monthly outflow" });
     return { orgId: found.org._id, period: m.month as string, facts: list };
