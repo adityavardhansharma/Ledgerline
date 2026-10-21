@@ -165,6 +165,7 @@ function SyncScreen() {
                     connection.status === "connected" ? (
                       <>
                         <a href="https://go.xero.com" target="_blank" rel="noreferrer"><Button variant="ghost" icon="external">Open Xero</Button></a>
+                        {workspace.role === "owner" ? <ConnectButton label="Switch organisation" variant="ghost" /> : null}
                         {workspace.role === "owner" ? <Button variant="danger" onClick={() => setConfirming(true)}>Disconnect</Button> : null}
                       </>
                     ) : (

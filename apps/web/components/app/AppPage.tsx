@@ -1,13 +1,13 @@
 "use client";
 
-import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs";
+import { OrganizationSwitcher, UserButton, useAuth, useUser } from "@clerk/nextjs";
 import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { ago } from "@/lib/format";
+import { ago, periodLabel } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 import { ThemeToggle } from "../ThemeToggle";
@@ -41,6 +41,9 @@ export function AppPage(props: Props) {
 function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay, needsData, children }: Props) {
   const workspace = useWorkspace();
   const { orgId, isLoaded } = useAuth();
+  const { user } = useUser();
+  const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || workspace?.user || "";
+  const roleName = workspace ? { owner: "Owner", editor: "Editor", accountant: "Accountant" }[workspace.role] : "";
   const router = useRouter();
   useEffect(() => {
     if (isLoaded && !orgId) router.replace("/onboarding");
@@ -53,6 +56,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
     items: NAV_ITEMS,
     settingsHref: ROUTES.settings,
     runway: null as number | null,
+    user: userName || " ",
+    role: roleName || " ",
     syncing: Boolean(syncing),
     syncText: syncing
       ? `${workspace?.lastSync?.source === "xero" ? "Syncing" : "Importing"} · ${workspace?.lastSync?.journalsStored ?? 0} journals`
@@ -92,7 +97,15 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   if (workspace === undefined || workspace === null) {
     body = <BackendStatus waiting />;
   } else if (needsData && !workspace.org.asOf) {
-    body = workspace.connection || workspace.lastSync ? <FirstSyncPending workspace={workspace} /> : <NoFigures workspace={workspace} />;
+    const finished = workspace.lastSync && ["done", "needsReview"].includes(workspace.lastSync.status);
+    body =
+      finished && workspace.connection && workspace.org.source !== "csv" && workspace.org.source !== "sample" ? (
+        <EmptyXero workspace={workspace} />
+      ) : workspace.connection || workspace.lastSync ? (
+        <FirstSyncPending workspace={workspace} />
+      ) : (
+        <NoFigures workspace={workspace} />
+      );
   } else {
     body = (
       <>
@@ -148,14 +161,22 @@ function ConnectionBanner({ workspace }: { workspace: Workspace }) {
   return null;
 }
 
-export function ConnectButton({ label = "Connect Xero", size = "md" as "sm" | "md" | "lg" }: { label?: string; size?: "sm" | "md" | "lg" }) {
+export function ConnectButton({
+  label = "Connect Xero",
+  size = "md" as "sm" | "md" | "lg",
+  variant = "primary" as "primary" | "secondary" | "ghost",
+}: {
+  label?: string;
+  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "secondary" | "ghost";
+}) {
   const begin = useAction(api.xero.beginConnect);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <span className="ll-row">
       <Button
-        variant="primary"
+        variant={variant}
         icon="link"
         size={size}
         loading={busy}
@@ -218,6 +239,33 @@ function NoFigures({ workspace }: { workspace: Workspace }) {
         Ledgerline builds management accounts and a three-statement forecast from your ledger. Choose where the figures come from.
       </EmptyState>
       <DataSources workspace={workspace} />
+    </div>
+  );
+}
+
+/** The sync worked but the Xero organisation has nothing in it yet (a new trial organisation, for example). */
+function EmptyXero({ workspace }: { workspace: Workspace }) {
+  const connection = workspace.connection!;
+  return (
+    <div className="ll-panel">
+      <EmptyState
+        icon="database"
+        title={`${connection.tenantName} has no transactions yet`}
+        action={
+          workspace.role === "owner" ? (
+            <span className="ll-row">
+              <ConnectButton label="Switch Xero organisation" />
+              <Link href={ROUTES.sync}>
+                <Button>See the sync</Button>
+              </Link>
+            </span>
+          ) : null
+        }
+      >
+        Ledgerline read {connection.tenantName}
+        {connection.historyFrom ? ` back to ${periodLabel(connection.historyFrom)}` : ""} and found nothing to report. A new Xero organisation starts empty. To see
+        Ledgerline with real figures, switch to Xero&apos;s Demo Company, which is under the same Xero login, or add transactions in Xero and sync again.
+      </EmptyState>
     </div>
   );
 }
