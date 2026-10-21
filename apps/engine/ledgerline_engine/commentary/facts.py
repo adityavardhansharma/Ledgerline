@@ -321,11 +321,24 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "performance",
                 f"mover{index}",
-                f"{name} ({kind}): {'up' if a > b else 'down'} on the previous month",
+                f"{name} ({kind}): size of the {'increase' if a > b else 'decrease'} on the previous month (a change, not a level)",
                 eur(to_cents(abs(a - b))),
                 "Largest movements by account",
             )
-            pack.add("performance", f"mover{index}Now", f"{name} in {month}", eur(to_cents(a)), "Account total for the month")
+            pack.add(
+                "performance",
+                f"mover{index}Prev",
+                f"{name} in {month_name(prev_p)} (the level before)",
+                eur(to_cents(b)),
+                "Account total for the month",
+            )
+            pack.add(
+                "performance",
+                f"mover{index}Now",
+                f"{name} in {month} (the level now)",
+                eur(to_cents(a)),
+                "Account total for the month",
+            )
 
     # ---------- cash and working capital ----------
     cash = ledger.line_balance(Line.CASH, m)
@@ -591,8 +604,8 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "outlook",
                 "forecastCash12m",
-                f"Forecast cash at bank in {month_name(months[11]['period'])}",
-                eur(months[11]["cash"]),
+                "Forecast cash at bank twelve months ahead",
+                f"{eur(months[11]['cash'])} in {month_name(months[11]['period'])}",
                 "Base-case forecast",
             )
         sens = forecast.get("sensitivity") or {}

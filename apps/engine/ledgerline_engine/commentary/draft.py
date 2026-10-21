@@ -116,7 +116,7 @@ SYSTEM = (
     'fact). For example [{"text": "Revenue was ", "fact": "revenue"}, {"text": ", ", "fact": "revenueVsPrev"}, '
     '{"text": " on the previous month.", "fact": ""}]. Never write a number, a year, a currency sign or a '
     "percentage in text: every figure, date with a year, and amount must come from a fact (the month itself is the "
-    "fact 'month'). Read each fact's label so the words around it make sense: a label saying 'down' means a fall. "
+    "fact 'month'). Read each fact's label so the words around it make sense: a label saying 'down' means a fall, and a change is a difference, never a starting or ending level. "
     "Cite each figure at most once per section and do not repeat a figure the headline already gave unless it adds "
     "a comparison. Management notes are context from the team: use them to explain causes, never quote figures "
     "from them, and never contradict the facts. Do not speculate beyond the facts and notes."
