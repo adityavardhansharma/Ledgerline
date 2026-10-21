@@ -112,6 +112,7 @@ function ForecastScreen() {
         const chart = cashChart(snapshot, scenario.isBase ? forecast : baseForecast ?? forecast, scenario.isBase ? null : forecast);
         const ownHires = scenario.own.hires;
         return (
+          <>
           <div className="ll-grid-2r">
             <Panel title="Drivers" icon="settings" subtitle={readOnly ? "The base case follows your actuals. Branch it to change drivers." : "Changes from the parent scenario are marked"}>
               <Tabs label="Forecast sections" value={tab} onChange={setTab} tabs={[
@@ -208,13 +209,14 @@ function ForecastScreen() {
                   )}
                 </Panel>
               </div>
-              {forecast ? (
-                <Panel title="Three statements" icon="statement" subtitle="Every month balances: assets less liabilities equal equity" actions={<Tabs label="Statement" value={statementTab} onChange={setStatementTab} tabs={[{ id: "pnl", label: "Profit and loss" }, { id: "bs", label: "Balance sheet" }, { id: "cf", label: "Cash flow" }]} />} flush>
-                  <ForecastStatement run={forecast} kind={statementTab} />
-                </Panel>
-              ) : null}
             </div>
           </div>
+          {forecast ? (
+            <Panel title="Three statements" icon="statement" subtitle="Every month balances: assets less liabilities equal equity" actions={<Tabs label="Statement" value={statementTab} onChange={setStatementTab} tabs={[{ id: "pnl", label: "Profit and loss" }, { id: "bs", label: "Balance sheet" }, { id: "cf", label: "Cash flow" }]} />} flush>
+              <ForecastStatement run={forecast} kind={statementTab} />
+            </Panel>
+          ) : null}
+          </>
         );
       }}
     </AppPage>

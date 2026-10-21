@@ -760,7 +760,7 @@ g.is-dim { opacity: .3; }
 .ll-shell > .ll-sidebar, .ll-sidebar { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; top: 0; max-height: 100vh; padding: var(--space-4) var(--space-3); }
 .ll-shell > .ll-sidebar { border-right: 0; }
 .ll-main { margin: 8px 8px 8px 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; min-height: calc(100vh - 16px); overflow: clip; }
-.ll-topbar { background: color-mix(in srgb, var(--surface) 88%, transparent); border-bottom: 1px solid var(--rule); padding: var(--space-5) var(--space-8) var(--space-4); }
+.ll-topbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--rule); padding: var(--space-5) var(--space-8) var(--space-4); }
 .ll-page-title { font-size: 34px; line-height: 38px; }
 .ll-page { padding: var(--space-6) var(--space-8) var(--space-10); gap: var(--space-6); }
 @media (max-width: 900px) { .ll-main { margin: 0; border-radius: 0; border: 0; } }
