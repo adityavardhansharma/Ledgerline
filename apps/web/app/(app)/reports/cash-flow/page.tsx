@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { euro, statementCsv, toCsv } from "@/lib/csv";
 import { money, periodLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
-import { bridgeSteps, statementRows } from "@/lib/views";
+import { bridgeSteps, everyDay, statementRows } from "@/lib/views";
 
 export default function CashFlowPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
@@ -56,7 +56,7 @@ export default function CashFlowPage() {
               </div>
             </div>
             <Panel title="Every day in the bank" icon="calendar" subtitle="Payroll, rent and tax days show as red stripes">
-              {daily && daily.length ? <CalendarHeatmap cell={15} days={daily.map((d) => ({ date: d.date, value: d.valueCents / 100 }))} /> : <p className="ll-muted">No bank movements yet.</p>}
+              {daily && daily.length ? <CalendarHeatmap cell={15} days={everyDay(daily, snapshot.series.periods.at(-6)!, snapshot.asOf)} /> : <p className="ll-muted">No bank movements yet.</p>}
             </Panel>
           </>
         );

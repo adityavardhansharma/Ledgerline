@@ -72,3 +72,19 @@ export function monthName(period: string) {
 }
 
 export const cents = toEuros;
+
+/**
+ * Every day from the first of ``fromPeriod`` to the end of ``toPeriod``, with the bank's net movement (zero
+ * on days without one). The calendar draws one cell per entry in order, so gaps must be filled.
+ */
+export function everyDay(rows: { date: string; valueCents: number }[], fromPeriod: string, toPeriod: string) {
+  const byDate = new Map(rows.map((r) => [r.date, r.valueCents]));
+  const [y, m] = toPeriod.split("-").map(Number);
+  const end = new Date(Date.UTC(y, m, 0));
+  const out: { date: string; value: number }[] = [];
+  for (let d = new Date(`${fromPeriod}-01T00:00:00Z`); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const date = d.toISOString().slice(0, 10);
+    out.push({ date, value: (byDate.get(date) ?? 0) / 100 });
+  }
+  return out;
+}

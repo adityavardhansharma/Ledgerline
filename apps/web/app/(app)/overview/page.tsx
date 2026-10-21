@@ -27,7 +27,7 @@ import { api } from "@/convex/_generated/api";
 import { money, periodLabel } from "@/lib/format";
 import { ROUTES } from "@/lib/nav";
 import type { Snapshot } from "@/lib/types";
-import { bridgeSteps, cashChart, sankeyData } from "@/lib/views";
+import { bridgeSteps, cashChart, everyDay, sankeyData } from "@/lib/views";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -124,7 +124,10 @@ export default function OverviewPage() {
             <div className="ll-grid-2">
               <Panel title="Daily cash movement" icon="calendar" subtitle="Money in and out of the bank over the last six months">
                 {daily && daily.length ? (
-                  <CalendarHeatmap cell={17} days={daily.map((d) => ({ date: d.date, value: d.valueCents / 100, label: new Date(d.date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) }))} />
+                  <CalendarHeatmap
+                    cell={17}
+                    days={everyDay(daily, snapshot.series.periods.at(-6)!, snapshot.asOf).map((d) => ({ ...d, label: new Date(d.date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) }))}
+                  />
                 ) : (
                   <p className="ll-muted">No bank movements yet.</p>
                 )}
