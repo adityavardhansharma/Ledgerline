@@ -1008,20 +1008,10 @@ g.is-dim { opacity: .3; }
 .ll-plan-main .ll-plan-amt-n { font: 400 11.5px/16px var(--font-sans); color: var(--ink-subtle); text-align: right; }
 
 
-/* board pack: the commentary studio (notes, tone, length), sectioned commentary, versions and questions */
+/* board pack: the commentary toolbar, sectioned commentary, versions and notes */
 .ll-textarea { width: 100%; box-sizing: border-box; min-height: 96px; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: 400 14px/21px var(--font-sans); resize: vertical; box-shadow: var(--shadow-xs); transition: border-color .15s, box-shadow .15s; }
 .ll-textarea:hover { border-color: var(--ink-muted); }
 .ll-textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--forecast-tint); }
-.ll-studio { width: 100%; max-width: 920px; margin: 0 auto; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
-.ll-studio-notes { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.ll-studio-notes .ll-field-hint { margin: 0 0 4px; }
-.ll-studio-saved { min-height: 16px; font-size: 12px; color: var(--ink-subtle); }
-.ll-studio-options { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
-.ll-studio-options .ll-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
-.ll-studio-options .ll-seg-opt { justify-content: center; }
-.ll-studio-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: 4px; }
-.ll-studio-options .ll-field-hint { margin: 0; }
-@media (max-width: 760px) { .ll-studio { grid-template-columns: minmax(0, 1fr); } }
 
 /* The commentary reads like a printed board report: a ruled header, numbered sections with serif titles,
    a quiet "at a glance" block, and figures set inline. */
@@ -1049,8 +1039,8 @@ g.is-dim { opacity: .3; }
 
 /* In running prose a figure reads as part of the sentence: tabular, a touch heavier, with a dotted rule that
    says "hover for the source", rather than a boxed chip on every number. */
-.ll-bc .ll-cite, .ll-ask .ll-cite { font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); background: none; padding: 0 1px; border-radius: 3px; vertical-align: baseline; border-bottom: 1px dotted var(--brand); }
-.ll-bc .ll-cite:hover, .ll-ask .ll-cite:hover { box-shadow: none; background: var(--brand-tint); color: var(--brand); }
+.ll-bc .ll-cite { font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); background: none; padding: 0 1px; border-radius: 3px; vertical-align: baseline; border-bottom: 1px dotted var(--brand); }
+.ll-bc .ll-cite:hover { box-shadow: none; background: var(--brand-tint); color: var(--brand); }
 .ll-bc .ll-cite.is-locked { background: var(--brand-tint); padding: 0 4px; border-bottom: 0; }
 .ll-bc-risks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
 .ll-bc-risks li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--rule); font-size: 15px; line-height: 24px; }
@@ -1095,22 +1085,6 @@ g.is-dim { opacity: .3; }
 .ll-versions strong { font-size: 13.5px; font-weight: 600; }
 .ll-versions small { font-size: 12px; color: var(--ink-muted); }
 
-.ll-ask { width: 100%; max-width: 920px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
-.ll-ask-head { display: flex; gap: 12px; align-items: flex-start; }
-.ll-ask-icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--forecast-tint); color: var(--forecast); }
-.ll-ask-head h3 { margin: 0; font: 600 15px/20px var(--font-sans); }
-.ll-ask-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-muted); }
-.ll-ask-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
-.ll-ask-suggest button { all: unset; cursor: pointer; padding: 7px 12px; border: 1px solid var(--rule); border-radius: var(--radius-pill); font-size: 13px; color: var(--ink-muted); transition: border-color .15s, color .15s, background .15s; }
-.ll-ask-suggest button:hover { border-color: var(--forecast); color: var(--forecast); background: var(--forecast-tint); }
-.ll-ask-thread { display: flex; flex-direction: column; gap: var(--space-4); max-height: 520px; overflow-y: auto; }
-.ll-ask-q { align-self: flex-end; margin: 0 0 8px auto; max-width: 80%; width: fit-content; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: var(--brand-tint); color: var(--ink); font-size: 14px; line-height: 20px; }
-.ll-ask-turn { display: flex; flex-direction: column; }
-.ll-ask-a p { margin: 0 0 8px; font-size: 14.5px; line-height: 23px; max-width: 72ch; }
-.ll-ask-error { margin: 0; font-size: 13.5px; color: var(--negative); }
-.ll-ask-form { display: flex; gap: var(--space-2); }
-.ll-ask-input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: 400 14px var(--font-sans); }
-.ll-ask-input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--forecast-tint); }
 @media print { .ll-bc-tools, .ll-bc-foot { display: none; } .ll-bc-section { break-inside: avoid; } }
 .ll-tm-label.is-small { font-size: 11px; font-weight: 600; }
 .ll-tm-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
@@ -1125,3 +1099,28 @@ g.is-dim { opacity: .3; }
 .ll-picker-wrap > .ll-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 240px; }
 .ll-picker:disabled { cursor: default; }
 .ll-picker.is-static { cursor: default; } .ll-picker.is-static:hover { border-color: var(--rule); }
+
+.ll-studio { width: 100%; max-width: 920px; margin: 0 auto; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; padding: 12px 14px 12px 16px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }
+.ll-studio-intro { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ll-studio-icon, .ll-notes-icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 9px; background: var(--surface-sunken); color: var(--ink); border: 1px solid var(--rule); }
+.ll-studio-intro strong { display: block; font: 600 14px/18px var(--font-sans); }
+.ll-studio-intro span { display: block; font-size: 12.5px; line-height: 17px; color: var(--ink-muted); }
+.ll-studio-options { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.ll-notes { width: 100%; max-width: 920px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.ll-notes-head { display: flex; gap: 12px; align-items: flex-start; }
+.ll-notes-head h3 { margin: 0; font: 400 20px/26px var(--font-display); letter-spacing: -0.01em; }
+.ll-notes-head p { margin: 2px 0 0; font-size: 13px; line-height: 19px; color: var(--ink-muted); max-width: 64ch; }
+.ll-notes-prompts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ll-notes-prompts button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--rule); border-radius: var(--radius-pill); font-size: 12.5px; line-height: 16px; color: var(--ink-muted); transition: border-color .15s, color .15s, background .15s; }
+.ll-notes-prompts button:hover { border-color: var(--ink-muted); color: var(--ink); background: var(--surface-hover); }
+.ll-notes-prompts button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-notes-box { width: 100%; box-sizing: border-box; min-height: 132px; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface-sunken); color: var(--ink); font: 400 15px/24px var(--font-sans); resize: vertical; transition: border-color .15s, box-shadow .15s, background .15s; }
+.ll-notes-box::placeholder { color: var(--ink-subtle); }
+.ll-notes-box:focus { outline: none; background: var(--surface); border-color: var(--focus); box-shadow: 0 0 0 3px var(--forecast-tint); }
+.ll-notes-foot { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.ll-notes-state { flex: 1; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-muted); }
+.ll-notes-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); }
+.ll-notes-state.is-dirty::before, .ll-notes-state.is-saving::before { background: var(--warning); }
+.ll-notes-state.is-error { color: var(--negative); } .ll-notes-state.is-error::before { background: var(--negative); }
+.ll-notes-count { font: 400 12px var(--font-mono); color: var(--ink-subtle); }

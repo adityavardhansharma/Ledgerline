@@ -4,7 +4,7 @@ import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, 
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
-import { AskFigures, BoardCommentary, CommentaryStudio, errorText, VersionHistory } from "@/components/app/BoardCommentary";
+import { BoardCommentary, BoardNotes, CommentaryToolbar, errorText, VersionHistory } from "@/components/app/BoardCommentary";
 import type { Section } from "@/convex/commentary";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
@@ -72,7 +72,7 @@ export default function BoardPackPage() {
         const monthIndex = snapshot.pnl.columns.findIndex((c) => c.period === snapshot.asOf);
         return (
           <>
-            <CommentaryStudio commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
+            <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
             {error ? (
               <div className="no-print">
                 <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner>
@@ -147,7 +147,7 @@ export default function BoardPackPage() {
                 drillable={false}
               />
             </div>
-            {commentary?.sections ? <AskFigures /> : null}
+            <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
           </>
         );
       }}

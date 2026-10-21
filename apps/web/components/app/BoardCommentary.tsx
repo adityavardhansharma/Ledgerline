@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Citation, Commentary, Prose, Question, Risk, Section, Sections } from "@/convex/commentary";
@@ -296,8 +296,8 @@ export function BoardCommentary({ commentary, busy, onRedraft }: { commentary: C
   );
 }
 
-/** Notes, tone and length for the draft, and the draft button. Sits above the pack and never prints. */
-export function CommentaryStudio({
+/** Who the draft is written for, how long it runs, and the draft button. Sits above the pack and never prints. */
+export function CommentaryToolbar({
   commentary,
   busy,
   onDraft,
@@ -308,10 +308,6 @@ export function CommentaryStudio({
   onDraft: (opts: { tone: string; length: string }) => void;
   onHistory: () => void;
 }) {
-  const notes = useQuery(api.commentary.notes, {});
-  const saveNotes = useMutation(api.commentary.saveNotes);
-  const [text, setText] = useState<string | null>(null);
-  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [tone, setTone] = useState(commentary?.tone ?? "board");
   const [length, setLength] = useState(commentary?.length ?? "standard");
   useEffect(() => {
@@ -320,72 +316,126 @@ export function CommentaryStudio({
       setLength(commentary.length);
     }
   }, [commentary?.tone, commentary?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <section className="ll-studio no-print">
+      <div className="ll-studio-intro">
+        <span className="ll-studio-icon"><Icon name="sparkle" size={16} /></span>
+        <div>
+          <strong>Commentary</strong>
+          <span>Drafted from every figure, the forecast and its scenarios. About half a minute.</span>
+        </div>
+      </div>
+      <div className="ll-studio-options">
+        <SegmentedControl label="Written for" size="sm" value={tone} onChange={setTone} options={TONES} />
+        <SegmentedControl label="Length" size="sm" value={length} onChange={setLength} options={LENGTHS} />
+        {commentary ? (
+          <Button variant="ghost" size="sm" icon="clock" onClick={onHistory}>
+            Versions
+          </Button>
+        ) : null}
+        <Button variant="primary" size="sm" icon="sparkle" loading={busy} onClick={() => onDraft({ tone, length })}>
+          {commentary ? "Redraft all" : "Draft commentary"}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+const PROMPTS = ["Contracts won or lost", "Hires and leavers", "Price changes", "One-off costs or income", "Big customers"];
+const ago = (ms: number) => {
+  const minutes = Math.round((Date.now() - ms) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return hours < 24 ? `${hours} h ago` : new Date(ms).toLocaleDateString("en-IE", { day: "numeric", month: "short" });
+};
+
+/**
+ * Context only the team knows, for this month's draft. Saved as you leave the box; the next draft (or a redraft
+ * from here) uses it to explain causes. Never printed, and never a source of figures.
+ */
+export function BoardNotes({ canRedraft, busy, onRedraft }: { canRedraft: boolean; busy: boolean; onRedraft: () => void }) {
+  const notes = useQuery(api.commentary.notes, {});
+  const saveNotes = useMutation(api.commentary.saveNotes);
+  const [text, setText] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const box = useRef<HTMLTextAreaElement>(null);
   const value = text ?? notes?.text ?? "";
+  const dirty = text !== null && text !== (notes?.text ?? "");
 
   const persist = async () => {
-    if (text === null || text === notes?.text) return;
+    if (!dirty || text === null) return true;
     setState("saving");
     try {
       await saveNotes({ text });
       setState("saved");
+      return true;
     } catch {
       setState("error");
+      return false;
     }
+  };
+  const add = (prompt: string) => {
+    const next = `${value.trim() ? `${value.replace(/\s+$/, "")}\n` : ""}${prompt}: `;
+    setText(next);
+    setState("idle");
+    requestAnimationFrame(() => {
+      box.current?.focus();
+      box.current?.setSelectionRange(next.length, next.length);
+    });
   };
 
   return (
-    <section className="ll-studio no-print">
-      <div className="ll-studio-notes">
-        <label htmlFor="board-notes" className="ll-field-label">
-          Notes for this month
-        </label>
-        <p className="ll-field-hint">What the figures can&apos;t say: contracts won or lost, hires, price changes, one-offs. The draft uses them to explain causes.</p>
-        <textarea
-          id="board-notes"
-          className="ll-textarea"
-          rows={4}
-          placeholder="e.g. Won the Seaview Hotel refurbishment. Glenmore phase two starts in November. Price rise from March."
-          value={value}
-          maxLength={4000}
-          onChange={(e) => {
-            setText(e.target.value);
-            setState("idle");
-          }}
-          onBlur={persist}
-        />
-        <span className="ll-studio-saved">
-          {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : state === "error" ? "Couldn't save" : notes?.updatedBy ? `Last edited by ${notes.updatedBy}` : ""}
+    <section className="ll-notes no-print">
+      <header className="ll-notes-head">
+        <span className="ll-notes-icon"><Icon name="edit" size={16} /></span>
+        <div>
+          <h3>Notes for this month&apos;s commentary</h3>
+          <p>What the figures can&apos;t say on their own. The draft uses these to explain why things moved; they never print and are never quoted as figures.</p>
+        </div>
+      </header>
+      <div className="ll-notes-prompts">
+        {PROMPTS.map((p) => (
+          <button key={p} type="button" onClick={() => add(p)}>
+            <Icon name="plus" size={12} /> {p}
+          </button>
+        ))}
+      </div>
+      <textarea
+        ref={box}
+        id="board-notes"
+        aria-label="Notes for this month's commentary"
+        className="ll-notes-box"
+        rows={5}
+        placeholder={"Won the Seaview Hotel refurbishment.\nGlenmore phase two starts in November.\nPrices rose from March."}
+        value={value}
+        maxLength={4000}
+        onChange={(e) => {
+          setText(e.target.value);
+          setState("idle");
+        }}
+        onBlur={() => void persist()}
+      />
+      <footer className="ll-notes-foot">
+        <span className={`ll-notes-state is-${dirty && state === "idle" ? "dirty" : state}`}>
+          {state === "saving"
+            ? "Saving…"
+            : state === "error"
+              ? "Couldn't save. Try again."
+              : dirty
+                ? "Unsaved changes"
+                : notes?.updatedBy && notes.updatedAt
+                  ? `Saved · ${notes.updatedBy}, ${ago(notes.updatedAt)}`
+                  : "Notes save as you click away"}
         </span>
-      </div>
-      <div className="ll-studio-options">
-        <div className="ll-field">
-          <span className="ll-field-label">Written for</span>
-          <SegmentedControl label="Written for" size="sm" value={tone} onChange={setTone} options={TONES} />
-        </div>
-        <div className="ll-field">
-          <span className="ll-field-label">Length</span>
-          <SegmentedControl label="Length" size="sm" value={length} onChange={setLength} options={LENGTHS} />
-        </div>
-        <div className="ll-studio-actions">
-          <Button
-            variant="primary"
-            icon="sparkle"
-            loading={busy}
-            onClick={async () => {
-              await persist();
-              onDraft({ tone, length });
-            }}
-          >
-            {commentary ? "Redraft all" : "Draft commentary"}
+        <span className="ll-notes-count">{value.length.toLocaleString("en-IE")} / 4,000</span>
+        {canRedraft ? (
+          <Button size="sm" icon="refresh" loading={busy} onClick={async () => { if (await persist()) onRedraft(); }}>
+            Redraft with these notes
           </Button>
-          {commentary ? (
-            <Button variant="ghost" icon="clock" onClick={onHistory}>
-              Versions
-            </Button>
-          ) : null}
-        </div>
-        <p className="ll-field-hint">Drafting reads every figure, the forecast and its scenarios, and takes about half a minute.</p>
-      </div>
+        ) : null}
+      </footer>
     </section>
   );
 }
@@ -446,84 +496,5 @@ export function VersionHistory({ currentId, onClose }: { currentId: string | nul
         </ul>
       )}
     </Dialog>
-  );
-}
-
-const SUGGESTIONS = ["Why did cash move the way it did?", "Which customers matter most right now?", "Can we afford another hire?", "What should worry us about next quarter?"];
-
-/** Ask about this month's figures. Answers cite the same facts as the commentary. */
-export function AskFigures() {
-  const ask = useAction(api.commentary.ask);
-  const [question, setQuestion] = useState("");
-  const [turns, setTurns] = useState<{ question: string; answer: Prose[] | null; error?: string }[]>([]);
-  const busy = turns.some((t) => t.answer === null && !t.error);
-  const end = useRef<HTMLDivElement>(null);
-
-  const send = async (q: string) => {
-    const text = q.trim();
-    if (!text || busy) return;
-    setQuestion("");
-    const history = turns.filter((t) => t.answer).map((t) => ({ question: t.question, answer: (t.answer ?? []).map(proseText).join("\n") }));
-    setTurns((all) => [...all, { question: text, answer: null }]);
-    try {
-      const result = await ask({ question: text, history });
-      setTurns((all) => all.map((t, i) => (i === all.length - 1 ? { ...t, answer: result.answer } : t)));
-    } catch (err) {
-      setTurns((all) => all.map((t, i) => (i === all.length - 1 ? { ...t, error: errorText(err, "Couldn't answer that.") } : t)));
-    }
-    setTimeout(() => end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
-  };
-
-  return (
-    <section className="ll-ask no-print">
-      <div className="ll-ask-head">
-        <span className="ll-ask-icon"><Icon name="sparkle" size={16} /></span>
-        <div>
-          <h3>Ask about these figures</h3>
-          <p>Answers come from this month&apos;s accounts, forecast and notes, and cite every figure.</p>
-        </div>
-      </div>
-      {turns.length ? (
-        <div className="ll-ask-thread">
-          {turns.map((t, i) => (
-            <div key={i} className="ll-ask-turn">
-              <p className="ll-ask-q">{t.question}</p>
-              {t.error ? (
-                <p className="ll-ask-error">{t.error}</p>
-              ) : t.answer === null ? (
-                <Skeleton lines={2} />
-              ) : (
-                <div className="ll-ask-a">
-                  {t.answer.map((p, j) => (
-                    <p key={j}><Text parts={p} /></p>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          <div ref={end} />
-        </div>
-      ) : (
-        <div className="ll-ask-suggest">
-          {SUGGESTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => void send(s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-      <form
-        className="ll-ask-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send(question);
-        }}
-      >
-        <input className="ll-ask-input" value={question} maxLength={500} placeholder="e.g. Why is gross margin lower than in the spring?" onChange={(e) => setQuestion(e.target.value)} aria-label="Question about the figures" />
-        <Button type="submit" variant="primary" icon="arrow-right" disabled={!question.trim() || busy} loading={busy}>
-          Ask
-        </Button>
-      </form>
-    </section>
   );
 }
