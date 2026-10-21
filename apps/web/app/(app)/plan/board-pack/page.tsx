@@ -4,6 +4,8 @@ import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, 
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
+import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { periodLabel } from "@/lib/format";
@@ -40,9 +42,21 @@ export default function BoardPackPage() {
       breadcrumbs={["Plan", "Board pack"]}
       needsData
       actions={
-        <Button variant="primary" icon="download" disabled={commentary?.status !== "accepted"} onClick={() => window.print()}>
-          Export PDF
-        </Button>
+        <>
+          <ExportMenu
+            title={commentary?.status === "accepted" ? "Board pack" : "Board pack (draft)"}
+            disabled={!snapshot}
+            csv={[
+              { label: "Profit and loss", build: () => (snapshot ? statementCsv(snapshot.pnl) : null) },
+              { label: "Balance sheet", build: () => (snapshot ? statementCsv(snapshot.balance) : null) },
+              { label: "Cash flow", build: () => (snapshot ? statementCsv(snapshot.cashflow) : null) },
+              { label: "Monthly summary", build: () => (snapshot ? monthlySummaryCsv(snapshot) : null) },
+            ]}
+          />
+          <Button variant="primary" icon="download" disabled={commentary?.status !== "accepted"} onClick={() => window.print()}>
+            Export PDF
+          </Button>
+        </>
       }
     >
       {(workspace) => {

@@ -903,5 +903,10 @@ g.is-dim { opacity: .3; }
 }
 .ll-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
+/* ---------- export ---------- */
+.ll-export-menu { position: relative; display: inline-flex; }
+.ll-export-menu > .ll-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 240px; }
+.ll-export-error { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 320px; }
+@media print { .ll-export-menu { display: none !important; } }
 .ll-drop.is-invalid { border-color: var(--negative); }
 .ll-drop.is-invalid > .ll-icon { color: var(--negative); }

@@ -19,6 +19,8 @@ import {
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
+import { forecastCsv, monthlySummaryCsv } from "@/lib/csv";
 import { Reconciliation } from "@/components/app/Reconciliation";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
@@ -52,6 +54,14 @@ export default function OverviewPage() {
         <>
           <PeriodPicker label={snapshot ? periodLabel(snapshot.asOf) : "Latest month"} />
           <ScenarioSwitcher name="Base case" />
+          <ExportMenu
+            title="Overview"
+            disabled={!snapshot}
+            csv={[
+              { label: "Monthly summary", build: () => (snapshot ? monthlySummaryCsv(snapshot) : null) },
+              { label: "Base case forecast", build: () => (forecast ? forecastCsv(forecast, "Base case") : null) },
+            ]}
+          />
           <Link href={ROUTES.boardpack}>
             <Button icon="boardpack" variant="primary">Board pack</Button>
           </Link>

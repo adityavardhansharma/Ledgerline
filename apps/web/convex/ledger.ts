@@ -86,3 +86,19 @@ export const journals = query({
     return { ...result, page };
   },
 });
+
+/** The chart of accounts, in the same columns the CSV import reads. */
+export const chart = query({
+  args: {},
+  handler: async (ctx) => {
+    const found = await currentOrg(ctx);
+    if (!found) return [];
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_org", (q) => q.eq("orgId", found.org._id))
+      .collect();
+    return accounts
+      .map((a) => ({ code: a.code, name: a.name, type: a.type, systemAccount: a.systemAccount }))
+      .sort((a, b) => a.code.localeCompare(b.code, "en", { numeric: true }));
+  },
+});

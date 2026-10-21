@@ -20,6 +20,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
+import { forecastCsv, toCsv } from "@/lib/csv";
 import { BranchDialog } from "@/components/app/BranchDialog";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
@@ -80,6 +82,16 @@ function ForecastScreen() {
             value={scenarioId ?? ""}
             onChange={(e) => router.push(`${ROUTES.forecast}?scenario=${e.target.value}`)}
             options={(scenarios ?? []).map((s) => ({ value: s.id, label: s.isBase ? `${s.name} (base)` : s.name }))}
+          />
+          <ExportMenu
+            title={scenario ? `Forecast: ${scenario.name}` : "Forecast"}
+            disabled={!forecast}
+            csv={[
+              { label: scenario ? `${scenario.name} forecast` : "Forecast", build: () => (forecast && scenario ? forecastCsv(forecast, scenario.name) : null) },
+              ...(forecast?.sensitivity
+                ? [{ label: "Runway sensitivity", build: () => toCsv([["Driver", "Range", "Runway low (months)", "Runway high (months)"], ...forecast.sensitivity!.rows.map((r) => [r.label, r.range, r.low, r.high])]) }]
+                : []),
+            ]}
           />
           <Button variant="forecast" icon="branch" disabled={!scenario} onClick={() => setBranching(true)}>
             Branch

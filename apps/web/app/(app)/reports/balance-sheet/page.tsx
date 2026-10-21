@@ -3,9 +3,10 @@
 import { BalanceBars, BulletChart, Button, FinancialStatement, Panel, PeriodPicker } from "@ledgerline/ui";
 import { useQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
 import { Reconciliation } from "@/components/app/Reconciliation";
 import { api } from "@/convex/_generated/api";
-import { downloadCsv } from "@/lib/csv";
+import { statementCsv } from "@/lib/csv";
 import { money, periodLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
 import { statementRows } from "@/lib/views";
@@ -41,7 +42,7 @@ export default function BalanceSheetPage() {
       actions={
         <>
           <PeriodPicker label={snapshot ? `As at ${periodLabel(snapshot.asOf)}` : "Latest"} />
-          <Button icon="download" onClick={() => snapshot && downloadCsv("balance-sheet.csv", snapshot.balance)}>Export</Button>
+          <ExportMenu title="Balance sheet" disabled={!snapshot} csv={[{ label: "Balance sheet", build: () => (snapshot ? statementCsv(snapshot.balance) : null) }]} />
         </>
       }
     >

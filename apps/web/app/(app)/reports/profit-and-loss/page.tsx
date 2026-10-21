@@ -1,14 +1,15 @@
 "use client";
 
-import { BarChart, Button, FinancialStatement, KpiTile, Panel, PeriodPicker, ScenarioSwitcher, SegmentedControl, Treemap } from "@ledgerline/ui";
+import { BarChart, FinancialStatement, KpiTile, Panel, PeriodPicker, ScenarioSwitcher, SegmentedControl, Treemap } from "@ledgerline/ui";
 import { useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
 import { DrillDrawer, type DrillTarget } from "@/components/app/DrillDrawer";
 import { Reconciliation } from "@/components/app/Reconciliation";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
-import { downloadCsv } from "@/lib/csv";
+import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { periodLabel } from "@/lib/format";
 import type { Snapshot, StatementRow } from "@/lib/types";
 import { opexItems, pnlWithForecast } from "@/lib/views";
@@ -33,7 +34,14 @@ export default function ProfitAndLossPage() {
           <PeriodPicker label={snapshot ? `FY ${snapshot.fyStart.slice(0, 4)}` : "This year"} />
           <ScenarioSwitcher name="Base case" />
           <SegmentedControl label="Period" value={view} onChange={setView} options={[{ value: "m", label: "Monthly" }, { value: "q", label: "Quarterly" }]} />
-          <Button icon="download" onClick={() => snapshot && downloadCsv("profit-and-loss.csv", snapshot.pnl)}>Export</Button>
+          <ExportMenu
+            title="Profit and loss"
+            disabled={!snapshot}
+            csv={[
+              { label: "Profit and loss", build: () => (snapshot ? statementCsv(pnlWithForecast(snapshot.pnl, forecast)) : null) },
+              { label: "Monthly summary", build: () => (snapshot ? monthlySummaryCsv(snapshot) : null) },
+            ]}
+          />
         </>
       }
     >

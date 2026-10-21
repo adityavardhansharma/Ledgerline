@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
+import { euro, forecastCsv, toCsv } from "@/lib/csv";
 import { BranchDialog } from "@/components/app/BranchDialog";
 import { useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
@@ -57,7 +59,31 @@ export default function ScenariosPage() {
       subtitle={scenarios ? `${scenarios.length} plan${scenarios.length === 1 ? "" : "s"} for the next two years` : undefined}
       breadcrumbs={["Plan", "Scenarios"]}
       needsData
-      actions={base ? <Button variant="primary" icon="branch" onClick={() => setBranching(true)}>Branch the base case</Button> : null}
+      actions={
+        <>
+          <ExportMenu
+            title="Scenarios"
+            disabled={!scenarios?.length}
+            csv={[
+              {
+                label: "Scenario comparison",
+                build: () =>
+                  scenarios?.length
+                    ? toCsv([
+                        ["Scenario", "Branched from", "Runway (months)", "Lowest cash", "Cash at end", "Revenue, first 12 months", "EBITDA, first 12 months"],
+                        ...scenarios.map((s) => [s.name, s.isBase ? "" : (scenarios.find((p) => p.id === s.parentId)?.name ?? ""), s.summary?.runwayMonths ?? "", euro(s.summary?.lowestCash), euro(s.summary?.endCash), euro(s.summary?.revenueFirst12), euro(s.summary?.ebitdaFirst12)]),
+                      ])
+                    : null,
+              },
+              {
+                label: "Compared forecasts, monthly",
+                build: () => (baseRun && base ? forecastCsv(baseRun, base.name) + (otherRun && other && other.id !== base.id ? forecastCsv(otherRun, other.name).split("\n").slice(1).join("\n") : "") : null),
+              },
+            ]}
+          />
+          {base ? <Button variant="primary" icon="branch" onClick={() => setBranching(true)}>Branch the base case</Button> : null}
+        </>
+      }
       overlay={branching && base ? <BranchDialog fromId={base.id} fromName={base.name} onClose={() => setBranching(false)} onCreated={(id) => router.push(`${ROUTES.forecast}?scenario=${id}`)} /> : null}
     >
       {() => {

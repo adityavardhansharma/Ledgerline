@@ -1,8 +1,10 @@
 "use client";
 
 import { AuditTimeline, Button, Panel } from "@ledgerline/ui";
-import { usePaginatedQuery } from "convex/react";
+import { useConvex, usePaginatedQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
+import { toCsv } from "@/lib/csv";
 import { api } from "@/convex/_generated/api";
 
 function dayLabel(ms: number) {
@@ -14,6 +16,18 @@ function dayLabel(ms: number) {
 
 export default function AuditPage() {
   const { results, status, loadMore } = usePaginatedQuery(api.audit.list, {}, { initialNumItems: 40 });
+  const convex = useConvex();
+  const auditCsv = async () => {
+    const rows: (string | number)[][] = [];
+    let cursor: string | null = null;
+    for (;;) {
+      const page: Awaited<ReturnType<typeof convex.query<typeof api.audit.list>>> = await convex.query(api.audit.list, { paginationOpts: { numItems: 500, cursor } });
+      for (const e of page.page) rows.push([new Date(e.at).toISOString(), e.actor, e.action, e.target ?? "", e.detail ?? ""]);
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    return rows.length ? toCsv([["When (UTC)", "Who", "Did", "What", "Detail"], ...rows]) : null;
+  };
   const groups: { day: string; items: { actor: string; action: string; target?: string; detail?: string; at: string; icon?: string; tone?: string }[] }[] = [];
   for (const e of results) {
     const day = dayLabel(e.at);
@@ -29,7 +43,13 @@ export default function AuditPage() {
     });
   }
   return (
-    <AppPage active="audit" title="Audit log" subtitle="Nothing here can be edited or deleted" breadcrumbs={["Data", "Audit log"]}>
+    <AppPage
+      active="audit"
+      title="Audit log"
+      subtitle="Nothing here can be edited or deleted"
+      breadcrumbs={["Data", "Audit log"]}
+      actions={<ExportMenu title="Audit log" html={false} csv={[{ label: "Audit log", build: auditCsv }]} />}
+    >
       {() => (
         <Panel>
           {groups.length ? <AuditTimeline groups={groups as never} /> : <p className="ll-muted">Nothing has happened yet.</p>}

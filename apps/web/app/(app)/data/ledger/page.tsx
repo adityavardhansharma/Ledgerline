@@ -3,14 +3,32 @@
 import { Amount, Button, Panel } from "@ledgerline/ui";
 import { usePaginatedQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu, useLedgerCsv } from "@/components/app/ExportMenu";
 import { api } from "@/convex/_generated/api";
 
 const fmtDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IE", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
 export default function LedgerPage() {
   const { results, status, loadMore } = usePaginatedQuery(api.ledger.journals, {}, { initialNumItems: 25 });
+  const ledgerCsv = useLedgerCsv();
   return (
-    <AppPage active="ledger" title="Ledger" subtitle="Every journal synced from Xero, newest first" breadcrumbs={["Data", "Ledger"]} needsData>
+    <AppPage
+      active="ledger"
+      title="Ledger"
+      subtitle="Every journal, newest first"
+      breadcrumbs={["Data", "Ledger"]}
+      needsData
+      actions={
+        <ExportMenu
+          title="Ledger"
+          html={false}
+          csv={[
+            { label: "Journals", build: ledgerCsv.journals },
+            { label: "Chart of accounts", build: ledgerCsv.accounts },
+          ]}
+        />
+      }
+    >
       {() => (
         <Panel title="Journals" icon="journal" flush>
           <div style={{ padding: "0 20px 20px" }}>

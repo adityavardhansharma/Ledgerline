@@ -3,8 +3,9 @@
 import { Button, CalendarHeatmap, FinancialStatement, KpiTile, Panel, PeriodPicker, WaterfallChart } from "@ledgerline/ui";
 import { useQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
+import { ExportMenu } from "@/components/app/ExportMenu";
 import { api } from "@/convex/_generated/api";
-import { downloadCsv } from "@/lib/csv";
+import { euro, statementCsv, toCsv } from "@/lib/csv";
 import { money, periodLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
 import { bridgeSteps, statementRows } from "@/lib/views";
@@ -24,7 +25,14 @@ export default function CashFlowPage() {
       actions={
         <>
           <PeriodPicker label={snapshot ? periodLabel(snapshot.asOf) : "Latest"} />
-          <Button icon="download" onClick={() => snapshot && downloadCsv("cash-flow.csv", snapshot.cashflow)}>Export</Button>
+          <ExportMenu
+            title="Cash flow"
+            disabled={!snapshot}
+            csv={[
+              { label: "Cash flow", build: () => (snapshot ? statementCsv(snapshot.cashflow) : null) },
+              { label: "Cash bridge", build: () => (snapshot ? toCsv([["Step", "Amount"], ...snapshot.bridge.map((b) => [b.label, euro(b.value)])]) : null) },
+            ]}
+          />
         </>
       }
     >
