@@ -55,6 +55,22 @@ def test_current_year_earnings_is_compared_with_profit_to_date():
     assert [d["period"] for d in result["differences"]] == ["2026-09"]
 
 
+def test_a_text_segment_that_also_cites_a_fact_keeps_the_figure():
+    # Models often merge "words then figure" into one segment labelled text; the figure must survive.
+    payload = {
+        "paragraphs": [[{"type": "text", "text": "Revenue reached ", "fact": "rev"}, {"text": " this month.", "fact": ""}]]
+    }
+    out = validate(payload, FACTS)
+    assert out[0][0] == "Revenue reached "
+    assert out[0][1]["text"] == FACTS[0].value
+    assert out[0][2] == " this month."
+
+
+def test_commentary_without_any_figure_is_rejected():
+    with pytest.raises(CommentaryInvalid, match="no figures"):
+        validate({"paragraphs": [[{"text": "Things went well.", "fact": ""}]]}, FACTS)
+
+
 def test_ageing_buckets():
     items = [
         {"kind": "receivable", "contact": "A", "due_date": "2026-10-10", "amount_due_cents": 100},
