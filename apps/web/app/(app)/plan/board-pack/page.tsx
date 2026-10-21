@@ -20,6 +20,7 @@ export default function BoardPackPage() {
   const { base } = useScenarios();
   const forecast = useForecast(base?.id, snapshot?.version);
   const [drafting, setDrafting] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const redraft = async () => {
@@ -94,13 +95,23 @@ export default function BoardPackPage() {
                 <KpiTile icon="runway" tone="forecast" label="Runway" value={forecast?.runwayMonths ?? null} format="months" note={forecast && forecast.runwayMonths === null ? "Cash stays positive" : undefined} />
               </div>
               {commentary ? (
-                <div className="ll-stack">
-                  <CommentaryCard paragraphs={commentary.paragraphs} meta={commentary.status === "accepted" ? `Accepted by ${commentary.acceptedBy}` : undefined} />
-                  <div className="ll-row no-print">
-                    {commentary.status === "draft" ? <Button variant="primary" icon="check" onClick={() => void accept({ id: commentary.id })}>Accept commentary</Button> : <Badge tone="positive" icon="check">Accepted</Badge>}
-                    <Button variant="ghost" icon="refresh" loading={drafting} onClick={redraft}>Redraft</Button>
-                  </div>
-                </div>
+                <CommentaryCard
+                  paragraphs={commentary.paragraphs}
+                  tag={commentary.status === "accepted" ? "Commentary" : "Draft commentary"}
+                  meta={commentary.status === "accepted" ? `Accepted by ${commentary.acceptedBy}` : undefined}
+                  actions={
+                    <span className="ll-row no-print">
+                      {commentary.status === "draft" ? (
+                        <Button size="sm" variant="primary" icon="check" loading={accepting} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
+                          Accept
+                        </Button>
+                      ) : (
+                        <Badge tone="positive" icon="check">Accepted</Badge>
+                      )}
+                      <Button size="sm" variant="ghost" icon="refresh" loading={drafting} onClick={redraft}>Redraft</Button>
+                    </span>
+                  }
+                />
               ) : (
                 <div className="ll-panel no-print">
                   <EmptyState icon="sparkle" title="Draft this month's commentary" action={<Button variant="primary" icon="sparkle" loading={drafting} onClick={redraft}>Draft commentary</Button>}>

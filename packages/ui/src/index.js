@@ -1320,14 +1320,14 @@ function IntegrationCard(p) {
 }
 function CommentaryCard(p) {
   return h('div', { className: 'll-comm' },
-    h('div', { className: 'll-comm-head' }, h('span', { className: 'll-comm-tag' }, h(Icon, { name: 'sparkle', size: 14 }), 'Draft commentary'),
+    h('div', { className: 'll-comm-head' }, h('span', { className: 'll-comm-tag' }, h(Icon, { name: 'sparkle', size: 14 }), p.tag || 'Draft commentary'),
       h('span', { className: 'll-comm-meta' }, p.meta || 'Written from computed figures · every number links to its source')),
     h('div', { className: 'll-comm-body' }, p.paragraphs.map(function (para, i) {
       return h('p', { key: i }, para.map(function (part, j) {
         return typeof part === 'string' ? part : h('button', { key: j, type: 'button', className: 'll-cite', title: part.source }, part.text);
       }));
     })),
-    h('div', { className: 'll-comm-foot' }, h(Button, { size: 'sm', icon: 'check', variant: 'primary' }, 'Accept'), h(Button, { size: 'sm', icon: 'edit' }, 'Edit'), h(Button, { size: 'sm', variant: 'ghost', icon: 'refresh' }, 'Redraft')));
+    p.actions ? h('div', { className: 'll-comm-foot' }, p.actions) : null);
 }
 
 /* ---------- sample company ---------- */

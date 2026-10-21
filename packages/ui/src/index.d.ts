@@ -77,7 +77,7 @@ export interface ScenarioCompareProps { a: CompareSide; b: CompareSide; horizon?
 export interface AuditItemProps { actor: string; action: string; target?: string; detail?: string; at: string; icon?: IconName; tone?: 'brand' | 'forecast' | 'positive' | 'negative' }
 export interface AuditTimelineProps { groups: Array<{ day: string; items: AuditItemProps[] }> }
 export interface IntegrationCardProps { name: string; org: string; status: StatusPillProps['status']; facts?: Array<[string, React.ReactNode]>; actions?: React.ReactNode }
-export interface CommentaryCardProps { paragraphs: Array<Array<string | { text: string; source: string }>>; meta?: string }
+export interface CommentaryCardProps { paragraphs: Array<Array<string | { text: string; source: string }>>; meta?: string; tag?: string; /** Buttons for the card's footer; none are shown without them. */ actions?: React.ReactNode }
 
 type C<P> = (props: P) => React.ReactElement | null;
 export declare const Icon: C<IconProps>; export declare const Logo: C<LogoProps>; export declare const Spinner: C<SpinnerProps>;
