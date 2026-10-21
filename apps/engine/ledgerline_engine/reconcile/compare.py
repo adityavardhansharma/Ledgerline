@@ -2,12 +2,16 @@
 
 Xero report rows carry the account ID in the first cell's attributes; columns run newest month first.
 Xero shows expenses and liabilities as positive numbers, so each account is compared on Xero's sign.
+Xero's balance sheet also has a Current Year Earnings row that isn't an account: it is the profit for the
+financial year to date, so it is compared with Ledgerline's own year-to-date profit.
 """
 
 from __future__ import annotations
 
+import re
+
 from ..money import ZERO, to_cents, to_decimal
-from ..statements.build import Ledger, period_add
+from ..statements.build import Ledger, fy_start, period_add
 from ..statements.classify import ASSET_LINES, Line
 
 
@@ -37,7 +41,22 @@ def _xero_sign(ledger: Ledger, account_id: str) -> int:
     return -1
 
 
-def compare(ledger: Ledger, profit_and_loss: dict | None, balance_sheet: dict | None, as_of: str, months: int = 12) -> dict:
+CURRENT_YEAR_EARNINGS = re.compile(r"current year (earnings|profit)", re.IGNORECASE)
+
+
+def _profit_to_date(ledger: Ledger, period: str, fy_start_month: int):
+    first = fy_start(period, fy_start_month)
+    return -sum((ledger.moved(a, first, period) for a, info in ledger.accounts.items() if info.is_pnl), ZERO)
+
+
+def compare(
+    ledger: Ledger,
+    profit_and_loss: dict | None,
+    balance_sheet: dict | None,
+    as_of: str,
+    months: int = 12,
+    fy_start_month: int = 1,
+) -> dict:
     periods = [period_add(as_of, -k) for k in range(months)]  # newest first, like Xero's columns
     differences: list[dict] = []
     compared = 0
@@ -52,6 +71,13 @@ def compare(ledger: Ledger, profit_and_loss: dict | None, balance_sheet: dict | 
 
     for account_id, name, values in _account_rows(balance_sheet or {}):
         info = ledger.accounts.get(account_id)
+        if info is None and CURRENT_YEAR_EARNINGS.search(name):
+            for period, xero in zip(periods, values, strict=False):
+                ours = _profit_to_date(ledger, period, fy_start_month)
+                compared += 1
+                if to_cents(ours) != to_cents(xero):
+                    differences.append(_diff(account_id, name, period, ours, xero))
+            continue
         is_asset = info is not None and info.line in ASSET_LINES
         for period, xero in zip(periods, values, strict=False):
             balance = ledger.balance(account_id, period)

@@ -46,6 +46,15 @@ def test_difference_is_reported_per_account_and_month():
     assert diff["accountId"] == "sales" and diff["diffCents"] == -10_000 and diff["period"] == "2026-09"
 
 
+def test_current_year_earnings_is_compared_with_profit_to_date():
+    # Xero's computed row (not an account): profit for the financial year so far, newest month first.
+    cye = row("xero-cye", "Current Year Earnings", "224100.00", "199200.00")
+    assert compare(ledger(), None, report([cye]), "2026-09", months=2)["status"] == "match"
+    wrong = row("xero-cye", "Current Year Earnings", "224100.01", "199200.00")
+    result = compare(ledger(), None, report([wrong]), "2026-09", months=2)
+    assert [d["period"] for d in result["differences"]] == ["2026-09"]
+
+
 def test_ageing_buckets():
     items = [
         {"kind": "receivable", "contact": "A", "due_date": "2026-10-10", "amount_due_cents": 100},

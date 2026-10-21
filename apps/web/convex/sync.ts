@@ -276,6 +276,7 @@ async function stepReconcile(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
     balances: input.balances,
     as_of: input.asOf,
     months: 12,
+    fy_start_month: input.fyStartMonth,
   });
   await persistRotated(ctx, run.orgId, result.tokens);
   const { tokens: _tokens, ...data } = result;

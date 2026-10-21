@@ -275,6 +275,7 @@ class ReconcileRequest(TenantRequest):
     balances: list[dict]
     as_of: str
     months: int = Field(default=12, ge=1, le=12)
+    fy_start_month: int = Field(default=1, ge=1, le=12)
 
 
 @app.post("/reconcile")
@@ -285,7 +286,7 @@ def reconcile(body: ReconcileRequest, settings: SettingsDep):
     pnl = client.profit_and_loss(first, end, body.months - 1)
     bs = client.balance_sheet(end, body.months - 1)
     ledger = Ledger.from_payload(body.accounts, body.balances)
-    return _with_tokens(client, compare(ledger, pnl, bs, body.as_of, body.months))
+    return _with_tokens(client, compare(ledger, pnl, bs, body.as_of, body.months, body.fy_start_month))
 
 
 @app.post("/forecast/run")
