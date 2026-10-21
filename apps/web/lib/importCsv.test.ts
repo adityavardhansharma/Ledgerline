@@ -78,6 +78,8 @@ describe("readJournals", () => {
     expect(messages).toMatch(/Journal 1 doesn't balance: debits €10.00, credits €9.99/);
     expect(messages).toMatch(/Account 999 isn't in the chart/);
     expect(messages).toMatch(/one date/);
+    expect(messages).not.toMatch(/Journal 2 doesn't balance/);
+    expect(result.errors).toHaveLength(3);
   });
 });
 

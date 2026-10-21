@@ -264,6 +264,8 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
 
   const byCode = new Map(accounts.map((a) => [a.code, a]));
   const unknown = new Map<string, number[]>();
+  // Journals with a rejected line aren't checked for balance too; the line's own error explains it.
+  const tainted = new Set<string>();
   const groups = new Map<string, { date: string; reference: string; source: string; lines: ImportLine[]; firstRow: number }>();
 
   rows.slice(1).forEach((r, i) => {
@@ -271,11 +273,12 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
     const id = (r[col.journal] ?? "").trim();
     if (!id) return errors.push({ row, message: "Journal number is missing." });
     const date = parseDate(r[col.date]);
-    if (!date) return errors.push({ row, message: `"${r[col.date] ?? ""}" isn't a date. Use YYYY-MM-DD or DD/MM/YYYY.` });
+    if (!date) return tainted.add(id), errors.push({ row, message: `"${r[col.date] ?? ""}" isn't a date. Use YYYY-MM-DD or DD/MM/YYYY.` });
     const code = (r[col.account] ?? "").trim();
     const account = byCode.get(code);
     if (!account) {
       unknown.set(code, [...(unknown.get(code) ?? []), row]);
+      tainted.add(id);
       return;
     }
     let net: number | null;
@@ -284,10 +287,10 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
       const debit = col.debit >= 0 ? parseAmount(r[col.debit]) : null;
       const credit = col.credit >= 0 ? parseAmount(r[col.credit]) : null;
       if (Number.isNaN(debit) || Number.isNaN(credit)) net = Number.NaN;
-      else if (debit && credit) return errors.push({ row, message: "A line can have a debit or a credit, not both." });
+      else if (debit && credit) return tainted.add(id), errors.push({ row, message: "A line can have a debit or a credit, not both." });
       else net = (debit ?? 0) - (credit ?? 0);
     }
-    if (net === null || Number.isNaN(net)) return errors.push({ row, message: "The amount isn't a number." });
+    if (net === null || Number.isNaN(net)) return tainted.add(id), errors.push({ row, message: "The amount isn't a number." });
     if (net === 0) return;
 
     const group = groups.get(id) ?? {
@@ -297,7 +300,7 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
       lines: [],
       firstRow: row,
     };
-    if (group.date !== date) return errors.push({ row, message: `Journal ${id} has lines on ${group.date} and ${date}. A journal has one date.` });
+    if (group.date !== date) return tainted.add(id), errors.push({ row, message: `Journal ${id} has lines on ${group.date} and ${date}. A journal has one date.` });
     group.lines.push({ xero_account_id: account.xeroAccountId, net_cents: net, description: (col.description >= 0 ? r[col.description] ?? "" : "").trim().slice(0, 500) });
     groups.set(id, group);
   });
@@ -315,6 +318,7 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
   let lineCount = 0;
   let debitCents = 0;
   ordered.forEach((g, i) => {
+    if (tainted.has(g.id)) return;
     const total = g.lines.reduce((sum, l) => sum + l.net_cents, 0);
     if (total !== 0) {
       const debits = g.lines.filter((l) => l.net_cents > 0).reduce((s, l) => s + l.net_cents, 0);
