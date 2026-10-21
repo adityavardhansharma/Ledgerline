@@ -123,8 +123,16 @@ def test_trial_balances_rebuild_the_same_statements_as_journals(rollover_in_mont
 
     ours = build_all(ACCOUNTS, from_tb, 1, "2026-09")
     truth = build_all(ACCOUNTS, from_journals, 1, "2026-09")
-    for key in ("pnl", "balance", "cashflow", "measures", "series", "bridge"):
+    for key in ("pnl", "cashflow", "measures", "series", "bridge"):
         assert ours[key] == truth[key], key
+    # Retained earnings before the opening month are one figure in Xero's trial balance, so how it splits
+    # between the account and "from prior years" can differ (dividends posted long ago); equity can't.
+    split = {"Retained earnings", "Retained earnings from prior years"}
+    assert [r for r in ours["balance"]["rows"] if r.get("label") not in split] == [
+        r for r in truth["balance"]["rows"] if r.get("label") not in split
+    ]
+    total = lambda rows: [sum(v[i] for r in rows if r.get("label") in split for v in [r["values"]]) for i in range(2)]  # noqa: E731
+    assert total(ours["balance"]["rows"]) == total(truth["balance"]["rows"])
 
 
 def test_rows_without_an_account_become_accounts_and_the_residual_goes_to_retained_earnings():

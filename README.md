@@ -19,7 +19,7 @@ docs            Architecture, setup and decisions
 | Area | What it does |
 | --- | --- |
 | **Xero sync** | OAuth 2.0 with PKCE, encrypted tokens, a retryable Convex state machine (accounts → journals → invoices → reports → reconcile), one page per step, idempotent by Xero journal ID, rate-limit back-off, Demo Company reset detection, signature-checked webhooks, nightly sync |
-| **CSV import** | A chart of accounts and a journal listing from any system, checked in the browser (types, unknown accounts, impossible dates, unbalanced journals, with row numbers) and stored through the same code as a Xero sync; a one-click sample company (Kestrel Joinery Ltd, 940 journals over two years) |
+| **CSV import** | A chart of accounts and a journal listing from any system, checked in the browser (types, unknown accounts, impossible dates, unbalanced journals, with row numbers) and stored through the same code as a Xero sync; a one-click sample company (Kestrel Joinery Ltd: five years, about 2,400 journals, with customers and suppliers named on every line) |
 | **Statements** | P&L, balance sheet and indirect cash flow from monthly account movements, each asserting its own integrity (the balance sheet balances, the cash flow closes to the bank) |
 | **Reconciliation** | Every account compared with Xero's Profit and Loss and Balance Sheet reports, month by month |
 | **Forecast** | Three statements per month from drivers (growth, margin, overheads, hires, debtor/creditor/stock days, capex, loans, equity, tax); refuses to run if assets − liabilities ≠ equity; runway, P10–P90 bands, tornado sensitivity |

@@ -62,9 +62,9 @@ export interface PaginationProps { page: number; pages: number; from: number; to
 export interface NavItemProps { kbd?: string; href?: string; linkAs?: React.ElementType; rail?: boolean; id: string; label: string; icon: IconName; active?: boolean; badge?: string }
 export interface OrgSwitcherProps { name: string; meta?: string }
 export interface SidebarProps { linkAs?: React.ElementType; settingsHref?: string; orgSwitcher?: React.ReactNode; userMenu?: React.ReactNode; onSearch?: () => void; onSettings?: () => void; rail?: boolean; runway?: number | null; syncText?: string; syncing?: boolean; active?: string; org?: string; orgMeta?: string; user?: string; role?: string; items?: ReadonlyArray<NavItemProps | { heading: string }> }
-export interface PeriodPickerProps { label?: string }
+export interface PeriodPickerProps { label?: string; onClick?: () => void }
 export interface MonthGridProps { year?: number; from: number; to: number; forecastFrom?: number }
-export interface ScenarioSwitcherProps { name?: string }
+export interface ScenarioSwitcherProps { name?: string; options?: Array<{ id: string; name: string; base?: boolean; active?: boolean }>; onSelect?: (id: string) => void }
 export interface TopbarProps extends Children { subtitle?: string; title: string; breadcrumbs?: string[]; status?: React.ReactNode }
 export interface AppShellProps extends Children { sidebar?: Partial<SidebarProps>; rail?: boolean; subtitle?: string; runway?: number | null; syncText?: string; syncing?: boolean; active?: string; title: string; breadcrumbs?: string[]; status?: React.ReactNode; actions?: React.ReactNode; overlay?: React.ReactNode; org?: string }
 export interface PanelProps extends Children { icon?: IconName; tone?: string; title?: string; subtitle?: string; actions?: React.ReactNode; flush?: boolean; className?: string }
@@ -105,7 +105,7 @@ export interface SankeyChartProps { nodes: Array<{ id: string; label: string; co
 export interface RunwayGaugeProps { months: number; max?: number; size?: number; cashOut?: string; note?: string; capped?: boolean; compare?: number; compareLabel?: string }
 export interface TornadoChartProps { base: number; rows: Array<{ label: string; range?: string; low: number; high: number }>; unit?: string; lowLabel?: string; highLabel?: string; baseLabel?: string }
 export interface CalendarHeatmapProps { days: Array<{ date: string; value: number; note?: string; label?: string }>; cell?: number; hint?: string; label?: string }
-export interface TreemapProps { items: Array<{ label: string; value: number; swatch?: number }>; height?: number; caption?: string; label?: string }
+export interface TreemapProps { items: Array<{ label: string; value: number; swatch?: number }>; height?: number; caption?: string; label?: string; legend?: boolean }
 export interface DonutChartProps { items: Array<{ label: string; value: number; swatch?: number }>; size?: number; thickness?: number; centerLabel?: string; legend?: boolean; label?: string }
 export interface BulletChartProps { rows: Array<{ label: string; actual: number; target: number; max: number; bands?: number[]; invert?: boolean; format?: (v: number) => string }> }
 export interface BalanceBarsProps { assets: Array<{ label: string; value: number; swatch: number }>; liabilities: Array<{ label: string; value: number; swatch: number }>; equity: Array<{ label: string; value: number; swatch: number; group?: 'equity' }> }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useQuery } from "convex/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ForecastRun } from "@/lib/types";
@@ -26,4 +26,33 @@ export function useScenarios() {
   const scenarios = useQuery(api.scenarios.list);
   const base = scenarios?.find((s) => s.isBase);
   return { scenarios, base };
+}
+
+const REPORT_SCENARIO = "ll-report-scenario";
+
+/**
+ * The scenario whose forecast fills the reports' future months. Shared by the overview and the statements and
+ * remembered on this device; falls back to the base case when the chosen scenario no longer exists.
+ */
+export function useReportScenario() {
+  const { scenarios, base } = useScenarios();
+  const [chosen, setChosen] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setChosen(localStorage.getItem(REPORT_SCENARIO));
+    } catch {
+      // Storage can be blocked; the base case is a fine default.
+    }
+  }, []);
+  const selected = scenarios?.find((s) => s.id === chosen) ?? base;
+  const select = (id: string) => {
+    setChosen(id);
+    try {
+      localStorage.setItem(REPORT_SCENARIO, id);
+    } catch {
+      // Not remembered, but still applied for this visit.
+    }
+  };
+  const options = (scenarios ?? []).map((s) => ({ id: s.id as string, name: s.name, base: s.isBase, active: s.id === selected?.id }));
+  return { scenarios, base, selected, select, options, name: selected?.name ?? "Base case" };
 }

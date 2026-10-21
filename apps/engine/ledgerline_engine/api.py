@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
-from .commentary.draft import CommentaryInvalid, Fact, draft
+from .commentary.draft import CommentaryInvalid, answer, draft
+from .commentary.facts import BoardInput, build_facts
 from .forecast.model import ForecastImbalance, ForecastRequest, forecast
 from .reconcile.ageing import age
 from .reconcile.compare import compare
@@ -30,7 +31,7 @@ from .xero.activity import (
 from .xero.balances import monthly_movements
 from .xero.client import JOURNALS_SCOPE, RateLimited, ReauthRequired, XeroClient, XeroError
 from .xero.models import Tokens
-from .xero.normalise import UnbalancedJournal, normalise_account, normalise_journal, normalise_open_item
+from .xero.normalise import UnbalancedJournal, normalise_account, normalise_journal, normalise_open_item, parse_xero_date
 
 app = FastAPI(title="Ledgerline engine", version=__version__)
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -294,13 +295,83 @@ def forecast_run(body: ForecastRequest):
     return forecast(body)
 
 
-class CommentaryRequest(BaseModel):
-    facts: list[Fact]
+class CommentaryRequest(BoardInput):
+    notes: str = Field(default="", max_length=4000)
+    tone: str = "board"
+    length: str = "standard"
+    section: str | None = None
+    current: dict | None = None
 
 
 @app.post("/commentary/draft")
 def commentary(body: CommentaryRequest, settings: SettingsDep):
+    """The board pack's commentary (or one section of it), written from a facts pack built here."""
+    facts, signals = build_facts(body)
     try:
-        return {"paragraphs": draft(body.facts, settings)}
+        sections = draft(
+            facts,
+            settings,
+            signals=signals,
+            notes=body.notes,
+            tone=body.tone,
+            length=body.length,
+            section=body.section,
+            current=body.current,
+        )
     except CommentaryInvalid as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"sections": sections, "facts": [f.model_dump() for f in facts], "signals": signals}
+
+
+class AskRequest(BoardInput):
+    question: str = Field(min_length=1, max_length=500)
+    notes: str = Field(default="", max_length=4000)
+    history: list[dict] = []
+
+
+@app.post("/commentary/ask")
+def ask(body: AskRequest, settings: SettingsDep):
+    facts, _ = build_facts(body)
+    try:
+        return {"answer": answer(facts, body.question, settings, notes=body.notes, history=body.history)}
+    except CommentaryInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+class CustomerRevenueRequest(TenantRequest):
+    period: str  # YYYY-MM
+
+
+SALES_POSTED = {"AUTHORISED", "PAID"}
+
+
+@app.post("/xero/customer-revenue")
+def customer_revenue(body: CustomerRevenueRequest, settings: SettingsDep):
+    """Net sales by customer for the month, the three months to it, and who bought in the two months before."""
+    client = _client(settings, body)
+    start = _period_add(body.period, -2)
+    docs = [(d, 1) for d in client.optional_documents("Invoices", "Invoices", f"{start}-01", _month_end(body.period))]
+    docs += [(d, -1) for d in client.optional_documents("CreditNotes", "CreditNotes", f"{start}-01", _month_end(body.period))]
+    month: dict[str, int] = {}
+    quarter: dict[str, int] = {}
+    prior: set[str] = set()
+    quarter_from = prior_from = start
+    for doc, sign in docs:
+        if doc.get("Type") not in ("ACCREC", "ACCRECCREDIT") or doc.get("Status") not in SALES_POSTED:
+            continue
+        name = (doc.get("Contact") or {}).get("Name") or "Unnamed customer"
+        period = parse_xero_date(doc.get("DateString") or doc.get("Date"))[:7]
+        cents = sign * int(round(float(doc.get("SubTotal") or 0) * 100))
+        if period == body.period:
+            month[name] = month.get(name, 0) + cents
+        if quarter_from <= period <= body.period:
+            quarter[name] = quarter.get(name, 0) + cents
+        if prior_from <= period < body.period:
+            prior.add(name)
+    rows = lambda d: [{"contact": k, "value": v} for k, v in d.items() if v > 0]  # noqa: E731
+    return _with_tokens(client, {"month": rows(month), "quarter": rows(quarter), "prior": sorted(prior)})
+
+
+def _period_add(period: str, months: int) -> str:
+    index = int(period[:4]) * 12 + int(period[5:7]) - 1 + months
+    return f"{index // 12:04d}-{index % 12 + 1:02d}"

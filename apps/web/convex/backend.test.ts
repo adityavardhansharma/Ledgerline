@@ -454,3 +454,116 @@ describe("Xero without journal access", () => {
     expect(calls[0].body).toMatchObject({ account_id: "sales", period: "2026-09", movement_cents: -100 });
   });
 });
+
+describe("board commentary", () => {
+  const CHART = [
+    { xeroAccountId: "csv:090", code: "090", name: "Bank", type: "BANK", accountClass: "ASSET", systemAccount: "", status: "ACTIVE" },
+    { xeroAccountId: "csv:200", code: "200", name: "Sales", type: "REVENUE", accountClass: "REVENUE", systemAccount: "", status: "ACTIVE" },
+  ];
+  const sale = (n: number, date: string, cents: number, contact: string) => ({
+    ...journal(n, date, [["csv:090", cents], ["csv:200", -cents]]),
+    xero_journal_id: `csv:${n}`,
+    lines: [
+      { xero_account_id: "csv:090", net_cents: cents, description: "", contact },
+      { xero_account_id: "csv:200", net_cents: -cents, description: "", contact },
+    ],
+  });
+  const cite = (text: string, source: string, fact: string) => ({ text, source, fact });
+  const SECTIONS = {
+    headline: [["Revenue was ", cite("€350", "Revenue · Sales", "revenue")]],
+    performance: [["Sales rose."]],
+    cash: [["Cash is ", cite("€600", "Cash · Bank", "cash")]],
+    outlook: [],
+    risks: [{ level: "amber", title: "One customer", detail: ["Most sales come from one customer."] }],
+    decisions: [],
+    questions: [],
+  };
+
+  async function imported() {
+    const ctx = await setup();
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (url.endsWith("/reports/build")) return new Response(JSON.stringify({ asOf: "2026-09", fyStart: "2026-01" }), { status: 200 });
+      if (url.endsWith("/commentary/draft")) {
+        bodies.push(body);
+        const sections = body.section ? { [body.section]: [["Redrafted ", cite("€600", "Cash · Bank", "cash")]] } : SECTIONS;
+        return new Response(JSON.stringify({ sections, facts: [{ id: "revenue", label: "Revenue", value: "€350", source: "Sales", group: "performance" }], signals: [] }), { status: 200 });
+      }
+      if (url.endsWith("/commentary/ask")) {
+        bodies.push(body);
+        return new Response(JSON.stringify({ answer: [["Because of ", cite("€350", "Revenue · Sales", "revenue")]] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: "unexpected" }), { status: 500 });
+    });
+    const runId = await ctx.owner.action(api.imports.start, { source: "sample", label: "Kestrel Joinery Ltd", accounts: CHART });
+    await ctx.owner.mutation(api.imports.page, {
+      runId,
+      journals: [sale(1, "2026-08-04", 10_000, "Glenmore"), sale(2, "2026-09-04", 25_000, "Seaview Hotel"), sale(3, "2026-09-12", 10_000, "Glenmore")],
+    });
+    await ctx.owner.action(api.imports.complete, { runId });
+    return { ...ctx, bodies };
+  }
+
+  it("drafts from the ledger with sales by customer and the month's notes, then redrafts one section", async () => {
+    const { owner, bodies } = await imported();
+    await owner.mutation(api.commentary.saveNotes, { text: "Won the Seaview Hotel refurbishment." });
+    await owner.action(api.commentary.draft, { tone: "investor" });
+    const body = bodies[0] as { as_of: string; notes: string; tone: string; balances: unknown[]; customers: { month: { contact: string; value: number }[]; prior: string[] } };
+    expect(body).toMatchObject({ as_of: "2026-09", notes: "Won the Seaview Hotel refurbishment.", tone: "investor" });
+    expect(body.balances.length).toBeGreaterThan(0);
+    expect(body.customers.month).toEqual(expect.arrayContaining([{ contact: "Seaview Hotel", value: 25_000 }, { contact: "Glenmore", value: 10_000 }]));
+    expect(body.customers.prior).toEqual(["Glenmore"]);
+
+    const first = await owner.query(api.commentary.latest, {});
+    expect(first).toMatchObject({ status: "draft", tone: "investor", createdBy: "Aoife Byrne" });
+    await owner.action(api.commentary.draft, { section: "cash" });
+    expect(bodies[1]).toMatchObject({ section: "cash", tone: "investor" });
+    const second = await owner.query(api.commentary.latest, {});
+    expect(second?.sections?.cash?.[0]?.[0]).toBe("Redrafted ");
+    expect(second?.sections?.headline).toEqual(first?.sections?.headline);
+    expect(await owner.query(api.commentary.history, {})).toHaveLength(2);
+  });
+
+  it("lets people reword a section but never type or change a figure", async () => {
+    const { owner } = await imported();
+    await owner.action(api.commentary.draft, {});
+    const draft = (await owner.query(api.commentary.latest, {}))!;
+    const id = draft.id;
+    await expect(owner.mutation(api.commentary.editSection, { id, section: "performance", value: [["Sales rose 12%."]] })).rejects.toThrow(/Figures can't be typed/);
+    await expect(
+      owner.mutation(api.commentary.editSection, { id, section: "headline", value: [["Revenue was ", { text: "€999", source: "Revenue · Sales", fact: "revenue" }]] }),
+    ).rejects.toThrow(/citation was changed/);
+    await owner.mutation(api.commentary.editSection, { id, section: "headline", value: [["Sales came to ", cite("€350", "Revenue · Sales", "revenue")]] });
+    const edited = (await owner.query(api.commentary.latest, {}))!;
+    expect(edited).toMatchObject({ editedBy: "Aoife Byrne", status: "draft" });
+    expect(edited.sections?.headline?.[0]?.[0]).toBe("Sales came to ");
+
+    await owner.mutation(api.commentary.restore, { id });
+    expect((await owner.query(api.commentary.latest, {}))?.sections?.headline?.[0]?.[0]).toBe("Revenue was ");
+    await owner.mutation(api.commentary.accept, { id: (await owner.query(api.commentary.latest, {}))!.id });
+    expect((await owner.query(api.commentary.latest, {}))?.status).toBe("accepted");
+  });
+
+  it("answers questions with the conversation so far", async () => {
+    const { owner, bodies } = await imported();
+    const result = await owner.action(api.commentary.ask, { question: "Why did revenue rise?", history: [{ question: "Hi", answer: "Hello" }] });
+    expect(result.answer[0][0]).toBe("Because of ");
+    expect(bodies[0]).toMatchObject({ question: "Why did revenue rise?", history: [{ question: "Hi", answer: "Hello" }] });
+    await expect(owner.action(api.commentary.ask, { question: "  " })).rejects.toThrow(/Ask a question/);
+  });
+
+  it("keeps the first base-case forecast after a month closes as that month's plan", async () => {
+    const { t, owner, orgId } = await imported();
+    const base = (await owner.query(api.scenarios.list, {}))!.find((s) => s.isBase)!;
+    const months = [{ period: "2026-10", revenue: 30_000, ebitda: 5_000, netProfit: 4_000, cash: 90_000 }];
+    const store = (revenue: number) =>
+      t.mutation(internal.forecast.store, { orgId, scenarioId: base.id, inputsHash: `h${revenue}`, actualsVersion: 1, data: { months: [{ ...months[0], revenue }] } });
+    await store(30_000);
+    await store(99_000);
+    const plans = await t.run((ctx) => ctx.db.query("plans").collect());
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({ madeAt: "2026-09", months: [{ period: "2026-10", revenue: 30_000 }] });
+  });
+});

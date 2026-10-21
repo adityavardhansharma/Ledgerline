@@ -22,7 +22,7 @@ import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, monthlySummaryCsv } from "@/lib/csv";
 import { Reconciliation } from "@/components/app/Reconciliation";
-import { useForecast, useScenarios } from "@/components/app/useForecast";
+import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { money, periodLabel } from "@/lib/format";
 import { ROUTES } from "@/lib/nav";
@@ -37,8 +37,8 @@ function greeting() {
 export default function OverviewPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const ageing = useQuery(api.reports.ageing);
-  const { base } = useScenarios();
-  const forecast = useForecast(base?.id, snapshot?.version);
+  const scenario = useReportScenario();
+  const forecast = useForecast(scenario.selected?.id, snapshot?.version);
   const from = snapshot ? `${snapshot.series.periods.at(-6)}-01` : "";
   const to = snapshot ? `${snapshot.asOf}-31` : "";
   const daily = useQuery(api.reports.dailyCash, snapshot ? { from, to } : "skip");
@@ -53,13 +53,13 @@ export default function OverviewPage() {
       actions={
         <>
           <PeriodPicker label={snapshot ? periodLabel(snapshot.asOf) : "Latest month"} />
-          <ScenarioSwitcher name="Base case" />
+          <ScenarioSwitcher name={scenario.name} options={scenario.options} onSelect={scenario.select} />
           <ExportMenu
             title="Overview"
             disabled={!snapshot}
             csv={[
               { label: "Monthly summary", build: () => (snapshot ? monthlySummaryCsv(snapshot) : null) },
-              { label: "Base case forecast", build: () => (forecast ? forecastCsv(forecast, "Base case") : null) },
+              { label: `${scenario.name} forecast`, build: () => (forecast ? forecastCsv(forecast, scenario.name) : null) },
             ]}
           />
           <Link href={ROUTES.boardpack}>
@@ -90,11 +90,11 @@ export default function OverviewPage() {
                 value={m.cash / 100}
                 delta={m.cashDelta ?? undefined}
                 deltaLabel="vs previous month"
-                meta={cashOut ? `On the base case, cash runs out in ${cashOut}` : forecast ? "On the base case, cash stays positive for the next two years" : "Building the base-case forecast"}
+                meta={cashOut ? `On ${scenario.selected?.isBase === false ? `“${scenario.name}”` : "the base case"}, cash runs out in ${cashOut}` : forecast ? `On ${scenario.selected?.isBase === false ? `“${scenario.name}”` : "the base case"}, cash stays positive for the next two years` : "Building the forecast"}
               >
                 <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels height={250} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
               </HeroMetric>
-              <Panel title="Runway" icon="runway" subtitle={m.burn < 0 ? `Base case, at ${money(-m.burn, { compact: true })} net outflow a month` : "Cash has been growing on average"}>
+              <Panel title="Runway" icon="runway" subtitle={m.burn < 0 ? `${scenario.name}, at ${money(-m.burn, { compact: true })} net outflow a month` : "Cash has been growing on average"}>
                 <div className="ll-stack" style={{ alignItems: "center" }}>
                   {runway !== null ? <RunwayGauge months={runway} cashOut={cashOut ?? undefined} size={250} /> : <RunwayGauge months={24} size={250} />}
                   {m.debtorDays !== null && m.debtorDays > 45 ? (

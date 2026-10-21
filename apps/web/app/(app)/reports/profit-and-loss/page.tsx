@@ -7,7 +7,7 @@ import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { DrillDrawer, type DrillTarget } from "@/components/app/DrillDrawer";
 import { Reconciliation } from "@/components/app/Reconciliation";
-import { useForecast, useScenarios } from "@/components/app/useForecast";
+import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { periodLabel } from "@/lib/format";
@@ -16,8 +16,8 @@ import { opexItems, pnlWithForecast } from "@/lib/views";
 
 export default function ProfitAndLossPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
-  const { base } = useScenarios();
-  const forecast = useForecast(base?.id, snapshot?.version);
+  const scenario = useReportScenario();
+  const forecast = useForecast(scenario.selected?.id, snapshot?.version);
   const [drill, setDrill] = useState<DrillTarget | null>(null);
   const [view, setView] = useState("m");
 
@@ -32,7 +32,7 @@ export default function ProfitAndLossPage() {
       actions={
         <>
           <PeriodPicker label={snapshot ? `FY ${snapshot.fyStart.slice(0, 4)}` : "This year"} />
-          <ScenarioSwitcher name="Base case" />
+          <ScenarioSwitcher name={scenario.name} options={scenario.options} onSelect={scenario.select} />
           <SegmentedControl label="Period" value={view} onChange={setView} options={[{ value: "m", label: "Monthly" }, { value: "q", label: "Quarterly" }]} />
           <ExportMenu
             title="Profit and loss"
@@ -55,7 +55,7 @@ export default function ProfitAndLossPage() {
           <>
             <div className="ll-kpi-strip">
               <KpiTile icon="euro" label="Revenue, year to date" value={(total("Sales") ?? sumRevenue(snapshot)) / 100} spark={snapshot.series.revenue.slice(-12).map((c) => c / 100)} />
-              <KpiTile icon="trend-up" label="Gross profit, year to date" value={(total("Gross profit") ?? 0) / 100} />
+              <KpiTile icon="trend-up" label="Gross profit, year to date" value={(total("Gross profit") ?? 0) / 100} spark={snapshot.series.grossProfit.slice(-12).map((c) => c / 100)} />
               <KpiTile icon="statement" label="EBITDA, year to date" value={(total("EBITDA") ?? 0) / 100} spark={snapshot.series.ebitda.slice(-12).map((c) => c / 100)} />
               <KpiTile icon="balance" label="Net profit, year to date" value={(total("Net profit") ?? 0) / 100} spark={snapshot.series.netProfit.slice(-12).map((c) => c / 100)} />
             </div>
@@ -64,7 +64,7 @@ export default function ProfitAndLossPage() {
                 <BarChart labels={snapshot.series.labels.slice(-12)} values={snapshot.series.overheads.slice(-12).map((c) => c / 100)} seriesName="Operating costs" height={260} />
               </Panel>
               <Panel title="Costs year to date" icon="overview">
-                {opex.length ? <Treemap items={opex} height={286} /> : <p className="ll-muted">No operating costs yet this year.</p>}
+                {opex.length ? <Treemap items={opex} height={190} /> : <p className="ll-muted">No operating costs yet this year.</p>}
               </Panel>
             </div>
             <FinancialStatement

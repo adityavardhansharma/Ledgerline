@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { action, internalMutation, internalQuery, query, type MutationCtx } from "./_generated/server";
 import { currentOrg } from "./lib/auth";
 import { sha256 } from "./lib/crypto";
 import { engine } from "./lib/engine";
@@ -33,6 +34,7 @@ export const store = internalMutation({
   args: { orgId: v.id("organizations"), scenarioId: v.id("scenarios"), inputsHash: v.string(), actualsVersion: v.number(), data: v.any() },
   handler: async (ctx, args) => {
     await ctx.db.insert("forecastRuns", { ...args, createdAt: Date.now() });
+    await recordPlan(ctx, args.orgId, args.scenarioId, args.data);
     const runs = await ctx.db
       .query("forecastRuns")
       .withIndex("by_scenario", (q) => q.eq("scenarioId", args.scenarioId))
@@ -41,6 +43,29 @@ export const store = internalMutation({
     for (const old of runs.slice(10)) await ctx.db.delete(old._id);
   },
 });
+
+/**
+ * The first base-case forecast after a month closes becomes that month's plan: next month's board pack
+ * compares what happened with what it expected.
+ */
+async function recordPlan(ctx: MutationCtx, orgId: Id<"organizations">, scenarioId: Id<"scenarios">, data: unknown) {
+  const [org, scenario] = await Promise.all([ctx.db.get(orgId), ctx.db.get(scenarioId)]);
+  if (!org?.asOf || !scenario?.isBase) return;
+  const months = (data as { months?: { period: string; revenue: number; ebitda: number; netProfit: number; cash: number }[] }).months;
+  if (!months?.length || months[0].period <= org.asOf) return;
+  const asOf = org.asOf;
+  const existing = await ctx.db
+    .query("plans")
+    .withIndex("by_org_madeAt", (q) => q.eq("orgId", orgId).eq("madeAt", asOf))
+    .first();
+  if (existing) return;
+  await ctx.db.insert("plans", {
+    orgId,
+    madeAt: asOf,
+    months: months.slice(0, 12).map((m) => ({ period: m.period, revenue: m.revenue, ebitda: m.ebitda, netProfit: m.netProfit, cash: m.cash })),
+    createdAt: Date.now(),
+  });
+}
 
 /** Run (or fetch from cache) the forecast for a scenario. Keyed by the actuals version and every input. */
 export const run = action({

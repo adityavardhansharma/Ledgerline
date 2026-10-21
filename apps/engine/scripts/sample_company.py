@@ -2,10 +2,13 @@
 
     python scripts/sample_company.py ../web/public/samples
 
-Twenty-four months of double-entry bookkeeping for an Irish joinery (October 2024 to September 2026):
-sales invoices with VAT, supplier bills, customer receipts on realistic terms, payroll with PAYE, VAT returns,
-rent, depreciation, a bank loan, corporation tax, prepaid insurance and a machine bought in April 2026. The
-output is deterministic and is checked against the statements builder before it is written.
+Five years of double-entry bookkeeping for an Irish joinery (October 2021 to September 2026): sales invoices
+with VAT, supplier bills, customer receipts on realistic terms, payroll with PAYE, VAT returns, rent,
+depreciation, a bank loan, corporation tax, prepaid insurance and a machine bought in April 2026. The story
+has shape for a board pack: steady growth, a construction slowdown through 2023, a move to a bigger unit in
+2024, hires as the business grows, and one developer becoming a large share of sales. Every sales and
+purchase line names its contact. The output is deterministic and is checked against the statements builder
+before it is written.
 """
 
 from __future__ import annotations
@@ -66,10 +69,43 @@ CUSTOMERS = [
 TIMBER = ["Liffey Timber Supplies", "Burren Hardware", "Shannon Stone Worktops", "Kilkenny Glass", "Atlantic Ironmongery"]
 FITTERS = ["M. Doyle Fitting", "Corrib Installations", "P. Nolan Carpentry"]
 
-# Revenue in September 2026 lands near the design system's €228,900; growth 1.4% a month with a joinery's year.
+# Revenue grows about 1.4% a month with a joinery's year, dips through the 2023 slowdown, and lands near
+# €230,000 by September 2026.
 SEASON = {1: 0.88, 2: 0.95, 3: 1.04, 4: 1.05, 5: 1.06, 6: 1.02, 7: 0.96, 8: 0.92, 9: 1.03, 10: 1.05, 11: 1.03, 12: 0.85}
-FIRST = date(2024, 10, 1)
+FIRST = date(2021, 10, 1)
 LAST = date(2026, 9, 30)
+OPENING = date(2021, 9, 30)
+
+
+def slowdown(m: date) -> float:
+    """Construction slowed through 2023: orders fell, then recovered over the first half of 2024."""
+    if date(2023, 2, 1) <= m <= date(2023, 12, 1):
+        return 0.84
+    if date(2024, 1, 1) <= m <= date(2024, 6, 1):
+        return 0.84 + 0.16 * (m.month / 6)
+    return 1.0
+
+
+def payroll(m: date) -> int:
+    """Monthly gross pay as the team grows: an apprentice, then a fitter, a designer and a cabinet maker."""
+    for start, euros in (
+        (date(2026, 3, 1), 49_200),
+        (date(2025, 1, 1), 44_000),
+        (date(2024, 4, 1), 40_500),
+        (date(2022, 6, 1), 36_000),
+    ):
+        if m >= start:
+            return euros
+    return 29_000
+
+
+def customer(rng: random.Random, m: date) -> str:
+    # From 2025 Glenmore Developments' apartment schemes become a large share of the work.
+    if m >= date(2025, 1, 1) and rng.random() < 0.3:
+        return "Glenmore Developments"
+    return rng.choice(CUSTOMERS)
+
+
 VAT_SALES = 0.135
 VAT_PURCHASES = 0.23
 
@@ -80,6 +116,7 @@ class Journal:
     description: str
     reference: str
     source: str
+    contact: str = ""
     lines: list[tuple[str, int, str]] = field(default_factory=list)  # (account code, net cents, line description)
 
     def add(self, code: str, cents: int, text: str = "") -> Journal:
@@ -112,55 +149,55 @@ def generate(seed: int = 7) -> list[Journal]:
     rng = random.Random(seed)
     js: list[Journal] = []
 
-    # Opening balances at 30 September 2024. Equity is the balancing figure.
+    # Opening balances at 30 September 2021. Equity is the balancing figure.
     opening = {
-        "090": cents(258_400),
-        "610": cents(296_000),
+        "090": cents(210_000),
+        "610": cents(168_000),
         "620": cents(0),
-        "630": cents(84_500),
+        "630": cents(52_000),
         "710": cents(182_000),
-        "711": -cents(61_200),
+        "711": -cents(18_200),
         "720": cents(64_000),
-        "721": -cents(21_300),
-        "800": -cents(118_700),
-        "820": -cents(17_900),
-        "825": -cents(15_400),
-        "830": -cents(14_800),
-        "900": -cents(60_000),
+        "721": -cents(8_000),
+        "800": -cents(71_500),
+        "820": -cents(11_200),
+        "825": -cents(9_800),
+        "830": -cents(8_400),
+        "900": -cents(120_000),
         "970": -cents(100),
     }
     opening["960"] = -sum(opening.values())
-    j = Journal(date(2024, 9, 30), "Opening balances", "OB-2024", "MANJOURNAL")
+    j = Journal(OPENING, "Opening balances", "OB-2021", "MANJOURNAL")
     for code, value in opening.items():
         if value:
             j.add(code, value, "Opening balance")
     js.append(j)
 
-    # Opening debtors, creditors and taxes are settled in October and November 2024.
+    # Opening debtors, creditors and taxes are settled in October and November 2021.
     for share, day in ((0.55, 15), (0.45, 12)):
         month = 10 if day == 15 else 11
         js.append(
-            Journal(workday(date(2024, month, day)), "Receipts: opening debtors", "Lodgement", "ACCRECPAYMENT")
+            Journal(workday(date(2021, month, day)), "Receipts: opening debtors", "Lodgement", "ACCRECPAYMENT")
             .add("090", round(opening["610"] * share))
             .add("610", -round(opening["610"] * share))
         )
     js.append(
-        Journal(workday(date(2024, 10, 20)), "Payments: opening creditors", "BACS run", "ACCPAYPAYMENT")
+        Journal(workday(date(2021, 10, 20)), "Payments: opening creditors", "BACS run", "ACCPAYPAYMENT")
         .add("800", -opening["800"])
         .add("090", opening["800"])
     )
     js.append(
-        Journal(workday(date(2024, 10, 19)), "VAT return: Jul–Aug 2024", "ROS", "CASHPAID")
+        Journal(workday(date(2021, 10, 19)), "VAT return: Jul–Aug 2021", "ROS", "CASHPAID")
         .add("820", -opening["820"])
         .add("090", opening["820"])
     )
     js.append(
-        Journal(workday(date(2024, 10, 14)), "PAYE and PRSI: September", "ROS", "CASHPAID")
+        Journal(workday(date(2021, 10, 14)), "PAYE and PRSI: September", "ROS", "CASHPAID")
         .add("825", -opening["825"])
         .add("090", opening["825"])
     )
     js.append(
-        Journal(workday(date(2024, 10, 23)), "Corporation tax: balance for 2023", "ROS", "CASHPAID")
+        Journal(workday(date(2021, 10, 23)), "Corporation tax: balance for 2020", "ROS", "CASHPAID")
         .add("830", -opening["830"])
         .add("090", opening["830"])
     )
@@ -168,9 +205,11 @@ def generate(seed: int = 7) -> list[Journal]:
     invoice_no = 1180
     bill_no = 0
     machine_capex = cents(48_000)
+    plant_cost, plant_dep = cents(182_000), cents(18_200)
+    vans_cost, vans_dep = cents(64_000), cents(8_000)
     for index, m in enumerate(months(FIRST, LAST)):
         end = month_end(m)
-        trend = 165_000 * 1.014**index * SEASON[m.month] * rng.uniform(0.97, 1.03)
+        trend = 122_000 * 1.011**index * SEASON[m.month] * slowdown(m) * rng.uniform(0.97, 1.03)
         sales_target = cents(trend)
         net_sales = 0
 
@@ -181,14 +220,14 @@ def generate(seed: int = 7) -> list[Journal]:
             net = round(sales_target * w / sum(weights)) if k < count - 1 else sales_target - net_sales
             net_sales += net
             kitchens = rng.random() < 0.66
-            customer = rng.choice(CUSTOMERS)
+            buyer = customer(rng, m)
             vat = round(net * VAT_SALES)
             invoice_no += 1
             issued = workday(m + timedelta(days=rng.randint(0, end.day - 3)))
             ref = f"INV-{invoice_no}"
-            label = f"{customer}: {'fitted kitchen' if kitchens else 'doors and joinery'}"
+            label = f"{buyer}: {'fitted kitchen' if kitchens else 'doors and joinery'}"
             js.append(
-                Journal(issued, label, ref, "ACCREC")
+                Journal(issued, label, ref, "ACCREC", buyer)
                 .add("610", net + vat)
                 .add("200" if kitchens else "210", -net)
                 .add("820", -vat, f"VAT on {ref}")
@@ -196,7 +235,7 @@ def generate(seed: int = 7) -> list[Journal]:
             paid = workday(issued + timedelta(days=rng.choice([14, 21, 30, 30, 45, 45, 60, 75])))
             if paid <= LAST:
                 js.append(
-                    Journal(paid, f"Receipt: {customer}", ref, "ACCRECPAYMENT").add("090", net + vat).add("610", -(net + vat))
+                    Journal(paid, f"Receipt: {buyer}", ref, "ACCRECPAYMENT", buyer).add("090", net + vat).add("610", -(net + vat))
                 )
 
         # Materials (about 48% of sales) and subcontract fitting (about 10%), on 30 and 14 day terms.
@@ -212,14 +251,18 @@ def generate(seed: int = 7) -> list[Journal]:
                 vat = round(net * VAT_PURCHASES) if code == "310" else 0
                 received = workday(m + timedelta(days=rng.randint(0, end.day - 3)))
                 ref = f"BILL-{bill_no:04d}"
-                j = Journal(received, f"{supplier}: {'materials' if code == '310' else 'fitting'}", ref, "ACCPAY").add(code, net)
+                j = Journal(received, f"{supplier}: {'materials' if code == '310' else 'fitting'}", ref, "ACCPAY", supplier).add(
+                    code, net
+                )
                 if vat:
                     j.add("820", vat, f"VAT on {ref}")
                 js.append(j.add("800", -(net + vat)))
                 paid = workday(received + timedelta(days=terms + rng.randint(-3, 6)))
                 if paid <= LAST:
                     js.append(
-                        Journal(paid, f"Payment: {supplier}", ref, "ACCPAYPAYMENT").add("800", net + vat).add("090", -(net + vat))
+                        Journal(paid, f"Payment: {supplier}", ref, "ACCPAYPAYMENT", supplier)
+                        .add("800", net + vat)
+                        .add("090", -(net + vat))
                     )
 
         # Stock count at each quarter end moves a little either way against materials.
@@ -229,8 +272,8 @@ def generate(seed: int = 7) -> list[Journal]:
                 Journal(end, "Stock count adjustment", f"STK-{m:%Y%m}", "MANJOURNAL").add("630", change).add("310", -change)
             )
 
-        # Payroll on the 25th; PAYE and PRSI to Revenue on the 14th of the next month. A cabinet maker joins in March 2026.
-        gross = cents(44_000 if m < date(2026, 3, 1) else 49_200) + cents(rng.uniform(-400, 400))
+        # Payroll on the 25th; PAYE and PRSI to Revenue on the 14th of the next month.
+        gross = cents(payroll(m)) + cents(rng.uniform(-400, 400))
         paye = round(gross * 0.26)
         js.append(
             Journal(workday(date(m.year, m.month, 25)), f"Payroll: {m:%B %Y}", f"PAY-{m:%Y%m}", "MANJOURNAL")
@@ -244,7 +287,12 @@ def generate(seed: int = 7) -> list[Journal]:
 
         # Overheads paid straight from the bank.
         for day, code, text, amount in (
-            (1, "469", "Unit 4, Ballymount: rent", 6_200),
+            (
+                1,
+                "469",
+                "Unit 4, Ballymount: rent" if m >= date(2024, 3, 1) else "Unit 9, Tallaght: rent",
+                6_200 if m >= date(2024, 3, 1) else 4_300,
+            ),
             (3, "485", "Software subscriptions", 2_900 + rng.uniform(-150, 150)),
             (8, "400", "Marketing: online and print", 6_100 * rng.uniform(0.75, 1.25)),
             (12, "412", "Kearney & Co: accountancy", 1_800),
@@ -264,29 +312,42 @@ def generate(seed: int = 7) -> list[Journal]:
                 .add("620", cents(9_600))
                 .add("090", -cents(9_600))
             )
-        if m.year >= 2025:
+        if m >= date(2022, 1, 1):
             js.append(
                 Journal(end, "Insurance released", f"PRE-{m:%Y%m}", "MANJOURNAL").add("429", cents(800)).add("620", -cents(800))
+            )
+
+        # Dividends to the two shareholders each December, skipped in the slowdown year.
+        dividend = {2022: 40_000, 2024: 90_000, 2025: 160_000}.get(m.year) if m.month == 12 else None
+        if dividend:
+            js.append(
+                Journal(workday(date(m.year, 12, 15)), "Dividend paid to shareholders", f"DIV-{m.year}", "CASHPAID")
+                .add("960", cents(dividend))
+                .add("090", -cents(dividend))
             )
 
         # A CNC router arrives in April 2026 and is paid in May.
         if m == date(2026, 4, 1):
             vat = round(machine_capex * VAT_PURCHASES)
             js.append(
-                Journal(date(2026, 4, 9), "Felder Group: CNC router", "BILL-CNC", "ACCPAY")
+                Journal(date(2026, 4, 9), "Felder Group: CNC router", "BILL-CNC", "ACCPAY", "Felder Group")
                 .add("710", machine_capex)
                 .add("820", vat, "VAT on CNC router")
                 .add("800", -(machine_capex + vat))
             )
             js.append(
-                Journal(date(2026, 5, 8), "Payment: Felder Group", "BILL-CNC", "ACCPAYPAYMENT")
+                Journal(date(2026, 5, 8), "Payment: Felder Group", "BILL-CNC", "ACCPAYPAYMENT", "Felder Group")
                 .add("800", machine_capex + vat)
                 .add("090", -(machine_capex + vat))
             )
 
-        # Depreciation: plant over five years, vans over four.
-        plant = cents(182_000) + (machine_capex if m >= date(2026, 4, 1) else 0)
-        dep_plant, dep_vans = round(plant / 60), round(cents(64_000) / 48)
+        # Depreciation: plant over eight years, vans over six, never below nil.
+        if m == date(2026, 4, 1):
+            plant_cost += machine_capex
+        dep_plant = min(round(plant_cost / 96), plant_cost - plant_dep)
+        dep_vans = min(round(vans_cost / 72), vans_cost - vans_dep)
+        plant_dep += dep_plant
+        vans_dep += dep_vans
         js.append(
             Journal(end, "Depreciation", f"DEP-{m:%Y%m}", "MANJOURNAL")
             .add("416", dep_plant + dep_vans)
@@ -294,8 +355,8 @@ def generate(seed: int = 7) -> list[Journal]:
             .add("721", -dep_vans, "Vans")
         )
 
-        # Loan: €2,000 capital and interest at 9% a year, on the 28th.
-        outstanding = cents(60_000) - cents(2_000) * index
+        # Loan: €2,000 capital and interest at 9% a year, on the 28th; repaid in full over the five years.
+        outstanding = cents(120_000) - cents(2_000) * index
         interest = round(outstanding * 0.09 / 12)
         js.append(
             Journal(workday(date(m.year, m.month, 28)), "AIB term loan repayment", "DD", "CASHPAID")
@@ -317,7 +378,7 @@ def _balance(js: list[Journal], code: str, upto: date) -> int:
 
 def _vat_returns(js: list[Journal]) -> None:
     """Bi-monthly VAT returns, paid on the 19th of the month after each period."""
-    for m in months(date(2024, 10, 1), LAST):
+    for m in months(FIRST, LAST):
         if m.month % 2 == 0:  # periods end in Feb, Apr, Jun, Aug, Oct, Dec
             end = month_end(m)
             due = workday(end + timedelta(days=19))
@@ -362,6 +423,7 @@ def to_rows(js: list[Journal]) -> list[dict]:
                     "Credit": f"{-value / 100:.2f}" if value < 0 else "",
                     "Reference": j.reference,
                     "Source": j.source,
+                    "Contact": j.contact,
                 }
             )
     return rows

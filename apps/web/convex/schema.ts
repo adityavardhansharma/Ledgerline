@@ -133,6 +133,7 @@ export default defineSchema({
     description: v.string(),
     sourceType: v.string(),
     reference: v.string(),
+    contact: v.optional(v.string()),
   })
     .index("by_org_account_period", ["orgId", "xeroAccountId", "period"])
     .index("by_journal", ["journalId"])
@@ -219,11 +220,37 @@ export default defineSchema({
   commentaries: defineTable({
     orgId: v.id("organizations"),
     period: v.string(),
-    paragraphs: v.any(),
+    // Before sections: a flat list of paragraphs. Kept so older drafts still show.
+    paragraphs: v.optional(v.any()),
+    // headline, performance, cash, outlook, risks, decisions, questions; prose is text and cited facts.
+    sections: v.optional(v.any()),
+    // The facts pack the draft was written from, so every citation can be traced and edits checked.
+    facts: v.optional(v.any()),
+    tone: v.optional(v.string()),
+    length: v.optional(v.string()),
     status: v.union(v.literal("draft"), v.literal("accepted")),
     createdAt: v.number(),
+    createdBy: v.optional(v.string()),
+    editedBy: v.optional(v.string()),
     acceptedBy: v.optional(v.string()),
   }).index("by_org_period", ["orgId", "period"]),
+
+  // Context for a month's commentary that only the team knows ("lost the Murphy contract").
+  boardNotes: defineTable({
+    orgId: v.id("organizations"),
+    period: v.string(),
+    text: v.string(),
+    updatedBy: v.string(),
+    updatedAt: v.number(),
+  }).index("by_org_period", ["orgId", "period"]),
+
+  // The base case as first forecast after each month closed, so later months compare actual with plan.
+  plans: defineTable({
+    orgId: v.id("organizations"),
+    madeAt: v.string(),
+    months: v.array(v.object({ period: v.string(), revenue: v.number(), ebitda: v.number(), netProfit: v.number(), cash: v.number() })),
+    createdAt: v.number(),
+  }).index("by_org_madeAt", ["orgId", "madeAt"]),
 
   auditEvents: defineTable({
     orgId: v.id("organizations"),

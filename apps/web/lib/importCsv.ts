@@ -21,6 +21,7 @@ export interface ImportLine {
   xero_account_id: string;
   net_cents: number;
   description: string;
+  contact?: string;
 }
 
 export interface ImportJournal {
@@ -254,6 +255,7 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
     amount: ["amount", "net", "netamount", "value"],
     reference: ["reference", "ref"],
     source: ["source", "sourcetype", "type"],
+    contact: ["contact", "contactname", "customer", "supplier", "payee"],
   });
   const errors: ImportIssue[] = [];
   if (col.journal < 0) errors.push({ message: 'The journal file needs a "Journal" column that groups lines into entries.' });
@@ -301,7 +303,8 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
       firstRow: row,
     };
     if (group.date !== date) return tainted.add(id), errors.push({ row, message: `Journal ${id} has lines on ${group.date} and ${date}. A journal has one date.` });
-    group.lines.push({ xero_account_id: account.xeroAccountId, net_cents: net, description: (col.description >= 0 ? r[col.description] ?? "" : "").trim().slice(0, 500) });
+    const contact = col.contact >= 0 ? (r[col.contact] ?? "").trim().slice(0, 200) : "";
+    group.lines.push({ xero_account_id: account.xeroAccountId, net_cents: net, description: (col.description >= 0 ? r[col.description] ?? "" : "").trim().slice(0, 500), ...(contact ? { contact } : {}) });
     groups.set(id, group);
   });
 

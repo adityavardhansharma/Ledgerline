@@ -32,7 +32,7 @@ export interface EngineJournal {
   date: string;
   source_type: string;
   reference: string;
-  lines: { xero_account_id: string; net_cents: number; description: string }[];
+  lines: { xero_account_id: string; net_cents: number; description: string; contact?: string }[];
 }
 
 // ---------- starting a sync ----------
@@ -550,6 +550,7 @@ export async function storeJournals(ctx: MutationCtx, orgId: Id<"organizations">
         date: journal.date,
         netCents: cents,
         description: line.description,
+        ...(line.contact ? { contact: line.contact } : {}),
         sourceType: journal.source_type,
         reference: journal.reference,
       });
@@ -600,7 +601,7 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache", "plans", "boardNotes"] as const;
 
 /** Delete one batch of an organisation's synced or imported figures (and, optionally, its chart). True while more remains. */
 export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean): Promise<boolean> {
@@ -619,7 +620,11 @@ export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, 
                 ? await ctx.db.query("commentaries").withIndex("by_org_period", (q) => q.eq("orgId", orgId)).take(300)
                 : table === "activityCache"
                   ? await ctx.db.query("activityCache").withIndex("by_org_account_period", (q) => q.eq("orgId", orgId)).take(300)
-                  : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
+                  : table === "plans"
+                    ? await ctx.db.query("plans").withIndex("by_org_madeAt", (q) => q.eq("orgId", orgId)).take(300)
+                    : table === "boardNotes"
+                      ? await ctx.db.query("boardNotes").withIndex("by_org_period", (q) => q.eq("orgId", orgId)).take(300)
+                      : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
     if (rows.length) {
       for (const row of rows) await ctx.db.delete(row._id);
       return true;

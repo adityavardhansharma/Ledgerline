@@ -1,9 +1,11 @@
 "use client";
 
-import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, KpiTile, LineChart, Logo, Panel, SankeyChart } from "@ledgerline/ui";
+import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, KpiTile, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { AskFigures, BoardCommentary, CommentaryStudio, errorText, VersionHistory } from "@/components/app/BoardCommentary";
+import type { Section } from "@/convex/commentary";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
@@ -19,19 +21,20 @@ export default function BoardPackPage() {
   const accept = useMutation(api.commentary.accept);
   const { base } = useScenarios();
   const forecast = useForecast(base?.id, snapshot?.version);
-  const [drafting, setDrafting] = useState(false);
+  const [busy, setBusy] = useState<Section | "all" | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [history, setHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redraft = async () => {
-    setDrafting(true);
+  const write = async (args: { tone?: string; length?: string; section?: Section }) => {
+    setBusy(args.section ?? "all");
     setError(null);
     try {
-      await draft({});
+      await draft(args as never);
     } catch (err) {
-      setError(err instanceof Error ? err.message.replace(/^.*(ConvexError|Uncaught Error): /, "") : "Couldn't draft commentary.");
+      setError(errorText(err, "Couldn't draft commentary."));
     } finally {
-      setDrafting(false);
+      setBusy(null);
     }
   };
 
@@ -42,6 +45,7 @@ export default function BoardPackPage() {
       subtitle={snapshot ? `${periodLabel(snapshot.asOf)} · ${commentary?.status === "accepted" ? "ready to send" : "draft"}` : undefined}
       breadcrumbs={["Plan", "Board pack"]}
       needsData
+      overlay={history ? <VersionHistory currentId={commentary?.id ?? null} onClose={() => setHistory(false)} /> : null}
       actions={
         <>
           <ExportMenu
@@ -68,10 +72,16 @@ export default function BoardPackPage() {
         const monthIndex = snapshot.pnl.columns.findIndex((c) => c.period === snapshot.asOf);
         return (
           <>
-            {commentary?.status !== "accepted" ? (
+            <CommentaryStudio commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
+            {error ? (
+              <div className="no-print">
+                <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner>
+              </div>
+            ) : null}
+            {commentary && commentary.status !== "accepted" ? (
               <div className="no-print">
                 <Banner tone="info" title="Accept the commentary to export.">
-                  Board packs only go out with commentary a person has read and accepted.
+                  Board packs only go out with commentary a person has read and accepted. Edit or redraft any section first.
                 </Banner>
               </div>
             ) : null}
@@ -94,32 +104,34 @@ export default function BoardPackPage() {
                 <KpiTile icon="bank" label="Cash" value={m.cash / 100} delta={m.cashDelta ?? undefined} deltaLabel="vs previous month" />
                 <KpiTile icon="runway" tone="forecast" label="Runway" value={forecast?.runwayMonths ?? null} format="months" note={forecast && forecast.runwayMonths === null ? "Cash stays positive" : undefined} />
               </div>
-              {commentary ? (
+              {commentary?.sections ? (
+                <>
+                  <BoardCommentary commentary={commentary} busy={busy} onRedraft={(section) => void write({ section })} />
+                  <div className="ll-row no-print">
+                    {commentary.status === "draft" ? (
+                      <Button variant="primary" icon="check" loading={accepting} disabled={Boolean(busy)} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
+                        Accept for the board
+                      </Button>
+                    ) : (
+                      <Badge tone="positive" icon="check">Accepted by {commentary.acceptedBy}</Badge>
+                    )}
+                  </div>
+                </>
+              ) : commentary?.paragraphs ? (
                 <CommentaryCard
-                  paragraphs={commentary.paragraphs}
-                  tag={commentary.status === "accepted" ? "Commentary" : "Draft commentary"}
-                  meta={commentary.status === "accepted" ? `Accepted by ${commentary.acceptedBy}` : undefined}
-                  actions={
-                    <span className="ll-row no-print">
-                      {commentary.status === "draft" ? (
-                        <Button size="sm" variant="primary" icon="check" loading={accepting} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
-                          Accept
-                        </Button>
-                      ) : (
-                        <Badge tone="positive" icon="check">Accepted</Badge>
-                      )}
-                      <Button size="sm" variant="ghost" icon="refresh" loading={drafting} onClick={redraft}>Redraft</Button>
-                    </span>
-                  }
+                  paragraphs={commentary.paragraphs as never}
+                  tag="Earlier commentary"
+                  meta="Written before board-pack sections. Redraft for headline, outlook, risks and decisions."
                 />
+              ) : busy === "all" ? (
+                <div className="ll-panel"><Skeleton lines={8} /></div>
               ) : (
                 <div className="ll-panel no-print">
-                  <EmptyState icon="sparkle" title="Draft this month's commentary" action={<Button variant="primary" icon="sparkle" loading={drafting} onClick={redraft}>Draft commentary</Button>}>
-                    The draft explains your figures in plain English. Every number in it is a citation of a figure Ledgerline computed; the AI never writes one itself.
+                  <EmptyState icon="sparkle" title="Draft this month's commentary" action={<Button variant="primary" icon="sparkle" onClick={() => void write({})}>Draft commentary</Button>}>
+                    A headline, performance, cash, outlook, risks, decisions and the questions a board may ask. Every number is a citation of a figure Ledgerline computed; the AI never writes one itself.
                   </EmptyState>
                 </div>
               )}
-              {error ? <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner> : null}
               {snapshot.sankey.links.length ? (
                 <Panel title="Where the revenue went" icon="statement">
                   <SankeyChart {...sankeyData(snapshot)} height={340} />
@@ -135,6 +147,7 @@ export default function BoardPackPage() {
                 drillable={false}
               />
             </div>
+            {commentary?.sections ? <AskFigures /> : null}
           </>
         );
       }}

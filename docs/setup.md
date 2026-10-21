@@ -91,7 +91,7 @@ Xero isn't required. Under **Sync and import**, choose two files:
 | File | Columns |
 | --- | --- |
 | Chart of accounts | `Code`, `Name`, `Type`, optional `System` |
-| Journals | `Journal`, `Date`, `Account`, `Description`, `Debit`, `Credit`, optional `Reference` and `Source` (or one signed `Amount` column, debits positive) |
+| Journals | `Journal`, `Date`, `Account`, `Description`, `Debit`, `Credit`, optional `Reference`, `Source` and `Contact` (the customer or supplier; it gives the board pack revenue by customer). One signed `Amount` column, debits positive, can replace `Debit` and `Credit` |
 
 `Type` takes Xero's account types (`BANK`, `CURRENT`, `INVENTORY`, `FIXED`, `CURRLIAB`, `TERMLIAB`, `EQUITY`,
 `REVENUE`, `DIRECTCOSTS`, `OVERHEADS`, `DEPRECIATN`, `WAGESEXPENSE`, `EXPENSE` and the rest) or plain words such

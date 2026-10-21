@@ -90,8 +90,9 @@ describe("the sample company", () => {
     expect(chart.warnings).toEqual([]);
     const result = readJournals(sampleJournals, chart.accounts);
     expect(result.errors).toEqual([]);
-    expect(result.journals.length).toBeGreaterThan(900);
-    expect(result).toMatchObject({ from: "2024-09-30", to: "2026-09-30" });
+    expect(result.journals.length).toBeGreaterThan(2000);
+    expect(result.journals.some((j) => j.lines.some((l) => l.contact === "Glenmore Developments"))).toBe(true);
+    expect(result).toMatchObject({ from: "2021-09-30", to: "2026-09-30" });
     for (const j of result.journals) expect(j.lines.reduce((s, l) => s + l.net_cents, 0)).toBe(0);
     const parts = batches(result.journals, 300);
     expect(parts.flat()).toEqual(result.journals);

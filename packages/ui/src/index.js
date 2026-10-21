@@ -830,12 +830,21 @@ function Treemap(p) {
       h('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, className: 'll-chart-svg', role: 'img', 'aria-label': p.label || 'Breakdown', onMouseLeave: function () { hv[1](null); } },
         tiles.map(function (t, i) {
           var mid = textW(t.it.label, 12.5) < t.w - 26 && t.h > 34, big = mid && t.h > 56;
+          var small = !mid && t.w > 44 && t.h > 26, pctText = formatPct(t.it.value / total, 0);
           return h('g', { key: i, onMouseEnter: function () { hv[1](i); }, className: hot != null && hot !== i ? 'is-dim' : undefined },
             h('rect', { x: t.x + 2, y: t.y + 2, width: Math.max(0, t.w - 4), height: Math.max(0, t.h - 4), rx: 10, className: 'll-tm-tile ll-fill-' + (t.it.swatch || (i % 6) + 1) }),
             mid ? h('text', { className: 'll-tm-label', x: t.x + 14, y: t.y + 24 }, t.it.label) : null,
+            small ? h('text', { className: 'll-tm-label is-small', x: t.x + 10, y: t.y + 20 }, pctText) : null,
             big ? h('text', { className: 'll-tm-value', x: t.x + 14, y: t.y + 44 }, formatMoney(t.it.value, { compact: true }), h('tspan', { className: 'll-tm-pct', dx: 6 }, formatPct(t.it.value / total, 0))) : null,
             h('title', null, t.it.label + ': ' + formatMoney(t.it.value)));
         }))),
+    p.legend !== false ? h('ul', { className: 'll-tm-legend' }, items.map(function (it, i) {
+      return h('li', { key: i, className: hot != null && hot !== i ? 'is-dim' : undefined, onMouseEnter: function () { hv[1](i); }, onMouseLeave: function () { hv[1](null); } },
+        h('span', { className: 'll-tm-sw ll-fill-' + (it.swatch || (i % 6) + 1) }),
+        h('span', { className: 'll-tm-lname' }, it.label),
+        h('span', { className: 'll-tm-lval' }, formatMoney(it.value, { compact: true })),
+        h('span', { className: 'll-tm-lpct' }, formatPct(it.value / total, 0)));
+    })) : null,
     p.caption ? h('figcaption', { className: 'll-chart-cap' }, p.caption) : null);
 }
 
@@ -1189,7 +1198,9 @@ function Sidebar(p) {
         p.userMenu || h(IconButton, { icon: 'settings', label: 'Settings', size: 'sm', onClick: p.onSettings }))));
 }
 function PeriodPicker(p) {
-  return h('button', { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog' },
+  // Shows the period the page covers. It only behaves as a control once it is given a way to change it.
+  if (!p.onClick) return h('span', { className: 'll-picker is-static' }, h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'));
+  return h('button', { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog', onClick: p.onClick },
     h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'), h(Icon, { name: 'chevron-down', size: 14 }));
 }
 function MonthGrid(p) {
@@ -1203,8 +1214,23 @@ function MonthGrid(p) {
     h('div', { className: 'll-monthgrid-foot' }, h('span', { className: 'll-legend-item' }, h('span', { className: 'll-legend-sw ll-hatch-sw' }), 'Forecast months'), h('span', null, 'Presets: This year · Last 12 months · Q3')));
 }
 function ScenarioSwitcher(p) {
-  return h('button', { type: 'button', className: 'll-picker ll-picker-scenario', 'aria-haspopup': 'menu' },
-    h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'), h(Icon, { name: 'chevron-down', size: 14 }));
+  var st = useState(false), open = st[0], ref = React.useRef(null);
+  React.useEffect(function () {
+    if (!open) return;
+    function away(e) { if (ref.current && !ref.current.contains(e.target)) st[1](false); }
+    function esc(e) { if (e.key === 'Escape') st[1](false); }
+    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc);
+    return function () { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  var options = p.options || [];
+  return h('div', { className: 'll-picker-wrap', ref: ref },
+    h('button', { type: 'button', className: 'll-picker ll-picker-scenario', 'aria-haspopup': 'menu', 'aria-expanded': open, disabled: !options.length,
+      onClick: function () { st[1](!open); } },
+      h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'),
+      options.length > 1 ? h(Icon, { name: 'chevron-down', size: 14 }) : null),
+    open && options.length > 1 ? h(Menu, { label: 'Scenarios', items: [{ heading: 'Show forecast months from' }].concat(options.map(function (o) {
+      return { label: o.name, icon: o.base ? 'statement' : 'branch', active: o.active, onClick: function () { st[1](false); p.onSelect && p.onSelect(o.id); } };
+    })) }) : null);
 }
 function Topbar(p) {
   return h('header', { className: 'll-topbar' },
