@@ -17,7 +17,18 @@ from .reconcile.compare import compare
 from .settings import Settings, get_settings
 from .signing import verify
 from .statements.build import Ledger, StatementError, build_all
-from .xero.client import RateLimited, ReauthRequired, XeroClient, XeroError
+from .xero.activity import (
+    Roles,
+    account_activity,
+    bank_transaction_postings,
+    credit_note_postings,
+    daily_cash,
+    invoice_postings,
+    manual_journal_postings,
+    payment_postings,
+)
+from .xero.balances import monthly_movements
+from .xero.client import JOURNALS_SCOPE, RateLimited, ReauthRequired, XeroClient, XeroError
 from .xero.models import Tokens
 from .xero.normalise import UnbalancedJournal, normalise_account, normalise_journal, normalise_open_item
 
@@ -100,7 +111,10 @@ class AuthorizeRequest(BaseModel):
 
 @app.post("/xero/authorize-url")
 def authorize_url(body: AuthorizeRequest, settings: SettingsDep):
-    return {"url": XeroClient(settings).authorize_url(body.redirect_uri, body.state, body.code_challenge)}
+    return {
+        "url": XeroClient(settings).authorize_url(body.redirect_uri, body.state, body.code_challenge),
+        "journals": settings.xero_journals,
+    }
 
 
 class TokenRequest(BaseModel):
@@ -113,7 +127,12 @@ class TokenRequest(BaseModel):
 def exchange(body: TokenRequest, settings: SettingsDep):
     client = XeroClient(settings)
     tokens = client.exchange_code(body.code, body.redirect_uri, body.code_verifier)
-    return {"tokens": tokens.model_dump(), "connections": [c.model_dump() for c in client.connections()]}
+    return {
+        "tokens": tokens.model_dump(),
+        "scopes": tokens.scope.split(),
+        "journals": JOURNALS_SCOPE in tokens.scope.split(),
+        "connections": [c.model_dump() for c in client.connections()],
+    }
 
 
 @app.post("/xero/accounts")
@@ -167,6 +186,78 @@ def open_items(body: OpenItemsRequest, settings: SettingsDep):
     return _with_tokens(client, {"ageing": age([i.model_dump() for i in items], body.as_of), "count": len(items)})
 
 
+def _month_end(period: str) -> str:
+    year, month = int(period[:4]), int(period[5:7])
+    return f"{period}-{calendar.monthrange(year, month)[1]:02d}"
+
+
+class TrialBalancesRequest(TenantRequest):
+    periods: list[str] = Field(min_length=1, max_length=12)  # YYYY-MM
+    opening_period: str | None = None  # contributes its year-to-date position instead of its month
+    retained_earnings_id: str | None = None
+    today: str  # YYYY-MM-DD; the current month is read up to today
+
+
+@app.post("/xero/trial-balances")
+def trial_balances(body: TrialBalancesRequest, settings: SettingsDep):
+    """Monthly movements per account from one Trial Balance per month end, for apps without journal access."""
+    client = _client(settings, body)
+    reports = {period: client.trial_balance(min(_month_end(period), body.today)) for period in body.periods}
+    return _with_tokens(client, monthly_movements(reports, body.opening_period, body.retained_earnings_id))
+
+
+class ChartRequest(TenantRequest):
+    accounts: list[dict]
+
+
+class DailyCashRequest(ChartRequest):
+    date_from: str
+    date_to: str
+
+
+@app.post("/xero/daily-cash")
+def cash_by_day(body: DailyCashRequest, settings: SettingsDep):
+    """Net bank movement per day from payments and bank transactions (the cash calendar)."""
+    client = _client(settings, body)
+    roles = Roles.from_accounts(body.accounts)
+    banks = {a["xero_account_id"] for a in body.accounts if (a.get("type") or "").upper() == "BANK"}
+    postings = payment_postings(client.optional_documents("Payments", "Payments", body.date_from, body.date_to), roles)
+    postings += bank_transaction_postings(
+        client.optional_documents("BankTransactions", "BankTransactions", body.date_from, body.date_to), roles
+    )
+    return _with_tokens(client, {"days": daily_cash(postings, banks)})
+
+
+class ActivityRequest(ChartRequest):
+    account_id: str
+    period: str  # YYYY-MM
+    movement_cents: int
+
+
+@app.post("/xero/account-activity")
+def activity(body: ActivityRequest, settings: SettingsDep):
+    """The invoices, bills, payments, bank transactions and manual journals behind one account's month."""
+    client = _client(settings, body)
+    roles = Roles.from_accounts(body.accounts)
+    account = next((a for a in body.accounts if a["xero_account_id"] == body.account_id), {})
+    first, last = f"{body.period}-01", _month_end(body.period)
+    is_bank = (account.get("type") or "").upper() == "BANK"
+    is_control = body.account_id in (roles.debtors, roles.creditors)
+    postings = []
+    if not is_bank:
+        postings += invoice_postings(client.optional_documents("Invoices", "Invoices", first, last), roles)
+        postings += credit_note_postings(client.optional_documents("CreditNotes", "CreditNotes", first, last), roles)
+    if is_bank or is_control:
+        postings += payment_postings(client.optional_documents("Payments", "Payments", first, last), roles)
+    if not is_control:
+        postings += bank_transaction_postings(
+            client.optional_documents("BankTransactions", "BankTransactions", first, last), roles
+        )
+    if not is_bank and not is_control:
+        postings += manual_journal_postings(client.optional_documents("ManualJournals", "ManualJournals", first, last), roles)
+    return _with_tokens(client, account_activity(body.account_id, postings, body.movement_cents))
+
+
 class BuildRequest(BaseModel):
     accounts: list[dict]
     balances: list[dict]
@@ -195,11 +286,6 @@ def reconcile(body: ReconcileRequest, settings: SettingsDep):
     bs = client.balance_sheet(end, body.months - 1)
     ledger = Ledger.from_payload(body.accounts, body.balances)
     return _with_tokens(client, compare(ledger, pnl, bs, body.as_of, body.months))
-
-
-def _month_end(period: str) -> str:
-    year, month = int(period[:4]), int(period[5:7])
-    return f"{period}-{calendar.monthrange(year, month)[1]:02d}"
 
 
 @app.post("/forecast/run")
