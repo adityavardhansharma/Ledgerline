@@ -172,3 +172,83 @@ describe("Xero webhooks", () => {
     expect(good.status).toBe(200);
   });
 });
+
+describe("CSV imports", () => {
+  const CHART = [
+    { xeroAccountId: "csv:090", code: "090", name: "Bank", type: "BANK", accountClass: "ASSET", systemAccount: "", status: "ACTIVE" },
+    { xeroAccountId: "csv:200", code: "200", name: "Sales", type: "REVENUE", accountClass: "REVENUE", systemAccount: "", status: "ACTIVE" },
+  ];
+  const csvJournal = (n: number, date: string, cents: number) => ({ ...journal(n, date, [["csv:090", cents], ["csv:200", -cents]]), xero_journal_id: `csv:${n}` });
+
+  it("stores the chart and journals, builds reports and records the source", async () => {
+    const { t, owner } = await setup();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      calls.push(String(input));
+      return new Response(JSON.stringify({ asOf: "2026-09", fyStart: "2026-01" }), { status: 200 });
+    });
+    const runId = await owner.action(api.imports.start, { source: "csv", label: "books.csv", accounts: CHART });
+    await owner.mutation(api.imports.page, { runId, journals: [csvJournal(1, "2026-08-04", 10_000), csvJournal(2, "2026-09-04", 25_000)] });
+    await owner.mutation(api.imports.page, { runId, journals: [csvJournal(2, "2026-09-04", 25_000)] });
+    await owner.action(api.imports.complete, { runId });
+
+    expect(calls).toEqual(["http://engine.test/reports/build"]);
+    const current = await owner.query(api.orgs.current, {});
+    expect(current?.org).toMatchObject({ source: "csv", sourceLabel: "books.csv", asOf: "2026-09" });
+    expect(current?.lastSync).toMatchObject({ status: "done", source: "csv", journalsStored: 2, trigger: "CSV import" });
+    const lines = await t.run((ctx) => ctx.db.query("ledgerLines").collect());
+    expect(lines).toHaveLength(4);
+    const events = await owner.query(api.audit.list, { paginationOpts: { numItems: 10, cursor: null } });
+    expect(events.page.map((e: { action: string }) => e.action)).toContain("imported");
+  });
+
+  it("replaces earlier figures, refuses foreign accounts, and keeps accountants out", async () => {
+    const { t, owner } = await setup();
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({}), { status: 200 }));
+    const first = await owner.action(api.imports.start, { source: "csv", label: "a.csv", accounts: CHART });
+    await owner.mutation(api.imports.page, { runId: first, journals: [csvJournal(1, "2026-08-04", 10_000)] });
+    await owner.action(api.imports.complete, { runId: first });
+
+    const second = await owner.action(api.imports.start, { source: "sample", label: "Kestrel Joinery Ltd", accounts: CHART.slice(0, 1) });
+    expect(await t.run((ctx) => ctx.db.query("ledgerLines").collect())).toHaveLength(0);
+    expect(await t.run((ctx) => ctx.db.query("accounts").collect())).toHaveLength(1);
+    await expect(owner.mutation(api.imports.page, { runId: second, journals: [csvJournal(1, "2026-08-04", 10_000)] })).rejects.toThrow(/isn't in the chart/);
+    await expect(owner.mutation(api.imports.page, { runId: second, journals: [{ ...csvJournal(2, "2026-08-04", 1), xero_journal_id: "x-2" }] })).rejects.toThrow(/from a file/);
+    await expect(t.withIdentity(ACCOUNTANT as never).action(api.imports.start, { source: "csv", label: "x", accounts: CHART })).rejects.toThrow(/Accountants/);
+    await expect(owner.action(api.imports.start, { source: "csv", label: "x", accounts: CHART })).rejects.toThrow(/already running/);
+  });
+
+  it("is refused while Xero is connected, and a Xero sync later claims the organisation", async () => {
+    const { t, owner, orgId } = await setup();
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({}), { status: 200 }));
+    const runId = await owner.action(api.imports.start, { source: "csv", label: "a.csv", accounts: CHART });
+    await owner.mutation(api.imports.page, { runId, journals: [csvJournal(1, "2026-08-04", 10_000)] });
+    await owner.action(api.imports.complete, { runId });
+
+    await t.run((ctx) =>
+      ctx.db.insert("xeroConnections", {
+        orgId, tenantId: "t1", tenantName: "Demo Company (Global)", accessTokenEnc: new ArrayBuffer(1), refreshTokenEnc: new ArrayBuffer(1),
+        expiresAt: 0, lastJournalNumber: 0, journalsStored: 0, status: "connected", connectedAt: Date.now(),
+      }),
+    );
+    await expect(owner.action(api.imports.start, { source: "csv", label: "b.csv", accounts: CHART })).rejects.toThrow(/Disconnect it/);
+
+    expect(await t.mutation(internal.sync.claimForXero, { orgId })).toBe(true);
+    expect(await t.mutation(internal.sync.claimForXero, { orgId })).toBe(false);
+    while (await t.mutation(internal.sync.clearBatch, { orgId, accounts: true }));
+    expect(await t.run((ctx) => ctx.db.query("accounts").collect())).toHaveLength(0);
+    expect((await owner.query(api.orgs.current, {}))?.org).toMatchObject({ source: "xero", asOf: null });
+  });
+
+  it("explains an unreachable engine and lets the report step be retried", async () => {
+    const { owner } = await setup();
+    const runId = await owner.action(api.imports.start, { source: "csv", label: "a.csv", accounts: CHART });
+    await owner.mutation(api.imports.page, { runId, journals: [csvJournal(1, "2026-08-04", 10_000)] });
+    vi.stubGlobal("fetch", async () => new Response("{}", { status: 503 }));
+    await expect(owner.action(api.imports.complete, { runId })).rejects.toThrow(/finance engine/);
+    expect((await owner.query(api.orgs.current, {}))?.lastSync).toMatchObject({ status: "failed", phase: "reports" });
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({}), { status: 200 }));
+    await owner.action(api.imports.complete, { runId });
+    expect((await owner.query(api.orgs.current, {}))?.lastSync?.status).toBe("done");
+  });
+});

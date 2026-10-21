@@ -13,6 +13,7 @@ import type * as commentary from "../commentary.js";
 import type * as crons from "../crons.js";
 import type * as forecast from "../forecast.js";
 import type * as http from "../http.js";
+import type * as imports from "../imports.js";
 import type * as ledger from "../ledger.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   forecast: typeof forecast;
   http: typeof http;
+  imports: typeof imports;
   ledger: typeof ledger;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
