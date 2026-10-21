@@ -1,7 +1,7 @@
 "use client";
 
 import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs";
-import { AppShell, Banner, Button, EmptyState, Icon, Skeleton, StatusPill } from "@ledgerline/ui";
+import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { ago } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 import { ThemeToggle } from "../ThemeToggle";
+import { BackendStatus } from "./BackendStatus";
 import { ImportProgress, useImport } from "./ImportPanel";
 import { SetupNeeded } from "./SetupNeeded";
 import { useWorkspace, type Workspace } from "./useWorkspace";
@@ -89,12 +90,7 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
 
   let body: ReactNode;
   if (workspace === undefined || workspace === null) {
-    body = (
-      <div className="ll-stack">
-        <Skeleton height={96} />
-        <Skeleton height={280} />
-      </div>
-    );
+    body = <BackendStatus waiting />;
   } else if (needsData && !workspace.org.asOf) {
     body = workspace.connection || workspace.lastSync ? <FirstSyncPending workspace={workspace} /> : <NoFigures workspace={workspace} />;
   } else {
