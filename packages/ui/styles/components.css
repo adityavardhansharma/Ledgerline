@@ -1230,12 +1230,13 @@ g.is-dim { opacity: .3; }
 /* ---------- Ask Ledgerline: the global chat ---------- */
 .ll-page { padding-bottom: 104px; }
 .ll-ask-pill, .ll-ask-panel { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: 20px; z-index: calc(var(--z-overlay) + 2); }
-.ll-ask-pill { width: max-content; height: 46px; border-radius: 999px; will-change: transform, opacity; padding: 0 8px 0 9px; border: 1px solid var(--rule); background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-pop); cursor: pointer; font: 500 14px/20px var(--font-sans); }
+.ll-ask-pill { display: flex; align-items: center; width: max-content; height: 46px; border-radius: 999px; will-change: transform, opacity; padding: 0 8px 0 10px; border: 1px solid var(--rule); background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-pop); cursor: pointer; font: 500 14px/20px var(--font-sans); }
 .ll-ask-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
-.ll-ask-pill-inner { display: inline-flex; align-items: center; gap: 10px; }
-.ll-ask-pill kbd { font: 500 11px/18px var(--font-mono); padding: 1px 7px; border-radius: 7px; background: var(--surface-sunken); color: var(--ink-muted); }
+.ll-ask-pill-inner { display: flex; align-items: center; gap: 10px; height: 100%; line-height: 1; }
+.ll-ask-pill-inner > span:nth-child(2) { display: block; font: 500 14px/1 var(--font-sans); letter-spacing: -0.005em; padding-top: 1px; }
+.ll-ask-pill kbd { display: grid; place-items: center; height: 24px; padding: 0 8px; border-radius: 8px; background: var(--surface-sunken); color: var(--ink-muted); font: 500 11px/1 var(--font-mono); }
 /* The assistant's mark: a small orb whose colours turn slowly, quietly saying "this one thinks". */
-.ll-ask-orb { position: relative; display: inline-block; width: 26px; height: 26px; border-radius: 50%; flex: none; background: conic-gradient(from 0deg, var(--brand), var(--forecast), var(--chart-3), var(--brand)); animation: ll-orb 6s linear infinite; }
+.ll-ask-orb { position: relative; display: block; width: 22px; height: 22px; border-radius: 50%; flex: none; background: conic-gradient(from 0deg, var(--brand), var(--forecast), var(--chart-3), var(--brand)); animation: ll-orb 6s linear infinite; }
 .ll-ask-orb::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--surface-raised); opacity: .82; }
 .ll-ask-orb.is-big { width: 44px; height: 44px; }
 .ll-ask-orb.is-big::after { inset: 5px; }
