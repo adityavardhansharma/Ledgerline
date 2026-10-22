@@ -31,12 +31,59 @@ const FAN = [
   { name: "Base case", kind: "forecast", values: D.cashChart.base },
 ];
 
+const PLANS: { name: string; price: string; per: string; for: string; featured?: boolean; cta: string; items: [string, boolean?][] }[] = [
+  {
+    name: "Free",
+    price: "€0",
+    per: "forever",
+    for: "For trying Ledgerline on your own books.",
+    cta: "Start free",
+    items: [
+      ["Up to 2 companies, from Xero or CSV"],
+      ["All reports, forecasts, scenarios and board packs"],
+      ["20 AI actions a month"],
+      ["100 AI ledger searches a month"],
+      ["50 AI chats a month", true],
+      ["Unlimited team members"],
+    ],
+  },
+  {
+    name: "Pro",
+    price: "€20",
+    per: "a month",
+    for: "For owners who run the business on it.",
+    featured: true,
+    cta: "Start free, upgrade any time",
+    items: [
+      ["Everything in Free"],
+      ["500 AI actions a month"],
+      ["Unlimited AI ledger search"],
+      ["500 AI chats a month", true],
+    ],
+  },
+  {
+    name: "Max",
+    price: "€100",
+    per: "a month",
+    for: "For finance leads who want the strongest analysis.",
+    cta: "Start free, upgrade any time",
+    items: [
+      ["Everything in Pro"],
+      ["Stronger AI models for analysis"],
+      ["1,000 AI actions a month"],
+      ["Unlimited AI ledger search"],
+      ["1,000 AI chats a month", true],
+    ],
+  },
+];
+
 const FAQ = [
   ["Does Ledgerline change anything in Xero?", "No. It asks Xero for read-only access to journals, accounts, invoices and reports. It can't create invoices, post journals or move money."],
   ["How do I know the numbers are right?", "After every sync Ledgerline asks Xero for its own Profit and Loss and Balance Sheet and compares every account, month by month, to the cent. If anything differs you see exactly which account and why, and the figures are never hidden."],
   ["Where do the forecasts come from?", "From your actuals: growth, margin, overheads and payment terms are measured from your last few months. You can branch the base case and change any driver, add hires, equipment, loans or equity, and every month still produces a balance sheet that balances."],
   ["What does the AI do?", "Only one thing: it drafts the commentary in your board pack from figures Ledgerline has already calculated. Every number in the draft is a citation you can click. If the model writes a number of its own, the draft is rejected. A person accepts it before it can be exported."],
   ["Can my accountant use it?", "Yes. Invite them as an Accountant: they can read every report and comment, but can't change scenarios or settings."],
+  ["What counts as an AI action?", "Each time you ask the AI to do something: explain a figure, draft or redraft the board-pack commentary or one of its sections, fill in a plan from a sentence, suggest a downside case, explain a difference from Xero, and so on. Asking about the same figures again is free until they change. Ledger searches and chats are counted separately."],
   ["Can I try it without my own books?", "Yes. Connect Xero's free Demo Company. It resets every 28 days; Ledgerline notices and resyncs on its own."],
 ] as const;
 
@@ -219,39 +266,39 @@ export function Landing() {
 
         <section className="lp-section lp-wrap" id="pricing">
           <div className="lp-kicker">Pricing</div>
-          <h2 className="lp-h2">Free while we're <em>in preview</em>.</h2>
+          <h2 className="lp-h2">Start free. <em>Upgrade for more AI.</em></h2>
+          <p className="lp-p lp-pricing-lede">Every plan has every report, forecast, scenario and board pack, and connects Xero. Plans differ in how much AI you use each month.</p>
           <div className="lp-pricing">
-            <div className="lp-plan is-featured">
-              <h3>Preview</h3>
-              <div className="lp-price">€0 <small>during the preview</small></div>
-              <ul>
-                <li><Icon name="check" size={16} /><span>One Xero organisation</span></li>
-                <li><Icon name="check" size={16} /><span>All reports, forecasts and scenarios</span></li>
-                <li><Icon name="check" size={16} /><span>Unlimited team members</span></li>
-              </ul>
-              <Link href="/sign-up"><Button variant="primary" block>Start free</Button></Link>
-            </div>
-            <div className="lp-plan">
-              <h3>Board pack</h3>
-              <div className="lp-price">Soon</div>
-              <ul>
-                <li><Icon name="check" size={16} /><span>AI commentary with citations</span></li>
-                <li><Icon name="check" size={16} /><span>PDF export and scheduled sending</span></li>
-                <li><Icon name="check" size={16} /><span>Budgets against actuals</span></li>
-              </ul>
-              <a href="#faq"><Button block>Read the FAQ</Button></a>
-            </div>
-            <div className="lp-plan">
-              <h3>Accountants</h3>
-              <div className="lp-price">Talk to us</div>
-              <ul>
-                <li><Icon name="check" size={16} /><span>Many client organisations</span></li>
-                <li><Icon name="check" size={16} /><span>Read and comment access</span></li>
-                <li><Icon name="check" size={16} /><span>QuickBooks connector on the roadmap</span></li>
-              </ul>
-              <Link href="/sign-up"><Button block>Create an account</Button></Link>
-            </div>
+            {PLANS.map((plan) => (
+              <div key={plan.name} className={`lp-plan${plan.featured ? " is-featured" : ""}`}>
+                <div className="lp-plan-head">
+                  <h3>{plan.name}</h3>
+                  {plan.featured ? <span className="lp-plan-tag">Most popular</span> : null}
+                </div>
+                <div className="lp-price">
+                  {plan.price} <small>{plan.per}</small>
+                </div>
+                <p className="lp-plan-for">{plan.for}</p>
+                <ul>
+                  {plan.items.map(([text, soon]) => (
+                    <li key={text}>
+                      <Icon name="check" size={16} />
+                      <span>
+                        {text}
+                        {soon ? <em className="lp-soon">Coming soon</em> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/sign-up">
+                  <Button variant={plan.featured ? "primary" : "secondary"} block>
+                    {plan.cta}
+                  </Button>
+                </Link>
+              </div>
+            ))}
           </div>
+          <p className="lp-pricing-note">Prices in euro, billed monthly. Unused AI doesn't roll over. Asking about the same figures again is free until they change.</p>
         </section>
 
         <section className="lp-section lp-wrap" id="faq">

@@ -118,3 +118,9 @@
 }
 .lp-cell .ll-donut { flex-direction: column; align-items: stretch; gap: 16px; }
 .lp-cell .ll-donut-ring { align-self: center; }
+.lp-pricing-lede { margin: 14px 0 0; max-width: 620px; }
+.lp-plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lp-plan-tag { font: 600 11.5px/18px var(--font-sans); padding: 2px 10px; border-radius: 999px; background: var(--brand-tint); color: var(--brand); }
+.lp-plan-for { margin: -6px 0 0; font-size: 14px; line-height: 20px; color: var(--ink-muted); }
+.lp-soon { margin-left: 8px; font: 600 10.5px/16px var(--font-sans); font-style: normal; padding: 1px 7px; border-radius: 999px; background: var(--surface-sunken); color: var(--ink-subtle); white-space: nowrap; }
+.lp-pricing-note { margin: 18px 0 0; font-size: 13px; color: var(--ink-subtle); }
