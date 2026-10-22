@@ -567,3 +567,83 @@ describe("board commentary", () => {
     expect(plans[0]).toMatchObject({ madeAt: "2026-09", months: [{ period: "2026-10", revenue: 30_000 }] });
   });
 });
+
+describe("AI actions and search", () => {
+  const CHART = [
+    { xeroAccountId: "csv:090", code: "090", name: "Bank", type: "BANK", accountClass: "ASSET", systemAccount: "", status: "ACTIVE" },
+    { xeroAccountId: "csv:610", code: "610", name: "Trade debtors", type: "CURRENT", accountClass: "ASSET", systemAccount: "DEBTORS", status: "ACTIVE" },
+    { xeroAccountId: "csv:200", code: "200", name: "Sales", type: "REVENUE", accountClass: "REVENUE", systemAccount: "", status: "ACTIVE" },
+    { xeroAccountId: "csv:400", code: "400", name: "Marketing", type: "OVERHEADS", accountClass: "EXPENSE", systemAccount: "", status: "ACTIVE" },
+  ];
+  const line = (account: string, cents: number, contact = "") => ({ xero_account_id: account, net_cents: cents, description: "", ...(contact ? { contact } : {}) });
+  const entry = (n: number, date: string, source: string, reference: string, lines: ReturnType<typeof line>[]) => ({ xero_journal_id: `csv:${n}`, journal_number: n, date, source_type: source, reference, lines });
+
+  async function books() {
+    const ctx = await setup();
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      calls.push({ url, body });
+      if (url.endsWith("/reports/build")) return new Response(JSON.stringify({ asOf: "2026-09", fyStart: "2026-01" }), { status: 200 });
+      if (url.endsWith("/actions/explain-figure")) return new Response(JSON.stringify({ paragraphs: [["Sales were ", { text: "€350", source: "Sales", fact: "value" }]] }), { status: 200 });
+      if (url.endsWith("/actions/reminder")) return new Response(JSON.stringify({ subject: ["Invoices due"], body: [["Please pay."]] }), { status: 200 });
+      if (url.endsWith("/search/parse")) return new Response(JSON.stringify({ accounts: [], contact: "Seaview Hotel", words: "", dateFrom: "2026-09-01", dateTo: "", minCents: 10_000, maxCents: null, side: "any" }), { status: 200 });
+      if (url.endsWith("/actions/parse-scenario")) return new Response(JSON.stringify({ detail: "number not stated" }), { status: 422 });
+      return new Response(JSON.stringify({ error: "unexpected" }), { status: 500 });
+    });
+    const runId = await ctx.owner.action(api.imports.start, { source: "sample", label: "Kestrel", accounts: CHART });
+    await ctx.owner.mutation(api.imports.page, {
+      runId,
+      journals: [
+        entry(1, "2026-08-04", "ACCREC", "INV-1", [line("csv:610", 20_000, "Glenmore"), line("csv:200", -20_000, "Glenmore")]),
+        entry(2, "2026-08-20", "ACCRECPAYMENT", "INV-1", [line("csv:090", 20_000, "Glenmore"), line("csv:610", -20_000, "Glenmore")]),
+        entry(3, "2026-09-04", "ACCREC", "INV-2", [line("csv:610", 25_000, "Seaview Hotel"), line("csv:200", -25_000, "Seaview Hotel")]),
+        entry(4, "2026-09-10", "CASHPAID", "Card", [line("csv:400", 5_000), line("csv:090", -5_000)]),
+      ],
+    });
+    await ctx.owner.action(api.imports.complete, { runId });
+    return { ...ctx, calls };
+  }
+
+  it("explains a figure once per version of the figures and logs each model call", async () => {
+    const { t, owner, calls } = await books();
+    const first = await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" });
+    const again = await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" });
+    expect(again).toEqual(first);
+    const sent = calls.filter((c) => c.url.endsWith("/actions/explain-figure"));
+    expect(sent).toHaveLength(1);
+    // Income is shown positive, with its lines in the same sign.
+    expect(sent[0].body).toMatchObject({ account: "Sales", kind: "income", value_cents: 25_000, previous_cents: 20_000 });
+    expect((sent[0].body.lines as { cents: number; contact: string }[])[0]).toMatchObject({ cents: 25_000, contact: "Seaview Hotel" });
+    const usage = await t.run((ctx) => ctx.db.query("aiUsage").collect());
+    expect(usage.map((u) => u.action)).toEqual(["explainFigure"]);
+  });
+
+  it("works out unpaid invoices from imported journals and drafts a reminder from them", async () => {
+    const { owner, calls } = await books();
+    const ageing = (await owner.query(api.reports.ageing, {})) as { receivableTop: { contact: string; value: number }[]; receivable: { value: number }[] };
+    expect(ageing.receivableTop).toEqual([{ contact: "Seaview Hotel", value: 25_000 }]);
+    expect(ageing.receivable.reduce((s, b) => s + b.value, 0)).toBe(25_000);
+    await owner.action(api.aiActions.reminder, { contact: "Seaview Hotel" });
+    const body = calls.find((c) => c.url.endsWith("/actions/reminder"))!.body;
+    expect(body).toMatchObject({ contact: "Seaview Hotel", as_of: "2026-09-30", items: [{ number: "INV-2", due_date: "2026-10-04", amount_due_cents: 25_000 }] });
+    await expect(owner.action(api.aiActions.reminder, { contact: "Glenmore" })).rejects.toThrow(/no unpaid invoices/);
+  });
+
+  it("turns a search into filters and runs it as an exact query", async () => {
+    const { owner, calls } = await books();
+    const filters = await owner.action(api.search.parse, { text: "Seaview since September over 100" });
+    expect(calls.find((c) => c.url.endsWith("/search/parse"))!.body).toMatchObject({ contacts: expect.arrayContaining(["Seaview Hotel", "Glenmore"]) });
+    const found = await owner.query(api.search.results, { filters });
+    expect(found?.count).toBe(2);
+    expect(found?.rows.every((r) => r.contact === "Seaview Hotel")).toBe(true);
+    const none = await owner.query(api.search.results, { filters: { ...filters, minCents: 1_000_000 } });
+    expect(none?.count).toBe(0);
+  });
+
+  it("explains a rejected answer in plain words", async () => {
+    const { owner } = await books();
+    await expect(owner.action(api.aiActions.parseScenario, { text: "hire two people", startPeriod: "2026-10" })).rejects.toThrow(/didn't pass its checks/);
+  });
+});

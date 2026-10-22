@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Activity } from "@/convex/ledger";
 import { money, periodLabel } from "@/lib/format";
+import { ExplainFigure } from "./ai/Explainers";
 import { useWorkspace } from "./useWorkspace";
 
 export interface DrillTarget {
@@ -51,6 +52,7 @@ function JournalDrawer({ target, onClose }: { target: DrillTarget; onClose: () =
       }
     >
       <Breadcrumbs items={["Statement", `${target.code ? `${target.code} · ` : ""}${target.label}`, periodLabel(target.period)]} />
+      {lines.length ? <ExplainFigure accountId={target.accountId} period={target.period} label={target.label} /> : null}
       {data === undefined ? (
         <Skeleton lines={6} />
       ) : (
@@ -129,6 +131,7 @@ function DocumentsDrawer({ target, onClose }: { target: DrillTarget; onClose: ()
       }
     >
       <Breadcrumbs items={["Statement", `${target.code ? `${target.code} · ` : ""}${target.label}`, periodLabel(target.period)]} />
+      {data && lines.length ? <ExplainFigure accountId={target.accountId} period={target.period} label={target.label} /> : null}
       {data === undefined ? (
         <Skeleton lines={6} />
       ) : data === null ? (

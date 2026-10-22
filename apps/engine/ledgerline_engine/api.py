@@ -10,6 +10,35 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
+from .actions.common import ActionInvalid
+from .actions.explain import (
+    AnomalyExplainRequest,
+    AnomalyRequest,
+    CashDipRequest,
+    DigestRequest,
+    DownsideRequest,
+    ExplainFigureRequest,
+    MismatchRequest,
+    ReminderRequest,
+    cash_dip,
+    detect_anomalies,
+    digest,
+    downside,
+    explain_anomalies,
+    explain_figure,
+    mismatch,
+    reminder,
+)
+from .actions.parse import (
+    ImportMapRequest,
+    NameScenarioRequest,
+    ParseScenarioRequest,
+    SearchParseRequest,
+    import_map,
+    name_scenario,
+    parse_scenario,
+    search_parse,
+)
 from .commentary.draft import CommentaryInvalid, answer, draft
 from .commentary.facts import BoardInput, build_facts
 from .forecast.model import ForecastImbalance, ForecastRequest, forecast
@@ -172,6 +201,7 @@ def journal_check(body: JournalCheckRequest, settings: SettingsDep):
 
 class OpenItemsRequest(TenantRequest):
     as_of: str  # YYYY-MM-DD
+    contact: str | None = None  # also list this customer's unpaid invoices
 
 
 @app.post("/xero/open-items")
@@ -184,7 +214,10 @@ def open_items(body: OpenItemsRequest, settings: SettingsDep):
         if len(raw) < 100 or page >= 20:
             break
         page += 1
-    return _with_tokens(client, {"ageing": age([i.model_dump() for i in items], body.as_of), "count": len(items)})
+    payload = {"ageing": age([i.model_dump() for i in items], body.as_of), "count": len(items)}
+    if body.contact is not None:
+        payload["items"] = [i.model_dump() for i in items if i.kind == "receivable" and i.contact == body.contact]
+    return _with_tokens(client, payload)
 
 
 def _month_end(period: str) -> str:
@@ -375,3 +408,74 @@ def customer_revenue(body: CustomerRevenueRequest, settings: SettingsDep):
 def _period_add(period: str, months: int) -> str:
     index = int(period[:4]) * 12 + int(period[5:7]) - 1 + months
     return f"{index // 12:04d}-{index % 12 + 1:02d}"
+
+
+# ---------- AI actions ----------
+
+
+def _action(fn, body, settings):
+    try:
+        return fn(body, settings)
+    except ActionInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/actions/explain-figure")
+def action_explain_figure(body: ExplainFigureRequest, settings: SettingsDep):
+    return _action(explain_figure, body, settings)
+
+
+@app.post("/actions/cash-dip")
+def action_cash_dip(body: CashDipRequest, settings: SettingsDep):
+    return _action(cash_dip, body, settings)
+
+
+@app.post("/actions/mismatch")
+def action_mismatch(body: MismatchRequest, settings: SettingsDep):
+    return _action(mismatch, body, settings)
+
+
+@app.post("/actions/digest")
+def action_digest(body: DigestRequest, settings: SettingsDep):
+    return _action(digest, body, settings)
+
+
+@app.post("/actions/anomalies/detect")
+def action_detect_anomalies(body: AnomalyRequest):
+    """Pure arithmetic: which accounts this month sit far outside their own last twelve months."""
+    return {"flags": detect_anomalies(body)}
+
+
+@app.post("/actions/anomalies/explain")
+def action_explain_anomalies(body: AnomalyExplainRequest, settings: SettingsDep):
+    return {"reasons": _action(explain_anomalies, body, settings)}
+
+
+@app.post("/actions/reminder")
+def action_reminder(body: ReminderRequest, settings: SettingsDep):
+    return _action(reminder, body, settings)
+
+
+@app.post("/actions/downside")
+def action_downside(body: DownsideRequest, settings: SettingsDep):
+    return _action(downside, body, settings)
+
+
+@app.post("/actions/parse-scenario")
+def action_parse_scenario(body: ParseScenarioRequest, settings: SettingsDep):
+    return _action(parse_scenario, body, settings)
+
+
+@app.post("/actions/import-map")
+def action_import_map(body: ImportMapRequest, settings: SettingsDep):
+    return _action(import_map, body, settings)
+
+
+@app.post("/actions/name-scenario")
+def action_name_scenario(body: NameScenarioRequest, settings: SettingsDep):
+    return _action(name_scenario, body, settings)
+
+
+@app.post("/search/parse")
+def search(body: SearchParseRequest, settings: SettingsDep):
+    return _action(search_parse, body, settings)

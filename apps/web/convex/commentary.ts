@@ -51,7 +51,7 @@ const periodAdd = (period: string, months: number) => {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 };
 
-function describe(s: Doc<"scenarios">) {
+export function describe(s: Doc<"scenarios">) {
   const words = ["", "one", "two", "three"];
   const n = (count: number, one: string, many: string) => (count ? `${words[count] ?? "several"} ${count === 1 ? one : many}` : "");
   const parts = [n(s.hires.reduce((t, h) => t + h.count, 0), "hire", "hires"), n(s.oneOffs.length, "one-off", "one-offs")];
@@ -265,6 +265,7 @@ export const save = internalMutation({
   args: { orgId: v.id("organizations"), period: v.string(), sections: v.any(), facts: v.any(), tone: v.string(), length: v.string(), createdBy: v.string() },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("commentaries", { ...args, status: "draft", createdAt: Date.now() });
+    await ctx.db.insert("aiUsage", { orgId: args.orgId, action: "commentary", by: args.createdBy, at: Date.now() });
     await prune(ctx, args.orgId, args.period);
     return id;
   },

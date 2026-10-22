@@ -136,6 +136,7 @@ export default defineSchema({
     contact: v.optional(v.string()),
   })
     .index("by_org_account_period", ["orgId", "xeroAccountId", "period"])
+    .index("by_org_period", ["orgId", "period"])
     .index("by_journal", ["journalId"])
     .index("by_org", ["orgId"]),
 
@@ -234,6 +235,21 @@ export default defineSchema({
     editedBy: v.optional(v.string()),
     acceptedBy: v.optional(v.string()),
   }).index("by_org_period", ["orgId", "period"]),
+
+  // AI actions: answers kept until the figures they explain change, and one row per model call for metering.
+  aiCache: defineTable({
+    orgId: v.id("organizations"),
+    key: v.string(),
+    version: v.number(),
+    data: v.any(),
+    createdAt: v.number(),
+  }).index("by_org_key", ["orgId", "key"]),
+  aiUsage: defineTable({
+    orgId: v.id("organizations"),
+    action: v.string(),
+    by: v.string(),
+    at: v.number(),
+  }).index("by_org_at", ["orgId", "at"]),
 
   // Context for a month's commentary that only the team knows ("lost the Murphy contract").
   boardNotes: defineTable({

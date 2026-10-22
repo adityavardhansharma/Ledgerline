@@ -26,6 +26,8 @@ import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { money, periodLabel } from "@/lib/format";
 import { ROUTES } from "@/lib/nav";
+import { ChangeDigest } from "@/components/app/ai/Explainers";
+import { OwedList } from "@/components/app/ai/Reminder";
 import type { Snapshot } from "@/lib/types";
 import { bridgeSteps, cashChart, everyDay, sankeyData } from "@/lib/views";
 
@@ -115,6 +117,8 @@ export default function OverviewPage() {
               <KpiTile icon="balance" label="Current ratio" value={m.currentRatio} format="ratio" note="Current assets ÷ current liabilities" />
             </div>
 
+            <ChangeDigest />
+
             {snapshot.sankey.links.length ? (
               <Panel title={`Where ${periodLabel(snapshot.asOf)}'s revenue went`} icon="statement" subtitle={`${money(m.revenue)} of sales, followed through every cost to ${money(m.netProfit)} of net profit`}>
                 <SankeyChart {...sankeyData(snapshot)} height={380} />
@@ -132,9 +136,12 @@ export default function OverviewPage() {
                   <p className="ll-muted">No bank movements yet.</p>
                 )}
               </Panel>
-              <Panel title="Owed to you" icon="invoice" subtitle={overdueShare !== null ? `Trade debtors by age · ${Math.round(overdueShare * 100)}% is overdue` : "Trade debtors by age"}>
+              <Panel title="Owed to you" icon="invoice" subtitle={overdueShare !== null ? `Trade debtors by age · ${Math.round(overdueShare * 100)}% is overdue${(ageing as { source?: string } | null)?.source === "journals" ? " (30-day terms assumed)" : ""}` : "Trade debtors by age"}>
                 {receivables.some((b) => b.value) ? (
-                  <DonutChart size={176} thickness={16} centerLabel="Owed to you" items={receivables.map((b, i) => ({ label: b.label, value: b.value / 100, swatch: [1, 4, 3, 5, 5][i] }))} />
+                  <div className="ll-stack">
+                    <DonutChart size={176} thickness={16} centerLabel="Owed to you" items={receivables.map((b, i) => ({ label: b.label, value: b.value / 100, swatch: [1, 4, 3, 5, 5][i] }))} />
+                    <OwedList top={(ageing?.receivableTop ?? []) as { contact: string; value: number }[]} />
+                  </div>
                 ) : (
                   <p className="ll-muted">Nobody owes you money right now.</p>
                 )}

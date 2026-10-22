@@ -909,7 +909,10 @@ function FinancialStatement(p) {
     var isF = ff != null && ci >= ff && ci < cols.length - (p.totalColumn ? 1 : 0);
     var clickable = row.type === 'line' && p.drillable !== false;
     var key = ri + ':' + ci;
+    var col = cols[ci], flag = p.flags && row.accountId && col && col.period ? p.flags[row.accountId + '|' + col.period] : null;
     var inner = h(Amount, { value: v, forecast: isF, strong: row.type !== 'line', tone: row.tone });
+    // An unusual movement: a dot with its reason on hover.
+    if (flag) inner = h('span', { className: 'll-fs-flagged' }, h('span', { className: 'll-fs-flag', 'data-tip': flag.text, 'aria-label': flag.text, tabIndex: 0 }), inner);
     return h('td', { key: ci, className: cx('ll-fs-num', isF && 'is-forecast', p.totalColumn && ci === cols.length - 1 && 'is-totalcol', sel === key && 'is-selected') },
       clickable && !isF ? h('button', { type: 'button', className: 'll-fs-drill', 'aria-label': 'Show ledger lines for ' + row.label + ', ' + cols[ci].label,
         onClick: function () { st[1](key); p.onDrill && p.onDrill(row, ci); } }, inner) : inner);

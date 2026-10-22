@@ -42,6 +42,15 @@ export interface AccountsResult {
   accounts: ImportAccount[];
   errors: ImportIssue[];
   warnings: string[];
+  /** Fields with no matching column, and account types that aren't recognised: what import help can fix. */
+  missing?: string[];
+  unknownTypes?: string[];
+}
+
+/** A person's (or import help's) fix for a file that doesn't fit: which column is which, and type renames. */
+export interface ImportFix {
+  columns?: Record<string, string>;
+  types?: Record<string, string>;
 }
 
 export interface JournalsResult {
@@ -51,6 +60,7 @@ export interface JournalsResult {
   to: string | null;
   debitCents: number;
   errors: ImportIssue[];
+  missing?: string[];
 }
 
 const CLASS_OF: Record<string, string> = {
@@ -136,11 +146,20 @@ export function parseCsv(text: string): string[][] {
 const key = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
 
 /** Find each wanted column by any of its names. Returns the column index or -1. */
-function columns(header: string[], wanted: Record<string, string[]>) {
+function columns(header: string[], wanted: Record<string, string[]>, chosen?: Record<string, string>) {
   const keys = header.map(key);
   const out: Record<string, number> = {};
-  for (const [name, aliases] of Object.entries(wanted)) out[name] = keys.findIndex((k) => aliases.includes(k));
+  for (const [name, aliases] of Object.entries(wanted)) {
+    const pick = chosen?.[name] ? header.findIndex((h) => h.trim() === chosen[name]) : -1;
+    out[name] = pick >= 0 ? pick : keys.findIndex((k) => aliases.includes(k));
+  }
   return out;
+}
+
+/** The header row and the first few rows of a file, for import help. */
+export function fileShape(text: string) {
+  const rows = parseCsv(text);
+  return { headers: (rows[0] ?? []).map((h) => h.trim()), sample: rows.slice(1, 6) };
 }
 
 export function normaliseType(raw: string): string | null {
@@ -149,7 +168,7 @@ export function normaliseType(raw: string): string | null {
   return TYPE_ALIASES[t] ?? null;
 }
 
-export function readAccounts(text: string): AccountsResult {
+export function readAccounts(text: string, fix?: ImportFix): AccountsResult {
   const rows = parseCsv(text);
   const errors: ImportIssue[] = [];
   const warnings: string[] = [];
@@ -159,11 +178,11 @@ export function readAccounts(text: string): AccountsResult {
     name: ["name", "accountname", "account"],
     type: ["type", "accounttype"],
     system: ["system", "systemaccount"],
-  });
-  for (const need of ["code", "name", "type"] as const) {
-    if (col[need] < 0) errors.push({ message: `The chart of accounts needs a "${need[0].toUpperCase()}${need.slice(1)}" column.` });
-  }
-  if (errors.length) return { accounts: [], errors, warnings };
+  }, fix?.columns);
+  const missing = (["code", "name", "type"] as const).filter((need) => col[need] < 0);
+  for (const need of missing) errors.push({ message: `The chart of accounts needs a "${need[0].toUpperCase()}${need.slice(1)}" column.` });
+  if (errors.length) return { accounts: [], errors, warnings, missing };
+  const unknownTypes = new Set<string>();
 
   const seen = new Set<string>();
   const accounts: ImportAccount[] = [];
@@ -171,10 +190,11 @@ export function readAccounts(text: string): AccountsResult {
     const row = i + 2;
     const code = (r[col.code] ?? "").trim();
     const name = (r[col.name] ?? "").trim();
-    const type = normaliseType(r[col.type] ?? "");
+    const raw = (r[col.type] ?? "").trim();
+    const type = normaliseType(raw) ?? (fix?.types?.[raw] ? normaliseType(fix.types[raw]) : null);
     if (!code) return errors.push({ row, message: "Account code is missing." });
     if (seen.has(code)) return errors.push({ row, message: `Account ${code} appears twice.` });
-    if (!type) return errors.push({ row, message: `"${r[col.type]}" isn't an account type. Use one of ${ACCOUNT_TYPES.slice(0, 8).join(", ")}…` });
+    if (!type) return unknownTypes.add(raw), errors.push({ row, message: `"${r[col.type]}" isn't an account type. Use one of ${ACCOUNT_TYPES.slice(0, 8).join(", ")}…` });
     seen.add(code);
     accounts.push({
       xeroAccountId: `csv:${code}`,
@@ -200,7 +220,7 @@ export function readAccounts(text: string): AccountsResult {
     }
   }
   if (!accounts.some((a) => a.type === "BANK")) warnings.push("No account has the type BANK, so cash will show as zero.");
-  return { accounts, errors, warnings };
+  return { accounts, errors, warnings, missing: [], unknownTypes: [...unknownTypes] };
 }
 
 /** "1,234.50", "€1234.5", "(80.00)", "-80" → cents. Null when empty, NaN when unreadable. */
@@ -241,7 +261,7 @@ export function parseDate(raw: string | undefined): string | null {
 
 const euros = (cents: number) => `€${(Math.abs(cents) / 100).toLocaleString("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function readJournals(text: string, accounts: ImportAccount[]): JournalsResult {
+export function readJournals(text: string, accounts: ImportAccount[], fix?: ImportFix): JournalsResult {
   const empty = { journals: [], lineCount: 0, from: null, to: null, debitCents: 0 };
   const rows = parseCsv(text);
   if (rows.length < 2) return { ...empty, errors: [{ message: "The journal file is empty." }] };
@@ -256,13 +276,14 @@ export function readJournals(text: string, accounts: ImportAccount[]): JournalsR
     reference: ["reference", "ref"],
     source: ["source", "sourcetype", "type"],
     contact: ["contact", "contactname", "customer", "supplier", "payee"],
-  });
+  }, fix?.columns);
   const errors: ImportIssue[] = [];
   if (col.journal < 0) errors.push({ message: 'The journal file needs a "Journal" column that groups lines into entries.' });
   if (col.date < 0) errors.push({ message: 'The journal file needs a "Date" column.' });
   if (col.account < 0) errors.push({ message: 'The journal file needs an "Account" column with account codes.' });
   if (col.amount < 0 && (col.debit < 0 || col.credit < 0)) errors.push({ message: 'The journal file needs "Debit" and "Credit" columns, or a signed "Amount" column.' });
-  if (errors.length) return { ...empty, errors };
+  const missing = [col.journal < 0 && "journal", col.date < 0 && "date", col.account < 0 && "account", col.amount < 0 && (col.debit < 0 || col.credit < 0) && "amount"].filter(Boolean) as string[];
+  if (errors.length) return { ...empty, errors, missing };
 
   const byCode = new Map(accounts.map((a) => [a.code, a]));
   const unknown = new Map<string, number[]>();

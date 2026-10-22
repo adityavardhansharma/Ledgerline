@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { currentOrg } from "./lib/auth";
+import { ageItems, importedOpenItems, monthEnd } from "./lib/openItems";
 import { engine } from "./lib/engine";
 import { lastCompleteMonth, toNumber } from "./lib/money";
 
@@ -92,7 +93,20 @@ async function latest(ctx: QueryCtx, kind: "statements" | "ageing" | "reconcilia
 }
 
 export const statements = query({ args: {}, handler: (ctx) => latest(ctx, "statements") });
-export const ageing = query({ args: {}, handler: (ctx) => latest(ctx, "ageing") });
+/** Unpaid invoices by age: Xero's own when connected, otherwise worked out from imported journals. */
+export const ageing = query({
+  args: {},
+  handler: async (ctx) => {
+    const found = await currentOrg(ctx);
+    if (!found) return null;
+    if (found.org.source === "csv" || found.org.source === "sample") {
+      if (!found.org.asOf) return null;
+      const items = await importedOpenItems(ctx, found.org._id);
+      return items ? ageItems(items, monthEnd(found.org.asOf)) : null;
+    }
+    return latest(ctx, "ageing");
+  },
+});
 export const reconciliation = query({ args: {}, handler: (ctx) => latest(ctx, "reconciliation") });
 
 /** Daily net bank movement for the cash calendar. */

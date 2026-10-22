@@ -7,7 +7,8 @@ import Link from "next/link";
 import { type DragEvent, useId, useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { type ImportAccount, type ImportJournal, batches, readAccounts, readJournals } from "@/lib/importCsv";
+import { type ImportAccount, type ImportFix, type ImportJournal, batches, readAccounts, readJournals } from "@/lib/importCsv";
+import { ImportHelp } from "./ai/ImportHelp";
 import { ROUTES } from "@/lib/nav";
 import type { Workspace } from "./useWorkspace";
 
@@ -153,8 +154,12 @@ export function ImportPanel({ workspace, onDone }: { workspace: Workspace; onDon
   const [journalsFile, setJournalsFile] = useState<{ name: string; text: string } | null>(null);
   const { run, sample, retry, progress, error, busy } = useImport();
 
-  const chart = useMemo(() => (accountsFile ? readAccounts(accountsFile.text) : null), [accountsFile]);
-  const ledger = useMemo(() => (chart && journalsFile ? readJournals(journalsFile.text, chart.accounts) : null), [chart, journalsFile]);
+  const [accountsFix, setAccountsFix] = useState<ImportFix | undefined>(undefined);
+  const [journalsFix, setJournalsFix] = useState<ImportFix | undefined>(undefined);
+  const chart = useMemo(() => (accountsFile ? readAccounts(accountsFile.text, accountsFix) : null), [accountsFile, accountsFix]);
+  const ledger = useMemo(() => (chart && journalsFile ? readJournals(journalsFile.text, chart.accounts, journalsFix) : null), [chart, journalsFile, journalsFix]);
+  const accountsHelp = Boolean(accountsFile && chart && (chart.missing?.length || chart.unknownTypes?.length));
+  const journalsHelp = Boolean(journalsFile && ledger?.missing?.length);
   const issues = [...(chart?.errors ?? []), ...(ledger?.errors ?? [])];
   const ready = Boolean(chart && ledger && !issues.length && ledger.journals.length);
 
@@ -186,7 +191,10 @@ export function ImportPanel({ workspace, onDone }: { workspace: Workspace; onDon
             file={accountsFile}
             summary={chart ? (chart.errors.length ? `${chart.errors.length} problem${chart.errors.length === 1 ? "" : "s"}` : `${chart.accounts.length} accounts`) : undefined}
             invalid={Boolean(chart?.errors.length)}
-            onFile={(name, text) => setAccountsFile({ name, text })}
+            onFile={(name, text) => {
+              setAccountsFile({ name, text });
+              setAccountsFix(undefined);
+            }}
           />
           <DropZone
             label="Journals"
@@ -202,9 +210,19 @@ export function ImportPanel({ workspace, onDone }: { workspace: Workspace; onDon
                   : "Add the chart of accounts too"
             }
             invalid={Boolean(ledger?.errors.length)}
-            onFile={(name, text) => setJournalsFile({ name, text })}
+            onFile={(name, text) => {
+              setJournalsFile({ name, text });
+              setJournalsFix(undefined);
+            }}
           />
         </div>
+
+        {accountsHelp || journalsHelp ? (
+          <div className="ll-stack" style={{ gap: 10 }}>
+            {accountsHelp && accountsFile ? <ImportHelp file="accounts" text={accountsFile.text} unknownTypes={chart?.unknownTypes ?? []} onApply={setAccountsFix} /> : null}
+            {journalsHelp && journalsFile ? <ImportHelp file="journals" text={journalsFile.text} unknownTypes={[]} onApply={setJournalsFix} /> : null}
+          </div>
+        ) : null}
 
         {chart?.warnings.length ? (
           <ul className="ll-import-notes">

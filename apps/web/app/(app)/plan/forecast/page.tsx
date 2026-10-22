@@ -21,6 +21,8 @@ import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, toCsv } from "@/lib/csv";
 import { BranchDialog } from "@/components/app/BranchDialog";
+import { CashDipExplainer } from "@/components/app/ai/Explainers";
+import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/ai/Planners";
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
@@ -92,6 +94,8 @@ function ForecastScreen() {
                 : []),
             ]}
           />
+          {scenario && !scenario.isBase && scenarioId ? <NameSuggest scenarioId={scenarioId} current={scenario.name} /> : null}
+          <DownsideButton onCreated={(id) => router.push(`${ROUTES.forecast}?scenario=${id}`)} />
           <Button variant="forecast" icon="branch" disabled={!scenario} onClick={() => setBranching(true)}>
             Branch
           </Button>
@@ -114,6 +118,7 @@ function ForecastScreen() {
           <>
           <div className="ll-grid-plan">
             <Panel title="Drivers" icon="settings" subtitle={readOnly ? "The base case follows your actuals. Branch it to change drivers." : "Changes from the parent scenario are marked"}>
+              {!readOnly && scenarioId ? <ScenarioComposer scenarioId={scenarioId} startPeriod={snapshot.drivers.startPeriod} own={scenario.own} /> : null}
               <Sections
                 value={tab}
                 onChange={setTab}
@@ -213,6 +218,7 @@ function ForecastScreen() {
                   The lowest balance is {money(forecast.lowestCash)}, in {forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}.
                 </Banner>
               ) : null}
+              {forecast && scenarioId ? <CashDipExplainer scenarioId={scenarioId} onOpenArea={(area) => { setTab(area); document.querySelector(".ll-grid-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} /> : null}
               <Panel title="Cash at bank" icon="bank" subtitle={scenario.isBase ? "Base case with its likely range" : "This scenario against the base case and its likely range"} actions={forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}>
                 {forecast ? (
                   <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />

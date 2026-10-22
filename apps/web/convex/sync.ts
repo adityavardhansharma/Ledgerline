@@ -601,7 +601,7 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache", "plans", "boardNotes"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache", "plans", "boardNotes", "aiCache"] as const;
 
 /** Delete one batch of an organisation's synced or imported figures (and, optionally, its chart). True while more remains. */
 export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean): Promise<boolean> {
@@ -624,6 +624,8 @@ export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, 
                     ? await ctx.db.query("plans").withIndex("by_org_madeAt", (q) => q.eq("orgId", orgId)).take(300)
                     : table === "boardNotes"
                       ? await ctx.db.query("boardNotes").withIndex("by_org_period", (q) => q.eq("orgId", orgId)).take(300)
+                      : table === "aiCache"
+                        ? await ctx.db.query("aiCache").withIndex("by_org_key", (q) => q.eq("orgId", orgId)).take(300)
                       : await ctx.db.query(table).withIndex("by_org", (q) => q.eq("orgId", orgId)).take(300);
     if (rows.length) {
       for (const row of rows) await ctx.db.delete(row._id);

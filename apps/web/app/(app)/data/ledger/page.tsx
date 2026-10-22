@@ -3,8 +3,11 @@
 import { Amount, Banner, Button, Panel } from "@ledgerline/ui";
 import Link from "next/link";
 import { usePaginatedQuery } from "convex/react";
+import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu, useLedgerCsv } from "@/components/app/ExportMenu";
+import { LedgerSearch, SearchResults } from "@/components/app/LedgerSearch";
+import type { Filters } from "@/convex/search";
 import { api } from "@/convex/_generated/api";
 import { ROUTES } from "@/lib/nav";
 
@@ -13,6 +16,7 @@ const fmtDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en
 export default function LedgerPage() {
   const { results, status, loadMore } = usePaginatedQuery(api.ledger.journals, {}, { initialNumItems: 25 });
   const ledgerCsv = useLedgerCsv();
+  const [filters, setFilters] = useState<Filters | null>(null);
   return (
     <AppPage
       active="ledger"
@@ -39,6 +43,14 @@ export default function LedgerPage() {
             payments and bank transactions behind it.
           </Banner>
         ) : null}
+        {workspace.connection?.mode === "reports" && workspace.org.source !== "csv" && workspace.org.source !== "sample" ? null : <LedgerSearch filters={filters} onFilters={setFilters} />}
+        {filters ? (
+          <Panel title="Search results" icon="search" flush>
+            <div style={{ padding: "0 20px 20px" }}>
+              <SearchResults filters={filters} />
+            </div>
+          </Panel>
+        ) : (
         <Panel title="Journals" icon="journal" flush>
           <div style={{ padding: "0 20px 20px" }}>
             <div className="ll-table-wrap">
@@ -76,6 +88,7 @@ export default function LedgerPage() {
             </div>
           </div>
         </Panel>
+        )}
         </>
       )}
     </AppPage>

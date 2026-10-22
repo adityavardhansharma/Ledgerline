@@ -7,6 +7,7 @@ import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { DrillDrawer, type DrillTarget } from "@/components/app/DrillDrawer";
 import { Reconciliation } from "@/components/app/Reconciliation";
+import { AnomalyStrip, useAnomalies } from "@/components/app/ai/Explainers";
 import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
@@ -20,6 +21,7 @@ export default function ProfitAndLossPage() {
   const forecast = useForecast(scenario.selected?.id, snapshot?.version);
   const [drill, setDrill] = useState<DrillTarget | null>(null);
   const [view, setView] = useState("m");
+  const anomalies = useAnomalies(Boolean(snapshot));
 
   return (
     <AppPage
@@ -67,8 +69,10 @@ export default function ProfitAndLossPage() {
                 {opex.length ? <Treemap items={opex} height={190} /> : <p className="ll-muted">No operating costs yet this year.</p>}
               </Panel>
             </div>
+            <AnomalyStrip flags={anomalies.flags} />
             <FinancialStatement
               title="Account"
+              flags={view === "m" ? anomalies.map : undefined}
               columns={statement.columns}
               rows={statement.rows as never}
               forecastFrom={statement.forecastFrom}
