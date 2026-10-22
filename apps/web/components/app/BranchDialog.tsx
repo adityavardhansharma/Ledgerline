@@ -3,6 +3,7 @@
 import { Button, Dialog, Input } from "@ledgerline/ui";
 import { useMutation } from "convex/react";
 import { useState } from "react";
+import { errorText } from "@/components/app/BoardCommentary";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -17,7 +18,7 @@ export function BranchDialog({ fromId, fromName, onClose, onCreated }: { fromId:
     try {
       onCreated(await branch({ fromId, name }));
     } catch (err) {
-      setError(err instanceof Error ? err.message.replace(/^.*ConvexError: /, "") : "Couldn't branch the scenario.");
+      setError(errorText(err, "Couldn't branch the scenario."));
       setBusy(false);
     }
   };

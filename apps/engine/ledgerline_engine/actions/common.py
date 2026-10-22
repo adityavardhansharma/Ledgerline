@@ -55,7 +55,7 @@ def run(
     """Ask the model for JSON matching ``schema``; ``validate`` turns it into the result or raises. One retry."""
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     last_error = ""
-    for _ in range(2):
+    for _ in range(3):
         if last_error:
             messages.append({"role": "user", "content": f"Your previous answer was rejected: {last_error}. Try again."})
         try:

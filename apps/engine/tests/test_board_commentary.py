@@ -126,9 +126,9 @@ def test_forecast_scenarios_plan_customers_and_ageing_become_facts(board):
     assert found["topDriver"].value == "-2.5 to +1.0 months"
     assert "runs out" in found["scenario1"].label and found["scenario1"].value == "August 2027"
     assert found["revenueVsPlan"].label == "Revenue: above plan"
-    assert found["customer1"].value.startswith("Seaview Hotel, €90,000 (75%")
+    assert found["customer1"].value.startswith("€90,000 (75%") and "Seaview Hotel" in found["customer1"].label
     assert found["newCustomers"].value == "Seaview Hotel"
-    assert found["topCustomerShare"].value == "Glenmore Developments, 75%"
+    assert found["topCustomerShare"].value == "75%" and "Glenmore Developments" in found["topCustomerShare"].label
     assert found["overdue60"].value == "€7"
     assert found["reconciled"].value == "2"
     assert {s["level"] for s in signals} >= {"red", "amber"}
@@ -175,7 +175,7 @@ def test_sections_render_citations_with_their_fact_ids():
         {**GOOD, "risks": [{"level": "red", "title": "Top 3 customers", "detail": []}]},
         {**GOOD, "outlook": [[seg("Unknown ", "ebitda")]]},
         {**GOOD, "headline": []},
-        {**GOOD, "headline": [[seg("A ", "revenue"), seg(" B ", "cash"), seg(" C ", "month")]]},
+        {**GOOD, "headline": [[seg("A ", "revenue"), seg(" B ", "cash"), seg(" C ", "month"), seg(" D ", "revenue")]]},
     ],
 )
 def test_sections_reject_numbers_unknown_facts_and_an_empty_headline(bad):

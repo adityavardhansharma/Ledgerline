@@ -84,6 +84,7 @@ async function once<T>(ctx: ActionCtx, c: Context, name: string, key: string | n
   } catch (err) {
     if (err instanceof ConvexError) throw err;
     if (err instanceof EngineError) {
+      console.error(`AI action ${name} failed`, err.status, JSON.stringify(err.body).slice(0, 500));
       throw new ConvexError(err.status === 422 ? "The answer didn't pass its checks. Try again." : err.status === 429 ? "Xero is busy. Try again in a minute." : "The AI service didn't answer. Try again in a moment.");
     }
     throw err;

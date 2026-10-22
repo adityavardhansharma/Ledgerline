@@ -8,6 +8,7 @@ import { AppPage, ConnectButton } from "@/components/app/AppPage";
 import { ImportPanel } from "@/components/app/ImportPanel";
 import { Reconciliation } from "@/components/app/Reconciliation";
 import { useWorkspace, type Workspace } from "@/components/app/useWorkspace";
+import { errorText } from "@/components/app/BoardCommentary";
 import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
 
@@ -79,7 +80,7 @@ function SyncScreen() {
               try {
                 await request();
               } catch (err) {
-                setError(err instanceof Error ? err.message.replace(/^.*ConvexError: /, "") : "Couldn't start a sync.");
+                setError(errorText(err, "Couldn't start a sync."));
               }
             }}
           >

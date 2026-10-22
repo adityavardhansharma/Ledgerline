@@ -122,7 +122,8 @@ SYSTEM = (
     "a checklist. Use at most three figures in a paragraph and one or two in a headline bullet; prefer a "
     "percentage for a change and leave out figures that don't change the reader's view. Never chain figures (no "
     "'by X to Y from Z'); a fact whose value reads 'X to Y' already gives both levels, so write 'from' just before it. Cite each figure at most once in the "
-    "whole pack unless it adds a comparison. Management notes are context from the team: use them to explain "
+    "whole pack unless it adds a comparison. Names of customers, accounts and suppliers are in the labels: write "
+    "the name in your own words and cite only the figure. Management notes are context from the team: use them to explain "
     "causes, never quote figures from them, and never contradict the facts. Do not speculate beyond the facts and "
     "notes."
 )
@@ -141,7 +142,8 @@ def _schema(sections: list[str]) -> dict:
     }
 
 
-LIMITS = {"headline": 2, "performance": 4, "cash": 4, "outlook": 4, "decisions": 2, "risks": 2, "an answer": 3, "the answer": 4}
+# A little above what the prompt asks for, so a good draft isn't thrown away for one extra figure.
+LIMITS = {"headline": 3, "performance": 5, "cash": 5, "outlook": 5, "decisions": 3, "risks": 3, "an answer": 4, "the answer": 5}
 
 
 def _render(segments: list[dict], known: dict[str, Fact], where: str) -> tuple[list[str | dict], int]:
@@ -281,7 +283,7 @@ def draft(
         {"role": "user", "content": _facts_message(facts, signals or [], notes) + "\n\n" + ask},
     ]
     last_error = ""
-    for _ in range(2):
+    for _ in range(3):
         if last_error:
             messages.append({"role": "user", "content": f"Your previous answer was rejected: {last_error}. Try again."})
         try:
@@ -324,7 +326,7 @@ def answer(
     messages.append({"role": "user", "content": question[:500]})
     known = {f.id: f for f in facts}
     last_error = ""
-    for _ in range(2):
+    for _ in range(3):
         if last_error:
             messages.append({"role": "user", "content": f"Your previous answer was rejected: {last_error}. Try again."})
         try:

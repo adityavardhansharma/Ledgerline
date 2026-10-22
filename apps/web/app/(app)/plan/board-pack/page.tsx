@@ -58,7 +58,13 @@ export default function BoardPackPage() {
               { label: "Monthly summary", build: () => (snapshot ? monthlySummaryCsv(snapshot) : null) },
             ]}
           />
-          <Button variant="primary" icon="download" disabled={commentary?.status !== "accepted"} onClick={() => window.print()}>
+          <Button
+            variant="primary"
+            icon="download"
+            disabled={commentary?.status !== "accepted"}
+            title={commentary?.status === "accepted" ? undefined : "Accept the commentary first (button under the commentary)"}
+            onClick={() => window.print()}
+          >
             Export PDF
           </Button>
         </>

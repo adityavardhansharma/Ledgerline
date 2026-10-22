@@ -220,6 +220,7 @@ async function prepare(ctx: ActionCtx): Promise<Gathered & { payload: Record<str
 
 function plain(err: unknown): string {
   if (err instanceof EngineError) {
+    console.error("engine rejected the commentary", err.status, JSON.stringify(err.body).slice(0, 500));
     if (err.status === 422) return "The draft didn't pass its checks twice in a row. Try again, or shorten your notes.";
     return "The writing service didn't answer. Try again in a moment.";
   }

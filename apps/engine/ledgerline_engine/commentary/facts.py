@@ -466,8 +466,8 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "cash",
                 f"owes{index}",
-                f"Customer owing the {['most', 'second most', 'third most'][index - 1]}",
-                f"{row['contact']}, {eur(row['value'])}",
+                f"Owed by {row['contact']} (the customer owing the {['most', 'second most', 'third most'][index - 1]})",
+                eur(row["value"]),
                 "Xero, unpaid invoices",
             )
     payable = ageing.get("payable") or []
@@ -492,8 +492,8 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "performance",
                 f"customer{index}",
-                f"Customer number {index} by sales this month",
-                f"{row['contact']}, {eur(row['value'])}{share}",
+                f"Sales to {row['contact']} this month (customer number {index} by sales)",
+                f"{eur(row['value'])}{share}",
                 "Sales by customer",
             )
         prior = set(customers.get("prior") or [])
@@ -515,8 +515,8 @@ def build_facts(data: BoardInput) -> tuple[list[Fact], list[dict]]:
             pack.add(
                 "risk",
                 "topCustomerShare",
-                "Largest customer's share of sales over the last three months",
-                f"{top['contact']}, {pct(share, 0)}",
+                f"Share of sales over the last three months from the largest customer, {top['contact']}",
+                pct(share, 0),
                 "Sales by customer",
             )
             if share > 0.25:

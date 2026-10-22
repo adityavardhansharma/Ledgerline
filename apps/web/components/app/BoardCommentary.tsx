@@ -2,6 +2,7 @@
 
 import { Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Citation, Commentary, Prose, Question, Risk, Section, Sections } from "@/convex/commentary";
@@ -29,8 +30,13 @@ const LENGTHS = [
   { value: "detailed", label: "Detailed" },
 ];
 
-export const errorText = (err: unknown, fallback: string) =>
-  err instanceof Error ? err.message.replace(/^[\s\S]*?(ConvexError|Uncaught Error|Error): /, "").replace(/\s+at [\s\S]*$/, "") || fallback : fallback;
+/** A server error in plain words: a ConvexError's own message, never "Server Error" or a stack trace. */
+export const errorText = (err: unknown, fallback: string) => {
+  if (err instanceof ConvexError) return typeof err.data === "string" ? err.data : fallback;
+  if (!(err instanceof Error)) return fallback;
+  const text = err.message.replace(/^[\s\S]*?(ConvexError|Uncaught Error|Error): /, "").replace(/\s+at [\s\S]*$/, "");
+  return !text || /Server Error|Request ID/.test(text) ? fallback : text;
+};
 
 const isCitation = (part: string | Citation): part is Citation => typeof part !== "string";
 const proseText = (parts: Prose) => parts.map((p) => (isCitation(p) ? p.text : p)).join("");
