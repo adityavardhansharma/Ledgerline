@@ -171,7 +171,11 @@ def cash_dip(body: CashDipRequest, settings: Settings, http: httpx.Client | None
     drop = worst["cash"] - (window[worst_index - 1]["cash"] if worst_index else body.opening_cash)
     if drop < 0:
         pack.add(
-            "cash", "worstMonth", f"Biggest monthly fall in cash, in {month_name(worst['period'])}", eur(abs(drop)), "Forecast"
+            "cash",
+            "worstMonth",
+            "Biggest monthly fall in cash, and the month it happens",
+            f"{eur(abs(drop))} in {month_name(worst['period'])}",
+            "Forecast",
         )
     for index, item in enumerate([o for o in body.one_offs if o.get("period", "") <= target][:3], start=1):
         pack.add(
@@ -673,7 +677,7 @@ def downside(body: DownsideRequest, settings: Settings, http: httpx.Client | Non
     task = (
         "These are the changes for a downside scenario, each taken from the company's own worst recent month. For each "
         "change (c1, c2, …) write one short sentence saying what it assumes and why it's plausible, citing it. Then "
-        "name the scenario in three to six words, without numbers."
+        "name the scenario in three to six words, in sentence case (only the first word capitalised), without numbers."
     )
 
     def validate(payload: dict) -> dict:
