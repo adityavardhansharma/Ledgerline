@@ -31,7 +31,7 @@ const FAN = [
   { name: "Base case", kind: "forecast", values: D.cashChart.base },
 ];
 
-const PLANS: { name: string; price: string; per: string; for: string; featured?: boolean; cta: string; items: [string, boolean?][] }[] = [
+const PLANS: { name: string; price: string; per: string; for: string; featured?: boolean; soon?: boolean; cta: string; items: [string, boolean?][] }[] = [
   {
     name: "Free",
     price: "€0",
@@ -53,6 +53,7 @@ const PLANS: { name: string; price: string; per: string; for: string; featured?:
     per: "a month",
     for: "For owners who run the business on it.",
     featured: true,
+    soon: true,
     cta: "Start free, upgrade any time",
     items: [
       ["Everything in Free"],
@@ -66,6 +67,7 @@ const PLANS: { name: string; price: string; per: string; for: string; featured?:
     price: "€100",
     per: "a month",
     for: "For finance leads who want the strongest analysis.",
+    soon: true,
     cta: "Start free, upgrade any time",
     items: [
       ["Everything in Pro"],
@@ -273,7 +275,7 @@ export function Landing() {
               <div key={plan.name} className={`lp-plan${plan.featured ? " is-featured" : ""}`}>
                 <div className="lp-plan-head">
                   <h3>{plan.name}</h3>
-                  {plan.featured ? <span className="lp-plan-tag">Most popular</span> : null}
+                  {plan.soon ? <span className="lp-plan-tag is-soon">Coming soon</span> : plan.featured ? <span className="lp-plan-tag">Most popular</span> : null}
                 </div>
                 <div className="lp-price">
                   {plan.price} <small>{plan.per}</small>
@@ -290,15 +292,21 @@ export function Landing() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/sign-up">
-                  <Button variant={plan.featured ? "primary" : "secondary"} block>
-                    {plan.cta}
+                {plan.soon ? (
+                  <Button block disabled>
+                    Coming soon
                   </Button>
-                </Link>
+                ) : (
+                  <Link href="/sign-up">
+                    <Button variant="primary" block>
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                )}
               </div>
             ))}
           </div>
-          <p className="lp-pricing-note">Prices in euro, billed monthly. Unused AI doesn't roll over. Asking about the same figures again is free until they change.</p>
+          <p className="lp-pricing-note">Paid plans open soon; everyone starts on Free. Prices in euro, billed monthly. Unused AI doesn't roll over. Asking about the same figures again is free until they change.</p>
         </section>
 
         <section className="lp-section lp-wrap" id="faq">
