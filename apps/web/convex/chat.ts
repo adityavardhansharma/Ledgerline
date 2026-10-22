@@ -130,7 +130,17 @@ async function runTool(ctx: ActionCtx, name: string, rawArgs: string) {
   const tools = api.chatTools as unknown as Record<string, Parameters<typeof ctx.runQuery>[0]>;
   if (!toolNamed(name) || !tools[name]) return JSON.stringify({ error: `There is no tool called ${name}.` });
   try {
-    const result = await ctx.runQuery(tools[name], args as never);
+    let result = await ctx.runQuery(tools[name], args as never);
+    // A scenario nobody has opened yet has no forecast: run it now, then read it.
+    const pending = result as { needsRun?: boolean; scenarioId?: Id<"scenarios"> } | null;
+    if (name === "forecast" && pending?.needsRun && pending.scenarioId) {
+      try {
+        await ctx.runAction(api.forecast.run, { scenarioId: pending.scenarioId });
+        result = await ctx.runQuery(tools[name], args as never);
+      } catch {
+        // Leave the "hasn't run" answer; the model says so.
+      }
+    }
     const text = JSON.stringify(result);
     return text.length > 9000 ? `${text.slice(0, 9000)}…(truncated)` : text;
   } catch (err) {

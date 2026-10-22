@@ -180,7 +180,7 @@ export const forecast = query({
     const chosen = (want ? all.find((s) => s.name.toLowerCase() === want) ?? all.find((s) => s.name.toLowerCase().includes(want)) : null) ?? all.find((s) => s.isBase);
     if (!chosen) return { error: "No forecast yet.", rows: [] };
     const run = await latestRun(ctx, chosen);
-    if (!run) return { scenario: chosen.name, error: "This scenario's forecast hasn't run yet; open it on the Forecast page.", rows: [] };
+    if (!run) return { scenario: chosen.name, scenarioId: chosen._id, needsRun: true, error: "This scenario's forecast hasn't run yet.", rows: [] };
     return {
       scenario: chosen.name,
       runwayMonths: run.runwayMonths ?? (run.months.length || 24),
