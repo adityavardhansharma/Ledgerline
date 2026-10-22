@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import calendar
+import json
 from typing import Annotated
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -479,3 +481,49 @@ def action_name_scenario(body: NameScenarioRequest, settings: SettingsDep):
 @app.post("/search/parse")
 def search(body: SearchParseRequest, settings: SettingsDep):
     return _action(search_parse, body, settings)
+
+
+# ---------- chat ----------
+
+
+class ChatRequest(BaseModel):
+    messages: list[dict] = Field(min_length=1, max_length=80)
+    tools: list[dict] = Field(default_factory=list, max_length=30)
+    max_tokens: int = Field(default=3000, ge=100, le=8000)
+
+
+@app.post("/chat/complete")
+def chat_complete(body: ChatRequest, settings: SettingsDep):
+    """Stream one model turn (text and tool calls) as the model's own server-sent events.
+
+    The chat's tool loop runs in Convex, next to the data; the engine only holds the model key and streams.
+    """
+    if not settings.openrouter_api_key:
+        raise HTTPException(status_code=503, detail="chat is not configured")
+    payload = {
+        "model": settings.openrouter_model,
+        "messages": body.messages,
+        "stream": True,
+        "temperature": 0.4,
+        "max_tokens": body.max_tokens,
+    }
+    if body.tools:
+        payload["tools"] = body.tools
+
+    def relay():
+        with (
+            httpx.Client(timeout=httpx.Timeout(120, connect=10)) as client,
+            client.stream(
+                "POST",
+                f"{settings.openrouter_base}/chat/completions",
+                headers={"Authorization": f"Bearer {settings.openrouter_api_key}", "X-Title": "Ledgerline"},
+                json=payload,
+            ) as response,
+        ):
+            if response.status_code >= 400:
+                detail = response.read().decode("utf-8", "replace")[:300]
+                yield f"data: {json.dumps({'error': {'status': response.status_code, 'detail': detail}})}\n\n".encode()
+                return
+            yield from response.iter_bytes()
+
+    return StreamingResponse(relay(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})

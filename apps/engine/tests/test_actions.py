@@ -378,3 +378,28 @@ def test_search_parse_checks_dates_amounts_and_accounts(live):
         "maxCents": None,
         "side": "credit",
     }
+
+
+@respx.mock
+def test_chat_complete_relays_the_model_stream(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from ledgerline_engine.api import app
+    from ledgerline_engine.settings import Settings, get_settings
+
+    monkeypatch.setenv("LL_ALLOW_UNSIGNED", "true")
+    get_settings.cache_clear()
+    app.dependency_overrides[get_settings] = lambda: Settings(allow_unsigned=True, openrouter_api_key="key")
+    stream = b'data: {"choices":[{"delta":{"content":"root = "}}]}\n\ndata: [DONE]\n\n'
+    route = respx.post(OPENROUTER).mock(
+        return_value=httpx.Response(200, content=stream, headers={"content-type": "text/event-stream"})
+    )
+    try:
+        response = TestClient(app).post("/chat/complete", json={"messages": [{"role": "user", "content": "hi"}], "tools": []})
+        assert response.status_code == 200
+        assert response.content == stream
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["stream"] is True and "tools" not in sent
+    finally:
+        app.dependency_overrides.clear()
+        get_settings.cache_clear()

@@ -236,6 +236,24 @@ export default defineSchema({
     acceptedBy: v.optional(v.string()),
   }).index("by_org_period", ["orgId", "period"]),
 
+  // The global chat: private threads per person and organisation. Assistant messages hold prose with ```ui blocks.
+  chatThreads: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.string(),
+    title: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org_user", ["orgId", "userId", "updatedAt"]),
+  chatMessages: defineTable({
+    threadId: v.id("chatThreads"),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    status: v.union(v.literal("streaming"), v.literal("done"), v.literal("error")),
+    tools: v.optional(v.array(v.string())),
+    page: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_thread", ["threadId", "createdAt"]),
+
   // AI actions: answers kept until the figures they explain change, and one row per model call for metering.
   aiCache: defineTable({
     orgId: v.id("organizations"),

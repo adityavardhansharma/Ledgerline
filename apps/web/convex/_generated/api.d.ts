@@ -10,6 +10,8 @@
 
 import type * as aiActions from "../aiActions.js";
 import type * as audit from "../audit.js";
+import type * as chat from "../chat.js";
+import type * as chatTools from "../chatTools.js";
 import type * as commentary from "../commentary.js";
 import type * as crons from "../crons.js";
 import type * as forecast from "../forecast.js";
@@ -18,6 +20,8 @@ import type * as imports from "../imports.js";
 import type * as ledger from "../ledger.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_chatPrompt from "../lib/chatPrompt.js";
+import type * as lib_chatSpec from "../lib/chatSpec.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_engine from "../lib/engine.js";
 import type * as lib_money from "../lib/money.js";
@@ -39,6 +43,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   aiActions: typeof aiActions;
   audit: typeof audit;
+  chat: typeof chat;
+  chatTools: typeof chatTools;
   commentary: typeof commentary;
   crons: typeof crons;
   forecast: typeof forecast;
@@ -47,6 +53,8 @@ declare const fullApi: ApiFromModules<{
   ledger: typeof ledger;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/chatPrompt": typeof lib_chatPrompt;
+  "lib/chatSpec": typeof lib_chatSpec;
   "lib/crypto": typeof lib_crypto;
   "lib/engine": typeof lib_engine;
   "lib/money": typeof lib_money;
