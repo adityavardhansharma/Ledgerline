@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
+import { AskLedgerline } from "@/components/app/chat/AskLedgerline";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -12,5 +13,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
   if (!orgId) redirect("/onboarding");
-  return children;
+  return (
+    <>
+      {children}
+      <AskLedgerline />
+    </>
+  );
 }

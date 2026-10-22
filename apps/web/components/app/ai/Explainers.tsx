@@ -7,8 +7,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Anomaly } from "@/convex/aiActions";
 import { periodLabel } from "@/lib/format";
-import { Text } from "../BoardCommentary";
-import { AiButton, AiNote, AiProse, plainText, useAi } from "./AiAction";
+import { AiButton, AiNote, AiProse, plainText, RevealText, Thinking, useAi } from "./AiAction";
 
 /** "Why is it this figure?" inside the drawer that opens from any statement figure. */
 export function ExplainFigure({ accountId, period, label }: { accountId: string; period: string; label: string }) {
@@ -23,7 +22,7 @@ export function ExplainFigure({ accountId, period, label }: { accountId: string;
     );
   }
   return (
-    <AiNote title={`${label}, ${periodLabel(period)}`} busy={ai.busy} error={ai.error} onClose={ai.close}>
+    <AiNote title={`${label}, ${periodLabel(period)}`} busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Reading the transactions", "Comparing with last month and last year", "Writing it up"]}>
       {ai.data ? <AiProse paragraphs={ai.data.paragraphs} /> : null}
     </AiNote>
   );
@@ -38,7 +37,7 @@ export function CashDipExplainer({ scenarioId, onOpenArea }: { scenarioId: Id<"s
   useEffect(() => ai.close(), [scenarioId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ai.open) return <AiButton size="sm" onClick={() => void ai.run({ scenarioId })}>Why does cash dip?</AiButton>;
   return (
-    <AiNote title="Why cash dips" busy={ai.busy} error={ai.error} onClose={ai.close}>
+    <AiNote title="Why cash dips" busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Reading the forecast", "Finding what drains cash", "Weighing the fixes"]}>
       {ai.data ? (
         <>
           <AiProse paragraphs={ai.data.paragraphs} />
@@ -47,7 +46,7 @@ export function CashDipExplainer({ scenarioId, onOpenArea }: { scenarioId: Id<"s
               {ai.data.fixes.map((fix, i) => (
                 <li key={i}>
                   <span>
-                    <Text parts={fix.text} />
+                    <RevealText parts={fix.text} start={20 + i * 12} />
                   </span>
                   <Button size="sm" variant="ghost" iconRight="arrow-right" onClick={() => onOpenArea(fix.area as keyof typeof AREA)}>
                     {AREA[fix.area as keyof typeof AREA] ?? "Open"}
@@ -71,7 +70,7 @@ export function MismatchExplainer() {
   const ai = useAi(explain);
   if (!ai.open) return <AiButton size="sm" onClick={() => void ai.run({})}>Why is this different?</AiButton>;
   return (
-    <AiNote title="Why it differs from Xero" busy={ai.busy} error={ai.error} onClose={ai.close}>
+    <AiNote title="Why it differs from Xero" busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Comparing with Xero's reports", "Checking the sync timing", "Writing it up"]}>
       {ai.data ? (
         <>
           <ul className="ll-ai-list">
@@ -81,7 +80,7 @@ export function MismatchExplainer() {
                   {item.name}, {periodLabel(item.period)}
                 </strong>
                 <span>
-                  <Text parts={item.reason} />
+                  <RevealText parts={item.reason} start={i * 12} />
                 </span>
                 {item.fix === "sync" ? (
                   <Button size="sm" icon="refresh" onClick={() => void sync()}>
@@ -95,7 +94,7 @@ export function MismatchExplainer() {
           </ul>
           {ai.data.summary.length ? (
             <p className="ll-ai-summary">
-              <Text parts={ai.data.summary} />
+              <RevealText parts={ai.data.summary} start={40} />
             </p>
           ) : null}
         </>
@@ -132,10 +131,7 @@ export function ChangeDigest() {
         ai.error ? (
           <p className="ll-ai-error">{ai.error}</p>
         ) : ai.busy ? (
-          <div className="ll-ai-card-body">
-            <span className="ll-ai-shimmer" />
-            <span className="ll-ai-shimmer" />
-          </div>
+          <Thinking steps={["Comparing with the last sync", "Picking out what moved", "Writing it up"]} />
         ) : ai.data ? (
           ai.data.first ? (
             <p className="ll-ai-muted">This is the first build of your figures, so there's nothing to compare yet.</p>
@@ -144,8 +140,8 @@ export function ChangeDigest() {
           ) : (
             <ul className="ll-ai-digest">
               {ai.data.items.map((item, i) => (
-                <li key={i}>
-                  <Text parts={item} />
+                <li key={i} className="ll-reveal" style={{ animationDelay: `${i * 120}ms` }}>
+                  <RevealText parts={item} start={i * 8} />
                 </li>
               ))}
             </ul>
@@ -198,7 +194,7 @@ export function AnomalyStrip({ flags }: { flags: Anomaly[] | null }) {
           {flags.map((f) => (
             <li key={f.accountId}>
               <strong>{f.name}</strong>
-              <span>{f.reason ? <Text parts={f.reason} /> : `Far from its typical month.`}</span>
+              <span>{f.reason ? <RevealText parts={f.reason} /> : `Far from its typical month.`}</span>
             </li>
           ))}
         </ul>

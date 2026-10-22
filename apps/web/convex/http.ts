@@ -54,7 +54,7 @@ http.route({
 
 function corsHeaders(request: Request) {
   const origin = request.headers.get("origin") ?? "";
-  const allowed = [site(), "http://localhost:3000", "http://localhost:3123"];
+  const allowed = [site(), "https://ledgerline-amber.vercel.app", "http://localhost:3000", "http://localhost:3123", ...(process.env.CHAT_ORIGINS ?? "").split(",").filter(Boolean)];
   return {
     "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : site(),
     "Access-Control-Allow-Methods": "POST, OPTIONS",

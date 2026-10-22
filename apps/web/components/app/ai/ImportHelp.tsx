@@ -45,6 +45,7 @@ export function ImportHelp({ file, text, unknownTypes, onApply }: { file: "accou
       busy={ai.busy}
       error={ai.error}
       onClose={ai.close}
+      steps={["Reading the columns", "Matching them to what Ledgerline needs", "Checking the account types"]}
       footer={
         columns.length || types.length ? (
           <Button size="sm" variant="primary" icon="check" onClick={() => { onApply({ columns: data?.columns, types: data?.types }); ai.close(); }}>

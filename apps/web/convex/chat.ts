@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { type ActionCtx, internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { type ActionCtx, action, internalMutation, mutation, query } from "./_generated/server";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { CHAT_PROMPT } from "./lib/chatPrompt";
 import { CHAT_TOOLS, functionTools, toolNamed } from "./lib/chatSpec";
@@ -237,8 +237,8 @@ export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThrea
   }
 }
 
-/** A whole turn without streaming, for checking the chat from the command line. */
-export const debugTurn = internalAction({
+/** A whole turn without streaming (the command line, and a fallback where streaming is blocked). */
+export const turn = action({
   args: { text: v.string(), page: v.optional(v.string()), threadId: v.optional(v.id("chatThreads")) },
   handler: async (ctx, args): Promise<{ threadId: Id<"chatThreads">; answer: string; tools: string[]; statuses: string[] }> => {
     const statuses: string[] = [];

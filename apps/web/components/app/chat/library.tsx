@@ -164,7 +164,7 @@ const Bars = defineComponent({
     const kind = (props.format ?? "money") as Format;
     return (
       <ChartFrame title={props.title}>
-        <BarChart labels={labels.map((l) => (l.length > 14 ? `${l.slice(0, 13)}…` : l))} values={values} height={190} seriesName={props.title} format={(v: number) => (kind === "money" ? compactMoney(v) : show(v, kind))} />
+        <BarChart labels={labels.map((l) => (l.length > 11 ? `${l.slice(0, 10)}…` : l))} values={values} height={190} seriesName={props.title} format={(v: number) => (kind === "money" ? compactMoney(v) : show(v, kind))} />
       </ChartFrame>
     );
   },

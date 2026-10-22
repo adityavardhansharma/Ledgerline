@@ -1,14 +1,13 @@
 "use client";
 
-import { Button, Dialog, Input, Skeleton } from "@ledgerline/ui";
+import { Button, Dialog, Input } from "@ledgerline/ui";
 import { useAction, useMutation } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ParsedScenario } from "@/convex/aiActions";
 import { money, periodLabel } from "@/lib/format";
-import { Text } from "../BoardCommentary";
-import { AiButton, useAi } from "./AiAction";
+import { AiButton, RevealText, Thinking, useAi } from "./AiAction";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DRIVER: Record<string, [string, (v: number) => string]> = {
@@ -102,15 +101,16 @@ export function ScenarioComposer({ scenarioId, startPeriod, own }: { scenarioId:
           </AiButton>
         </div>
       </div>
+      {ai.open && ai.busy ? <Thinking steps={["Reading what you wrote", "Matching it to your plan", "Filling in the details"]} /> : null}
       {ai.open && !ai.busy ? (
         ai.error ? (
           <p className="ll-ai-error">{ai.error}</p>
         ) : p ? (
-          <div className="ll-composer-result">
+          <div className="ll-composer-result ll-chat-in">
             {rows.length ? (
               <ul>
-                {rows.map((r) => (
-                  <li key={r.id}>
+                {rows.map((r, i) => (
+                  <li key={r.id} className="ll-reveal" style={{ animationDelay: `${i * 70}ms` }}>
                     <label>
                       <input
                         type="checkbox"
@@ -199,7 +199,7 @@ export function DownsideButton({ onCreated }: { onCreated: (id: Id<"scenarios">)
           {ai.error ? (
             <p className="ll-ai-error">{ai.error}</p>
           ) : ai.busy || !data ? (
-            <Skeleton lines={6} />
+            <Thinking steps={["Reading your last twelve months", "Finding the weakest months", "Writing the case"]} />
           ) : (
             <div className="ll-stack">
               <p className="ll-ai-muted">Each assumption moves to the weakest level your last twelve months actually showed. You can change any of them after.</p>
@@ -215,7 +215,7 @@ export function DownsideButton({ onCreated }: { onCreated: (id: Id<"scenarios">)
                     </div>
                     {c.reason.length ? (
                       <p>
-                        <Text parts={c.reason} />
+                        <RevealText parts={c.reason} />
                       </p>
                     ) : null}
                   </li>

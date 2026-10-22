@@ -1,10 +1,10 @@
 "use client";
 
-import { Amount, Button, Dialog, Skeleton } from "@ledgerline/ui";
+import { Amount, Button, Dialog } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { AiButton, plainText, useAi } from "./AiAction";
+import { AiButton, plainText, Thinking, useAi } from "./AiAction";
 
 /**
  * The customers who owe the most, each with a drafted payment reminder. Ledgerline never sends it: the person
@@ -73,7 +73,7 @@ export function OwedList({ top }: { top: { contact: string; value: number }[] })
           {ai.error ? (
             <p className="ll-ai-error">{ai.error}</p>
           ) : ai.busy ? (
-            <Skeleton lines={7} />
+            <Thinking steps={["Reading their unpaid invoices", "Working out what's overdue", "Drafting the message"]} />
           ) : (
             <div className="ll-stack">
               <p className="ll-ai-muted">Drafted from their unpaid invoices. Edit anything before you send it yourself; Ledgerline never emails customers.</p>

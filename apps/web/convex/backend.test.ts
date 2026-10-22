@@ -647,3 +647,40 @@ describe("AI actions and search", () => {
     await expect(owner.action(api.aiActions.parseScenario, { text: "hire two people", startPeriod: "2026-10" })).rejects.toThrow(/didn't pass its checks/);
   });
 });
+
+describe("chat", () => {
+  const sse = (...events: unknown[]) => new Response(events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("") + "data: [DONE]\n\n", { status: 200, headers: { "content-type": "text/event-stream" } });
+
+  it("reads the books with tools, streams the answer and keeps the thread private", async () => {
+    const { t, owner, orgId } = await setup();
+    await t.mutation(internal.reports.storeSnapshot, {
+      orgId,
+      kind: "statements",
+      bumpVersion: true,
+      asOf: "2026-09",
+      data: { asOf: "2026-09", fyStart: "2026-01", measures: { month: "2026-09", revenue: 24_628_080, cash: 22_878_000, revenueDelta: 0.169 }, series: { periods: [], labels: [] }, pnl: { columns: [], rows: [] }, opexYtd: [] },
+    });
+    const sent: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      sent.push(body);
+      if (sent.length === 1) return sse({ choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "company_overview", arguments: "{}" } }] } }] });
+      return sse({ choices: [{ delta: { content: "Cash is **€228,780**." } }] }, { choices: [{ delta: { content: " Comfortable." } }] });
+    });
+    const out = await owner.action(api.chat.turn, { text: "How is cash?", page: "/overview" });
+    expect(out).toMatchObject({ answer: "Cash is **€228,780**. Comfortable.", tools: ["company_overview"], statuses: ["Reading the headline figures"] });
+    // The second model call saw the tool's result, read as the signed-in organisation.
+    const toolMessage = (sent[1].messages as { role: string; content: string }[]).find((m) => m.role === "tool")!;
+    expect(JSON.parse(toolMessage.content)).toMatchObject({ company: "Kestrel Joinery Ltd", cash: 228_780, revenueChangePct: 16.9 });
+    expect((sent[0].tools as unknown[]).length).toBeGreaterThan(5);
+
+    const threads = await owner.query(api.chat.threads, {});
+    expect(threads).toEqual([expect.objectContaining({ title: "How is cash?" })]);
+    const messages = await owner.query(api.chat.messages, { threadId: threads[0].id });
+    expect(messages.map((m) => [m.role, m.status])).toEqual([["user", "done"], ["assistant", "done"]]);
+    // Someone else in the same organisation can't read it.
+    const colleague = t.withIdentity({ ...ACCOUNTANT, subject: "user_other_person" } as never);
+    expect(await colleague.query(api.chat.messages, { threadId: threads[0].id })).toEqual([]);
+    expect(await colleague.query(api.chat.threads, {})).toEqual([]);
+  });
+});
