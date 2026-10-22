@@ -4,7 +4,7 @@ import { Icon } from "@ledgerline/ui";
 import { Renderer } from "@openuidev/react-lang";
 import { useConvex } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
-import { createContext, memo, useContext, useMemo } from "react";
+import { createContext, memo, useContext, useMemo, useRef } from "react";
 import { api } from "@/convex/_generated/api";
 import { CHAT_TOOLS } from "@/convex/lib/chatSpec";
 import { chatLibrary, Prose } from "./library";
@@ -72,9 +72,14 @@ function useToolProvider() {
 
 const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: boolean }) {
   const tools = useToolProvider();
+  const program = repairProgram(code);
+  // The renderer parses as text arrives and expects it only to grow; if it is ever replaced, start a fresh parse.
+  const last = useRef({ program: "", generation: 0 });
+  if (!program.startsWith(last.current.program)) last.current.generation += 1;
+  last.current.program = program;
   return (
     <motion.div className="ll-chat-ui" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-      <Renderer response={repairProgram(code)} library={chatLibrary} isStreaming={live} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
+      <Renderer key={last.current.generation} response={program} library={chatLibrary} isStreaming={live} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
     </motion.div>
   );
 });

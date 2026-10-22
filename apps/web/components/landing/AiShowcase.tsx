@@ -14,6 +14,7 @@ import { CONVERSATIONS, SEARCH, TOOLS } from "./aiSamples";
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const HOLD = 8000;
 const c = (text: string, source: string) => ({ text, source, fact: source });
 
 function SampleTools({ children }: { children: React.ReactNode }) {
@@ -21,117 +22,119 @@ function SampleTools({ children }: { children: React.ReactNode }) {
   return <ToolOverride.Provider value={tools}>{children}</ToolOverride.Provider>;
 }
 
-/** A finished exchange, small enough to float over the hero's app window. */
-export function HeroChat() {
-  const answer = "Cash isn't an immediate worry. It dips to its low point in **November**, then rebuilds; collections are the lever to watch.";
-  const ui = `\`\`\`ui
-root = Stack([tiles])
-o = Query("company_overview", {}, {cash: 0})
-f = Query("forecast", {}, {lowestCash: 0, lowestMonth: ""})
-tiles = Row([Kpi("Cash now", o.cash, "money"), Kpi("Lowest forecast", f.lowestCash, "money", f.lowestMonth)])
-\`\`\``;
+/** The pill that opens the chat in the app, as it sits at the bottom of every page. */
+export function AskPill() {
+  const [mac, setMac] = useState(false);
+  useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform)), []);
   return (
-    <SampleTools>
-      <div className="lp-hero-chat" aria-label="Ask Ledgerline, answering a question">
-        <div className="lp-hero-chat-head">
-          <span className="ll-ask-orb" aria-hidden />
-          <strong>Ask Ledgerline</strong>
-        </div>
-        <div className="ll-ask-q">How is cash looking?</div>
-        <AnswerBody content={`${answer}\n\n${ui}`} live={false} />
-      </div>
-    </SampleTools>
+    <a href="#ask" className="lp-pill" aria-label="See Ask Ledgerline">
+      <span className="ll-ask-orb" aria-hidden />
+      <span>Ask Ledgerline</span>
+      <kbd>{mac ? "⌘ J" : "Ctrl J"}</kbd>
+    </a>
   );
 }
 
-/** Real conversations replayed as they happened: reading the books, then words, then the picture. */
-export function ChatDemo() {
-  const box = useRef<HTMLDivElement>(null);
-  const scroller = useRef<HTMLDivElement>(null);
-  const visible = useInView(box, { amount: 0.35 });
-  const [index, setIndex] = useState(0);
-  const [auto, setAuto] = useState(true);
+/** One conversation, replayed as it happened: the sources it read, the words, then the picture once complete. */
+function Replay({ index, onDone }: { index: number; onDone: (index: number) => void }) {
+  const convo = CONVERSATIONS[index];
+  const [prose, ui] = useMemo(() => {
+    const at = convo.answer.indexOf("```ui");
+    return at < 0 ? [convo.answer, ""] : [convo.answer.slice(0, at).trimEnd(), convo.answer.slice(at)];
+  }, [convo]);
   const [steps, setSteps] = useState(0);
   const [chars, setChars] = useState(0);
-  const convo = CONVERSATIONS[index];
-  const done = chars >= convo.answer.length;
+  const scroller = useRef<HTMLDivElement>(null);
+  const done = chars >= prose.length;
 
   useEffect(() => {
-    if (!visible) return;
-    setSteps(0);
-    setChars(0);
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    convo.steps.forEach((_, i) => timers.push(setTimeout(() => setSteps(i + 1), 500 + i * 750)));
-    const start = 500 + convo.steps.length * 750 + 300;
+    const timers = convo.steps.map((_, i) => setTimeout(() => setSteps(i + 1), 450 + i * 700));
     let tick: ReturnType<typeof setInterval> | undefined;
-    timers.push(
-      setTimeout(() => {
-        tick = setInterval(() => setChars((n) => Math.min(convo.answer.length, n + 14)), 32);
-      }, start),
-    );
+    timers.push(setTimeout(() => (tick = setInterval(() => setChars((n) => Math.min(prose.length, n + 9)), 28)), 450 + convo.steps.length * 700 + 250));
     return () => {
       timers.forEach(clearTimeout);
       if (tick) clearInterval(tick);
     };
-  }, [index, visible, convo]);
+  }, [convo, prose]);
 
   useEffect(() => {
-    if (!done || !auto || !visible) return;
-    const t = setTimeout(() => setIndex((i) => (i + 1) % CONVERSATIONS.length), 7000);
-    return () => clearTimeout(t);
-  }, [done, auto, visible]);
+    if (done) onDone(index);
+  }, [done, onDone, index]);
 
   useEffect(() => {
     const el = scroller.current;
     if (el && !done) el.scrollTop = el.scrollHeight;
   }, [chars, steps, done]);
 
-  const phase = chars > 0 ? "writing" : steps > 0 ? "reading" : "thinking";
+  const phase = done ? "done" : chars > 0 ? "writing" : steps > 0 ? "reading" : "thinking";
   return (
-    <div className="lp-chatdemo" ref={box}>
-      <div className="lp-chatdemo-tabs" role="tablist" aria-label="Example questions">
-        {CONVERSATIONS.map((q, i) => (
-          <button
-            key={q.question}
-            type="button"
-            role="tab"
-            aria-selected={i === index}
-            className={i === index ? "is-on" : undefined}
-            onClick={() => {
-              setAuto(false);
-              setIndex(i);
-            }}
-          >
-            {q.question}
-            {i === index && auto ? <motion.i className="lp-chatdemo-progress" key={`${index}-${done}`} initial={{ scaleX: 0 }} animate={{ scaleX: done ? 1 : 0 }} transition={{ duration: done ? 7 : 0, ease: "linear" }} /> : null}
-          </button>
-        ))}
+    <motion.div className="lp-ask-scroll" ref={scroller} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: EASE }}>
+      <div className="ll-ask-thread">
+        <div className="ll-ask-q">{convo.question}</div>
+        <div className="ll-ask-a">
+          <Reading steps={convo.steps.slice(0, steps).map(([tool, label]) => ({ tool, label }))} phase={phase} />
+          {chars > 0 ? <AnswerBody content={done ? `${prose}\n\n${ui}` : prose.slice(0, chars)} live={!done} /> : null}
+        </div>
       </div>
-      <div className="lp-chatdemo-panel">
-        <div className="ll-ask-head">
-          <span className="ll-ask-orb" aria-hidden style={{ width: 22, height: 22, marginLeft: 6 }} />
-          <div className="ll-ask-title">
+    </motion.div>
+  );
+}
+
+/** Real conversations about the sample company, one after another, or the one you pick. */
+export function ChatDemo() {
+  const box = useRef<HTMLDivElement>(null);
+  const started = useInView(box, { once: true, amount: 0.3 });
+  const visible = useInView(box, { amount: 0.2 });
+  const [index, setIndex] = useState(0);
+  const [auto, setAuto] = useState(true);
+  const [finished, setFinished] = useState(-1);
+  const done = finished === index;
+
+  useEffect(() => {
+    if (!done || !auto || !visible) return;
+    const t = setTimeout(() => setIndex((i) => (i + 1) % CONVERSATIONS.length), HOLD);
+    return () => clearTimeout(t);
+  }, [done, auto, visible]);
+
+  return (
+    <div className="lp-ask" ref={box}>
+      <ol className="lp-ask-list" role="tablist" aria-label="Example questions">
+        {CONVERSATIONS.map((q, i) => (
+          <li key={q.question}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              className={i === index ? "is-on" : undefined}
+              onClick={() => {
+                setAuto(false);
+                setIndex(i);
+              }}
+            >
+              <span className="lp-ask-n">{String(i + 1).padStart(2, "0")}</span>
+              <span className="lp-ask-text">{q.question}</span>
+              {i === index && auto ? (
+                <motion.i className="lp-ask-progress" key={`${index}-${done}`} initial={{ scaleX: 0 }} animate={{ scaleX: done ? 1 : 0 }} transition={{ duration: done ? HOLD / 1000 : 0, ease: "linear" }} />
+              ) : null}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <div className="lp-ask-window">
+        <div className="lp-ask-head">
+          <span className="ll-ask-orb" aria-hidden />
+          <div>
             <strong>Ask Ledgerline</strong>
-            <span>Kestrel Joinery Ltd · sample company</span>
+            <span>Kestrel Joinery Ltd</span>
           </div>
         </div>
         <SampleTools>
-          <div className="lp-chatdemo-scroll" ref={scroller}>
-            <AnimatePresence mode="wait">
-              <motion.div key={index} className="ll-ask-thread" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, ease: EASE }}>
-                <div className="ll-ask-q">{convo.question}</div>
-                <div className="ll-ask-a">
-                  <Reading steps={convo.steps.slice(0, Math.max(steps, 0)).map(([tool, label]) => ({ tool, label }))} phase={done ? "done" : phase} />
-                  {chars > 0 ? <AnswerBody content={convo.answer.slice(0, chars)} live={!done} /> : null}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          <AnimatePresence mode="wait">{started ? <Replay key={index} index={index} onDone={setFinished} /> : <div className="lp-ask-scroll" key="idle" />}</AnimatePresence>
         </SampleTools>
-        <div className="ll-ask-composer lp-chatdemo-composer" aria-hidden>
+        <div className="lp-ask-composer" aria-hidden>
           <span>Ask a follow-up…</span>
-          <span className="ll-ask-send">
-            <Icon name="arrow-up" size={16} />
+          <span className="lp-ask-send">
+            <Icon name="arrow-up" size={15} />
           </span>
         </div>
       </div>
@@ -139,163 +142,120 @@ export function ChatDemo() {
   );
 }
 
-/** Each AI action, in the state it leaves things in the app. */
-export function ActionGallery() {
+function Where({ children }: { children: React.ReactNode }) {
+  return <span className="lp-where">{children}</span>;
+}
+
+/** The AI actions, each in the state it leaves things in the app, all on the sample company's September. */
+export function ActionCards() {
   return (
-    <div className="lp-bento lp-ai-bento">
-      <div className="lp-cell lp-c-3">
-        <span className="lp-ai-where">Statements · click any figure</span>
-        <h3>Why is this figure what it is?</h3>
-        <div className="lp-mini-drawer">
-          <div className="lp-mini-drawer-head">
-            <span>Sales: doors and joinery · September 2026</span>
-            <strong>€141,547</strong>
+    <div className="lp-actions">
+      <article className="lp-action">
+        <header>
+          <Where>Statements · click any figure</Where>
+          <h3>Why is this figure what it is?</h3>
+        </header>
+        <div className="lp-action-body">
+          <div className="lp-figure-row">
+            <span>Sales: doors and joinery · Sep 2026</span>
+            <strong>€132,064</strong>
           </div>
           <AiNote title="Sales: doors and joinery, Sep 2026">
-            <AiProse paragraphs={[["Sales for doors and joinery were ", c("€141,547", "Statement"), ", up ", c("541.8%", "Statement, previous month"), " on the previous month. The largest transactions came from Riverside Dental, M. Kavanagh and Hollybank Nursing Home."]]} />
+            <AiProse paragraphs={[["Sales were ", c("€132,064", "Statement"), ", up ", c("171.1%", "Statement, previous month"), " on August. Two jobs for the Ó Briain residence made up ", c("€97,444", "Journal lines"), " of it, with Glenmore Developments next."]]} />
           </AiNote>
         </div>
-      </div>
-      <div className="lp-cell lp-c-3 no-r">
-        <span className="lp-ai-where">Forecast · under the cash warning</span>
-        <h3>Why does cash dip, and how do I fix it?</h3>
-        <AiNote title="Why cash dips">
-          <AiProse paragraphs={[["Cash falls to its low point in ", c("June 2027", "Forecast"), " at ", c("−€13,695", "Forecast"), " after trading uses ", c("€447,794", "Forecast cash flow"), " and repayments to lenders take ", c("€12,000", "Forecast cash flow"), "."]]} />
-          <ul className="ll-ai-fixes">
-            <li>
-              <span>
-                <RevealText parts={["Test a lower debtor-days assumption than ", c("46 days", "Drivers"), ", using what customers actually pay."]} start={30} />
-              </span>
-              <span className="lp-fake-btn">Assumptions <Icon name="arrow-right" size={13} /></span>
-            </li>
-            <li>
-              <span>
-                <RevealText parts={["Add a loan or equity before the low point, sized to cover the gap."]} start={42} />
-              </span>
-              <span className="lp-fake-btn">Financing <Icon name="arrow-right" size={13} /></span>
-            </li>
-          </ul>
-        </AiNote>
-      </div>
-      <div className="lp-cell lp-c-2">
-        <span className="lp-ai-where">Forecast · drivers</span>
-        <h3>Plan in a sentence</h3>
-        <div className="ll-composer">
-          <div className="ll-composer-box">
-            <p className="lp-composer-text">Hire two fitters in March at 42k each, buy a van in June for 38k and take a 50k loan in May.</p>
-          </div>
-          <div className="ll-composer-result">
-            <ul>
-              {[
-                ["Hire 2 × fitters from Mar 2027", "€42,000 a year each"],
-                ["Equipment: van, Jun 2027", "€38,000"],
-                ["Loan drawn, May 2027", "€50,000"],
-              ].map(([text, value], i) => (
-                <li key={text} className="ll-reveal" style={{ animationDelay: `${i * 90}ms` }}>
-                  <label>
-                    <input type="checkbox" checked readOnly tabIndex={-1} />
-                    <span>{text}</span>
-                    <strong>{value}</strong>
-                  </label>
-                </li>
-              ))}
+      </article>
+
+      <article className="lp-action">
+        <header>
+          <Where>Forecast · at the low point</Where>
+          <h3>Why does cash dip, and what would help?</h3>
+        </header>
+        <div className="lp-action-body">
+          <AiNote title="Why cash dips">
+            <AiProse paragraphs={[["Cash reaches its low point of ", c("€187,469", "Forecast"), " in ", c("November 2026", "Forecast"), " while the business stays profitable: it is waiting on ", c("€354,822", "Trade debtors"), " from customers."]]} />
+            <ul className="ll-ai-fixes">
+              <li>
+                <span>
+                  <RevealText parts={["Chase the ", c("€140,482", "Aged debtors"), " that is already overdue, largest first."]} start={30} />
+                </span>
+                <span className="lp-chip">
+                  Who owes you <Icon name="arrow-right" size={13} />
+                </span>
+              </li>
+              <li>
+                <span>
+                  <RevealText parts={["Test a shorter debtor-days assumption than ", c("48 days", "Drivers"), "."]} start={42} />
+                </span>
+                <span className="lp-chip">
+                  Assumptions <Icon name="arrow-right" size={13} />
+                </span>
+              </li>
             </ul>
-            <div className="ll-composer-actions">
-              <span className="lp-fake-btn is-primary">
-                <Icon name="check" size={13} /> Add 3 to scenario
-              </span>
-            </div>
-          </div>
+          </AiNote>
         </div>
-      </div>
-      <div className="lp-cell lp-c-2">
-        <span className="lp-ai-where">Profit and loss · flagged cells</span>
-        <h3>Unusual movements, spotted for you</h3>
-        <table className="lp-mini-pnl">
-          <tbody>
-            {[
-              ["Sales: fitted kitchens", "€94,300", false],
-              ["Sales: doors and joinery", "€141,547", true],
-              ["Timber and materials", "€108,243", false],
-              ["Wages and salaries", "€49,200", false],
-            ].map(([label, value, flag]) => (
-              <tr key={label as string}>
-                <th>{label}</th>
-                <td>
-                  {flag ? <span className="ll-fs-flag" aria-hidden /> : null} {value}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="lp-ai-tip">
-          <span className="ll-ai-dot" /> Sales were up from €31,131 in a typical month to €141,547, with Riverside Dental the largest posting at €43,078.
-        </p>
-      </div>
-      <div className="lp-cell lp-c-2 no-r">
-        <span className="lp-ai-where">Forecast · one click</span>
-        <h3>A downside case from your own history</h3>
-        <ul className="ll-ai-changes">
-          <li>
-            <div>
-              <strong>Gross margin</strong>
-              <span className="ll-mono">42.1% → 39.6%</span>
-            </div>
-            <p>Matches the lowest monthly margin in the last year.</p>
-          </li>
-          <li>
-            <div>
-              <strong>Overheads growth a year</strong>
-              <span className="ll-mono">4.0% → 7.0%</span>
-            </div>
-            <p>Assumes costs rise faster than planned.</p>
-          </li>
-        </ul>
-      </div>
-      <div className="lp-cell lp-c-6 no-r no-b">
-        <span className="lp-ai-where">Ledger · search in your own words</span>
-        <h3>Find anything without building a filter</h3>
-        <div className="ll-lsearch">
-          <div className="ll-lsearch-bar">
-            <Icon name="search" size={18} />
-            <span className="lp-search-text">{SEARCH.query}</span>
-          </div>
-          <div className="ll-lsearch-chips">
-            {["Liffey Timber", "1 Apr 2026 – 30 Jun 2026", "Over €5,000"].map((chip) => (
-              <span key={chip} className="ll-lsearch-chip">
-                {chip}
-                <Icon name="close" size={12} />
-              </span>
-            ))}
-          </div>
-          <div className="ll-table-wrap">
-            <table className="ll-table ll-ledger">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Account</th>
-                  <th>Description</th>
-                  <th className="is-num">Debit</th>
-                  <th className="is-num">Credit</th>
+      </article>
+
+      <article className="lp-action">
+        <header>
+          <Where>Profit and loss · flagged for you</Where>
+          <h3>What&apos;s unusual this month?</h3>
+        </header>
+        <div className="lp-action-body">
+          <table className="lp-mini-pnl">
+            <tbody>
+              {[
+                ["Sales: fitted kitchens", "114,216", false],
+                ["Sales: doors and joinery", "132,064", true],
+                ["Timber and materials", "117,916", false],
+                ["Wages and salaries", "49,262", false],
+              ].map(([label, value, flag]) => (
+                <tr key={label as string} className={flag ? "is-flagged" : undefined}>
+                  <th>
+                    {flag ? <span className="ll-fs-flag" aria-hidden /> : null}
+                    {label}
+                  </th>
+                  <td>{value}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {SEARCH.rows.slice(0, 4).map((r, i) => (
-                  <tr key={i}>
-                    <td className="ll-nowrap">{new Date(`${r.date}T00:00:00Z`).toLocaleDateString("en-IE", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}</td>
-                    <td className="ll-nowrap">
-                      <span className="ll-fs-code">{r.code}</span> {r.account}
-                    </td>
-                    <td className="ll-desc">{r.description}</td>
-                    <td className="is-num">{r.debitCents ? (r.debitCents / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 }) : ""}</td>
-                    <td className="is-num">{r.creditCents ? (r.creditCents / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 }) : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+          <p className="lp-tip">
+            <span className="ll-ai-dot" />
+            <span>About twice a typical month (€66,171). Two Ó Briain residence invoices make up most of it.</span>
+          </p>
         </div>
-      </div>
+      </article>
+
+      <article className="lp-action">
+        <header>
+          <Where>Ledger · search in your own words</Where>
+          <h3>Find anything without building a filter</h3>
+        </header>
+        <div className="lp-action-body">
+          <div className="lp-search">
+            <Icon name="search" size={16} />
+            <span>{SEARCH.query}</span>
+          </div>
+          <div className="lp-search-chips">
+            {["Liffey Timber Supplies", "Apr – Jun 2026", "Over €5,000"].map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+            <em>{SEARCH.count} lines</em>
+          </div>
+          <table className="lp-mini-ledger">
+            <tbody>
+              {SEARCH.rows.slice(0, 4).map((r, i) => (
+                <tr key={i}>
+                  <td>{new Date(`${r.date}T00:00:00Z`).toLocaleDateString("en-IE", { day: "numeric", month: "short", timeZone: "UTC" })}</td>
+                  <td>{r.account}</td>
+                  <td>{((r.debitCents || r.creditCents) / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
     </div>
   );
 }
@@ -333,8 +293,16 @@ export function BoardSample() {
     },
   };
   return (
-    <div className="lp-board-sample">
-      <BoardCommentary commentary={commentary as never} busy={null} onRedraft={() => {}} />
+    <div className="lp-paper">
+      <div className="lp-paper-head">
+        <span>Board pack · September 2026</span>
+        <span className="lp-paper-status">
+          <Icon name="check" size={13} /> Accepted
+        </span>
+      </div>
+      <div className="lp-paper-body">
+        <BoardCommentary commentary={commentary as never} busy={null} onRedraft={() => {}} />
+      </div>
     </div>
   );
 }

@@ -123,7 +123,7 @@ export function RevealText({ parts, start = 0 }: { parts: Prose; start?: number 
           </button>
         ) : (
           <span key={i}>
-            {part.split(/(\s+)/).map((w, j) =>
+            {part.split(/([ \t\n]+)/).map((w, j) =>
               /^\s+$/.test(w) || !w ? (
                 w
               ) : (
@@ -139,7 +139,7 @@ export function RevealText({ parts, start = 0 }: { parts: Prose; start?: number 
   );
 }
 
-const words = (parts: Prose) => parts.reduce((n, p) => n + (typeof p === "string" ? p.split(/\s+/).filter(Boolean).length : 1), 0);
+const words = (parts: Prose) => parts.reduce((n, p) => n + (typeof p === "string" ? p.split(/[ \t\n]+/).filter(Boolean).length : 1), 0);
 
 export function AiProse({ paragraphs }: { paragraphs: Prose[] }) {
   let start = 0;

@@ -445,8 +445,12 @@ function LineChart(p) {
   });
   var longest = Math.max.apply(null, labels.map(function (l) { return String(l).length; }));
   var every = Math.max(1, Math.ceil((longest * 7 + 14) / step));
+  var labelW = longest * 7;
   labels.forEach(function (l, i) {
     if ((n - 1 - i) % every) return;
+    // The last label hangs left of its point; drop the one before it if they would touch.
+    if (i !== n - 1 && X(n - 1) - X(i) < labelW * 1.5 + 6) return;
+    if (i === 0 && n - 1 > every && X(every) - X(0) < labelW * 1.5 + 6) return;
     kids.push(h('text', { key: 'x' + i, className: cx('ll-ch-xlabel', hi === i && 'is-hot'), x: X(i), y: H - 8, textAnchor: i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }, l));
   });
   (p.thresholds || []).forEach(function (t, i) {
