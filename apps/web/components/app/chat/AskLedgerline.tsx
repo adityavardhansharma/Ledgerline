@@ -2,7 +2,7 @@
 
 import { Icon } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -12,7 +12,9 @@ import { ChatActions } from "./library";
 import { AnswerBody, Reading } from "./Message";
 import { useChatStream } from "./useChatStream";
 
-const SPRING = { type: "spring", stiffness: 420, damping: 38, mass: 0.9 } as const;
+// A long, soft ease-out to open (fast start, gentle landing) and a short ease-in to close.
+const OPEN = { duration: 0.42, ease: [0.16, 1, 0.3, 1] } as const;
+const CLOSE = { duration: 0.2, ease: [0.4, 0, 1, 1] } as const;
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 const SUGGESTIONS: Record<string, string[]> = {
@@ -36,7 +38,11 @@ function usePage() {
  */
 export function AskLedgerline() {
   const [open, setOpen] = useState(false);
+  const [shortcut, setShortcut] = useState("Ctrl J");
   const reduce = useReducedMotion();
+  useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) setShortcut("⌘J");
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,54 +57,58 @@ export function AskLedgerline() {
   }, []);
 
   return (
-    <LayoutGroup>
+    <>
       <AnimatePresence>
         {open ? (
           <motion.div
             key="scrim"
             className="ll-ask-scrim no-print"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            animate={{ opacity: 1, transition: { duration: 0.3, ease: "easeOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeIn" } }}
             onClick={() => setOpen(false)}
           />
         ) : null}
       </AnimatePresence>
-      <AnimatePresence mode="popLayout" initial={false}>
+      {/* The panel rises from where the pill sits; the pill steps aside. Nothing stretches, so text never warps. */}
+      <AnimatePresence>
         {open ? (
           <motion.section
             key="panel"
-            layoutId="ll-ask"
             className="ll-ask-panel no-print"
-            style={{ borderRadius: 20 }}
-            transition={reduce ? { duration: 0 } : SPRING}
+            style={{ transformOrigin: "50% 100%" }}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.965 }}
+            animate={{ opacity: 1, y: 0, scale: 1, transition: reduce ? { duration: 0.15 } : OPEN }}
+            exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, y: 18, scale: 0.98, transition: CLOSE }}
             role="dialog"
             aria-label="Ask Ledgerline"
           >
             <Panel onClose={() => setOpen(false)} />
           </motion.section>
-        ) : (
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {open ? null : (
           <motion.button
             key="pill"
-            layoutId="ll-ask"
             type="button"
             className="ll-ask-pill no-print"
-            style={{ borderRadius: 999 }}
-            transition={reduce ? { duration: 0 } : SPRING}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1, transition: reduce ? { duration: 0.15 } : { ...OPEN, delay: 0.08 } }}
+            exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, y: 8, scale: 0.94, transition: { duration: 0.16, ease: "easeIn" } }}
             onClick={() => setOpen(true)}
-            whileHover={reduce ? undefined : { y: -2 }}
+            whileHover={reduce ? undefined : { y: -2, transition: { duration: 0.2 } }}
             whileTap={{ scale: 0.97 }}
           >
-            <motion.span className="ll-ask-pill-inner" layout="position">
+            <span className="ll-ask-pill-inner">
               <span className="ll-ask-orb" aria-hidden />
               <span>Ask Ledgerline</span>
-              <kbd>⌘J</kbd>
-            </motion.span>
+              <kbd>{shortcut}</kbd>
+            </span>
           </motion.button>
         )}
       </AnimatePresence>
-    </LayoutGroup>
+    </>
   );
 }
 
@@ -167,7 +177,7 @@ function Panel({ onClose }: { onClose: () => void }) {
 
   return (
     <ChatActions.Provider value={actions}>
-      <motion.div className="ll-ask-inner" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.12, duration: 0.2 } }} exit={{ opacity: 0, transition: { duration: 0.08 } }}>
+      <motion.div className="ll-ask-inner" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}>
         <header className="ll-ask-head">
           <button type="button" className={`ll-ask-icon${history ? " is-on" : ""}`} aria-label="Conversations" onClick={() => setHistory((x) => !x)}>
             <Icon name="clock" size={17} />
