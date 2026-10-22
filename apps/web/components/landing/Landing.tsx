@@ -2,7 +2,6 @@
 
 import {
   Button,
-  CommentaryCard,
   DonutChart,
   HeroMetric,
   Icon,
@@ -20,6 +19,7 @@ import {
 } from "@ledgerline/ui";
 import Link from "next/link";
 import { ThemeToggle } from "../ThemeToggle";
+import { ActionGallery, BoardSample, ChatDemo, HeroChat } from "./AiShowcase";
 import { WhatIf } from "./WhatIf";
 
 const D = demo as Record<string, any>;
@@ -86,6 +86,8 @@ const FAQ = [
   ["What does the AI do?", "Only one thing: it drafts the commentary in your board pack from figures Ledgerline has already calculated. Every number in the draft is a citation you can click. If the model writes a number of its own, the draft is rejected. A person accepts it before it can be exported."],
   ["Can my accountant use it?", "Yes. Invite them as an Accountant: they can read every report and comment, but can't change scenarios or settings."],
   ["What counts as an AI action?", "Each time you ask the AI to do something: explain a figure, draft or redraft the board-pack commentary or one of its sections, fill in a plan from a sentence, suggest a downside case, explain a difference from Xero, and so on. Asking about the same figures again is free until they change. Ledger searches and chats are counted separately."],
+  ["Does the AI make numbers up?", "No. In the chat, charts, tiles and tables are filled from your own figures, not typed by the model. In the board pack and AI actions, every figure is a citation of something Ledgerline computed, and the model isn't allowed to write a number at all."],
+  ["What does the AI see?", "Only your organisation's figures, and only the parts it needs to answer: it asks Ledgerline for, say, the forecast or the cost breakdown, and works from that. Your questions and its answers are kept privately for you, and figures are sent to the AI model only to answer them."],
   ["Can I try it without my own books?", "Yes. Connect Xero's free Demo Company. It resets every 28 days; Ledgerline notices and resyncs on its own."],
 ] as const;
 
@@ -96,6 +98,7 @@ export function Landing() {
         <div className="lp-wrap lp-nav-inner">
           <Link href="/" aria-label="Ledgerline home"><Logo size={26} /></Link>
           <nav className="lp-nav-links" aria-label="Sections">
+            <a href="#ai">AI</a>
             <a href="#product">Product</a>
             <a href="#forecast">Forecasting</a>
             <a href="#how">How it works</a>
@@ -113,14 +116,14 @@ export function Landing() {
 
       <main>
         <section className="lp-hero lp-wrap">
-          <span className="lp-eyebrow"><b>New</b> Three-statement forecasts with branchable scenarios</span>
-          <h1 className="lp-h1">Your management accounts, <em>every morning</em>.</h1>
+          <a href="#ai" className="lp-eyebrow"><b>New</b> Ask Ledgerline: an analyst that knows your books</a>
+          <h1 className="lp-h1">Your accounts, <em>explained</em> every morning.</h1>
           <p className="lp-lede">
-            Ledgerline reads your Xero ledger, builds your profit and loss, balance sheet and cash flow, checks every account against Xero to the cent, and tells you how many months of cash you have left.
+            Ledgerline reads your Xero ledger, builds your profit and loss, balance sheet, cash flow and forecast, checks every account against Xero to the cent, and answers your questions about it in plain English, with charts drawn from your own figures.
           </p>
           <div className="lp-ctas">
             <Link href="/sign-up"><Button variant="primary" size="lg" iconRight="arrow-right">Connect Xero, free</Button></Link>
-            <a href="#forecast"><Button size="lg" icon="forecast">Try the forecast</Button></a>
+            <a href="#ai"><Button size="lg" icon="sparkle">See the AI at work</Button></a>
           </div>
           <div className="lp-trust">
             <span><Icon name="lock" size={15} /> Read-only Xero access</span>
@@ -128,6 +131,7 @@ export function Landing() {
             <span><Icon name="clock" size={15} /> First sync in about 2 minutes</span>
           </div>
 
+          <div className="lp-hero-stage">
           <div className="lp-window" aria-label="Ledgerline overview, with a sample company">
             <div className="lp-window-bar"><i /><i /><i /><span>ledgerline · Overview · Kestrel Joinery Ltd (sample)</span></div>
             <div className="lp-window-body">
@@ -147,6 +151,8 @@ export function Landing() {
               </div>
             </div>
           </div>
+          <HeroChat />
+          </div>
         </section>
 
         <div className="lp-wrap">
@@ -154,9 +160,30 @@ export function Landing() {
             <div className="lp-stat"><b>€0.00</b><span>Difference from Xero's own reports, checked after every sync</span></div>
             <div className="lp-stat"><b>3</b><span>Linked statements per forecast month, and every one balances</span></div>
             <div className="lp-stat"><b>&lt;2 min</b><span>From connecting Xero to seeing your first report</span></div>
-            <div className="lp-stat"><b>0</b><span>Numbers written by AI. It only explains the ones we compute</span></div>
+            <div className="lp-stat"><b>0</b><span>Figures made up by AI. Every number comes from your books</span></div>
           </div>
         </div>
+
+        <section className="lp-section lp-wrap" id="ai">
+          <div className="lp-kicker">Ask Ledgerline</div>
+          <h2 className="lp-h2">Ask anything about your business. <em>Get an answer with the chart.</em></h2>
+          <p className="lp-p">
+            Press Ctrl J on any page. Ledgerline reads the parts of your books it needs, tells you what it found and what it thinks, and draws the charts and figures to show it, live from your data. These are real answers about the sample company.
+          </p>
+          <ChatDemo />
+          <ul className="lp-ai-points">
+            <li><Icon name="reconcile" size={18} /><span><b>Figures from your books.</b> Charts and tiles are filled from your data, not typed by the model.</span></li>
+            <li><Icon name="sparkle" size={18} /><span><b>A view when you want one.</b> Ask what it thinks and it says so, and tells you what the figures can&apos;t show.</span></li>
+            <li><Icon name="lock" size={18} /><span><b>Private conversations.</b> Each person&apos;s chats are their own, inside your organisation only.</span></li>
+          </ul>
+        </section>
+
+        <section className="lp-section lp-wrap" id="ai-actions">
+          <div className="lp-kicker">AI actions</div>
+          <h2 className="lp-h2">Small, sharp help, <em>right where you&apos;re working</em>.</h2>
+          <p className="lp-p">One click where the question comes up: why a figure moved, why cash dips, what&apos;s unusual this month. Every figure in an answer links back to its source, and nothing changes until you say so.</p>
+          <ActionGallery />
+        </section>
 
         <section className="lp-section lp-wrap" id="product">
           <div className="lp-split">
@@ -235,13 +262,15 @@ export function Landing() {
           <div className="lp-split">
             <div>
               <div className="lp-kicker">Board pack</div>
-              <h2 className="lp-h2">Commentary that <em>cites every number</em>.</h2>
-              <p className="lp-p">Ledgerline drafts the month's commentary in plain English. Each figure is a link to where it came from, and the model is never allowed to write a number itself. You accept it, then export the pack as a PDF.</p>
+              <h2 className="lp-h2">A board pack that <em>writes itself</em>, and cites every number.</h2>
+              <p className="lp-p">At a glance, performance, cash, outlook, risks, decisions and the questions a board will ask, drafted from forty-odd figures Ledgerline computes, including last year, the plan and your forecast. Add notes only you know; reword any section; figures stay locked to the accounts.</p>
+              <ul className="lp-points">
+                <li><Icon name="check" size={18} /><span><b>Written for who&apos;s reading:</b> a board, investors or a brief note, short or detailed.</span></li>
+                <li><Icon name="check" size={18} /><span><b>Every number is a citation.</b> Hover one to see where it came from; the model can&apos;t type a figure.</span></li>
+                <li><Icon name="check" size={18} /><span><b>Versions kept.</b> Redraft one section, restore an older one, accept, export.</span></li>
+              </ul>
             </div>
-            <CommentaryCard paragraphs={[
-              ["Revenue reached ", { text: "€228,900", source: "4000 Sales, Sep 2026" }, ", the strongest month this year, with gross margin steady at ", { text: "42.0%", source: "Gross profit ÷ revenue" }, "."],
-              ["Cash fell ", { text: "€29,000", source: "Cash bridge, Sep 2026" }, " despite a profit of ", { text: "€21,087", source: "Net profit, Sep 2026" }, ", because customers now owe ", { text: "€38,400", source: "Trade debtors movement" }, " more."],
-            ]} />
+            <BoardSample />
           </div>
         </section>
 

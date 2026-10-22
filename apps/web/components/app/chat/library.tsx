@@ -2,7 +2,7 @@
 
 import { BarChart, Icon, LineChart } from "@ledgerline/ui";
 import { createLibrary, defineComponent, useIsStreaming } from "@openuidev/react-lang";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { z } from "zod/v4";
 
 /**
@@ -117,6 +117,18 @@ const Kpi = defineComponent({
   ),
 });
 
+/** While a chart's figures load: a shimmer, then, if they never come, a plain note instead of spinning forever. */
+function Waiting() {
+  const live = useIsStreaming();
+  const [gave, setGave] = useState(false);
+  useEffect(() => {
+    if (live) return;
+    const t = setTimeout(() => setGave(true), 6000);
+    return () => clearTimeout(t);
+  }, [live]);
+  return gave ? <p className="ll-chat-chart-none">No figures came back for this chart.</p> : <div className="ll-chat-chart-wait" />;
+}
+
 function ChartFrame({ title, children }: { title: string; children: ReactNode }) {
   return (
     <figure className="ll-chat-figure ll-chat-in">
@@ -141,7 +153,7 @@ const Line = defineComponent({
   component: ({ props }) => {
     const labels = strs(props.labels);
     const values = nums(props.values);
-    if (labels.length < 2) return <ChartFrame title={props.title}><div className="ll-chat-chart-wait" /></ChartFrame>;
+    if (labels.length < 2) return <ChartFrame title={props.title}><Waiting /></ChartFrame>;
     const series = [{ name: props.name ?? props.title, kind: "actual", values }];
     if (props.compare) series.push({ name: props.compareName ?? "Compared", kind: "forecast", values: nums(props.compare) });
     const kind = (props.format ?? "money") as Format;
@@ -160,7 +172,7 @@ const Bars = defineComponent({
   component: ({ props }) => {
     const labels = strs(props.labels);
     const values = nums(props.values);
-    if (!labels.length) return <ChartFrame title={props.title}><div className="ll-chat-chart-wait" /></ChartFrame>;
+    if (!labels.length) return <ChartFrame title={props.title}><Waiting /></ChartFrame>;
     const kind = (props.format ?? "money") as Format;
     return (
       <ChartFrame title={props.title}>

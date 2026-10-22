@@ -30,6 +30,32 @@ export function segments(content: string): Segment[] {
   return out;
 }
 
+/**
+ * Small models sometimes give a Query and the component built from it the same name ("cash = Query(...)" then
+ * "cash = cashChart"), which makes the chart point at itself and never load. Rename the Query and the member
+ * accesses that read it ("cash.rows"), leaving plain references to the component as they are.
+ */
+export function repairProgram(code: string): string {
+  const lines = code.split("\n");
+  const defs = new Map<string, number[]>();
+  lines.forEach((line, i) => {
+    const m = /^\s*([A-Za-z_][\w]*)\s*=/.exec(line);
+    if (m && !line.trimStart().startsWith("$")) defs.set(m[1], [...(defs.get(m[1]) ?? []), i]);
+  });
+  let out = lines;
+  for (const [name, at] of defs) {
+    if (at.length < 2) continue;
+    const queryLine = at.find((i) => /=\s*Query\(/.test(out[i]));
+    if (queryLine === undefined) continue;
+    const renamed = `${name}Data`;
+    out = out.map((line, i) => {
+      if (i === queryLine) return line.replace(new RegExp(`^(\\s*)${name}(\\s*=)`), `$1${renamed}$2`);
+      return line.replace(new RegExp(`\\b${name}\\.`, "g"), `${renamed}.`);
+    });
+  }
+  return out.join("\n");
+}
+
 /** Lets a preview or test supply tool results instead of Convex. */
 export const ToolOverride = createContext<Record<string, (args: Record<string, unknown>) => Promise<unknown>> | null>(null);
 
@@ -48,7 +74,7 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
   const tools = useToolProvider();
   return (
     <motion.div className="ll-chat-ui" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-      <Renderer response={code} library={chatLibrary} isStreaming={live} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
+      <Renderer response={repairProgram(code)} library={chatLibrary} isStreaming={live} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
     </motion.div>
   );
 });

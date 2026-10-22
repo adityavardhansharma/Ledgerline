@@ -17,11 +17,13 @@ const OPEN = { duration: 0.42, ease: [0.16, 1, 0.3, 1] } as const;
 const CLOSE = { duration: 0.2, ease: [0.4, 0, 1, 1] } as const;
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const SUGGESTIONS: Record<string, string[]> = {
-  overview: ["How is cash looking?", "What changed most this month?", "Who owes us the most?", "Are we doing better than last year?"],
-  pnl: ["Where do our costs go?", "Why did revenue move this month?", "Show gross margin over the year", "Which costs are growing fastest?"],
-  forecast: ["When is cash lowest, and why?", "Is the base case realistic?", "Compare my scenarios", "What would another hire do to cash?"],
-  default: ["How is the business doing?", "How is cash looking?", "Where do our costs go?", "Who are our biggest customers?"],
+type Suggestion = { text: string; topic: string; icon: Parameters<typeof Icon>[0]["name"] };
+const S = (text: string, topic: string, icon: Suggestion["icon"]): Suggestion => ({ text, topic, icon });
+const SUGGESTIONS: Record<string, Suggestion[]> = {
+  overview: [S("How is cash looking?", "Cash", "bank"), S("What changed most this month?", "This month", "trend-up"), S("Who owes us the most?", "Customers", "invoice"), S("Are we doing better than last year?", "Year on year", "compare")],
+  pnl: [S("Where do our costs go?", "Costs", "statement"), S("Why did revenue move this month?", "Revenue", "trend-up"), S("Show gross margin over the year", "Margin", "percent"), S("Which costs are growing fastest?", "Costs", "trend-down")],
+  forecast: [S("When is cash lowest, and why?", "Forecast", "forecast"), S("Is the base case realistic?", "Assumptions", "settings"), S("Compare my scenarios", "Scenarios", "branch"), S("What would another hire do to cash?", "Hiring", "hire")],
+  default: [S("How is the business doing?", "Overview", "overview"), S("How is cash looking?", "Cash", "bank"), S("Where do our costs go?", "Costs", "statement"), S("Who are our biggest customers?", "Customers", "team")],
 };
 
 function usePage() {
@@ -211,49 +213,87 @@ function Panel({ onClose }: { onClose: () => void }) {
         <div className="ll-ask-body">
           <AnimatePresence>
             {history ? (
+              <motion.div key="history-scrim" className="ll-ask-history-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={() => setHistory(false)} />
+            ) : null}
+            {history ? (
               <motion.nav
                 key="history"
                 className="ll-ask-history"
-                initial={{ x: -24, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -24, opacity: 0 }}
-                transition={{ duration: 0.22, ease: EASE }}
+                aria-label="Your conversations"
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
               >
-                <p className="ll-ask-history-head">Your conversations</p>
+                <div className="ll-ask-history-top">
+                  <p>Conversations</p>
+                  <button
+                    type="button"
+                    className="ll-ask-history-new"
+                    onClick={() => {
+                      reset();
+                      setThreadId(null);
+                      setHistory(false);
+                      box.current?.focus();
+                    }}
+                  >
+                    <Icon name="plus" size={14} /> New
+                  </button>
+                </div>
                 {threads?.length ? (
-                  <ul>
-                    {threads.map((t) => (
-                      <li key={t.id} className={t.id === threadId ? "is-on" : undefined}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            reset();
-                            setThreadId(t.id);
-                            setHistory(false);
-                          }}
-                        >
-                          <span>{t.title}</span>
-                          <small>{new Date(t.updatedAt).toLocaleDateString("en-IE", { day: "numeric", month: "short" })}</small>
-                        </button>
-                        <button
-                          type="button"
-                          className="ll-ask-history-del"
-                          aria-label={`Delete ${t.title}`}
-                          onClick={() => {
-                            if (t.id === threadId) {
-                              reset();
-                              setThreadId(null);
-                            }
-                            void removeThread({ threadId: t.id });
-                          }}
-                        >
-                          <Icon name="trash" size={14} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  groupThreads(threads).map((group) => (
+                    <section key={group.label} className="ll-ask-history-group">
+                      <h4>{group.label}</h4>
+                      <ul>
+                        {group.items.map((t, i) => (
+                          <motion.li
+                            key={t.id}
+                            className={t.id === threadId ? "is-on" : undefined}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.05 + i * 0.03, duration: 0.25, ease: EASE }}
+                          >
+                            <button
+                              type="button"
+                              className="ll-ask-history-item"
+                              onClick={() => {
+                                reset();
+                                setThreadId(t.id);
+                                setHistory(false);
+                              }}
+                            >
+                              <span className="ll-ask-history-icon" aria-hidden>
+                                <Icon name={t.id === threadId ? "sparkle" : "statement"} size={14} />
+                              </span>
+                              <span className="ll-ask-history-text">
+                                <span>{t.title}</span>
+                                <small>{when(t.updatedAt)}</small>
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="ll-ask-history-del"
+                              aria-label={`Delete ${t.title}`}
+                              onClick={() => {
+                                if (t.id === threadId) {
+                                  reset();
+                                  setThreadId(null);
+                                }
+                                void removeThread({ threadId: t.id });
+                              }}
+                            >
+                              <Icon name="trash" size={14} />
+                            </button>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))
                 ) : (
-                  <p className="ll-ask-history-empty">Nothing yet. Questions you ask are kept here, just for you.</p>
+                  <div className="ll-ask-history-empty">
+                    <span className="ll-ask-history-icon" aria-hidden><Icon name="statement" size={16} /></span>
+                    <p>No conversations yet. Questions you ask are kept here, just for you.</p>
+                  </div>
                 )}
               </motion.nav>
             ) : null}
@@ -344,7 +384,35 @@ function Panel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Welcome({ onAsk, suggestions }: { onAsk: (q: string) => void; suggestions: string[] }) {
+const DAY = 86_400_000;
+const startOfDay = (ms: number) => {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+function groupThreads<T extends { updatedAt: number }>(threads: T[]) {
+  const today = startOfDay(Date.now());
+  const groups: { label: string; items: T[] }[] = [
+    { label: "Today", items: [] },
+    { label: "Yesterday", items: [] },
+    { label: "This week", items: [] },
+    { label: "Earlier", items: [] },
+  ];
+  for (const t of threads) {
+    const day = startOfDay(t.updatedAt);
+    groups[day >= today ? 0 : day >= today - DAY ? 1 : day >= today - 6 * DAY ? 2 : 3].items.push(t);
+  }
+  return groups.filter((g) => g.items.length);
+}
+const when = (ms: number) => {
+  const minutes = Math.round((Date.now() - ms) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (startOfDay(ms) === startOfDay(Date.now())) return new Date(ms).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" });
+};
+
+function Welcome({ onAsk, suggestions }: { onAsk: (q: string) => void; suggestions: Suggestion[] }) {
   return (
     <div className="ll-ask-welcome">
       <motion.div className="ll-ask-orb is-big" aria-hidden initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: EASE, delay: 0.1 }} />
@@ -357,16 +425,19 @@ function Welcome({ onAsk, suggestions }: { onAsk: (q: string) => void; suggestio
       <div className="ll-ask-suggest">
         {suggestions.map((s, i) => (
           <motion.button
-            key={s}
+            key={s.text}
             type="button"
-            onClick={() => onAsk(s)}
+            onClick={() => onAsk(s.text)}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: EASE, delay: 0.28 + i * 0.05 }}
-            whileHover={{ y: -2 }}
           >
-            {s}
-            <Icon name="arrow-right" size={14} />
+            <span className="ll-ask-suggest-icon"><Icon name={s.icon} size={16} /></span>
+            <span className="ll-ask-suggest-text">
+              <small>{s.topic}</small>
+              {s.text}
+            </span>
+            <span className="ll-ask-suggest-go" aria-hidden><Icon name="arrow-right" size={14} /></span>
           </motion.button>
         ))}
       </div>
