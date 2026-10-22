@@ -13,6 +13,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export const periodLabel = (period: string, withYear = true) =>
   `${MONTHS[Number(period.slice(5, 7)) - 1]}${withYear ? ` ${period.slice(0, 4)}` : ""}`;
 
+/** "September", for prose. */
+export const monthName = (period: string) => new Date(`${period}-01T00:00:00Z`).toLocaleDateString("en-IE", { month: "long", timeZone: "UTC" });
+
 export const ago = (ms: number | null | undefined, now = Date.now()) => {
   if (!ms) return "never";
   const minutes = Math.round((now - ms) / 60000);

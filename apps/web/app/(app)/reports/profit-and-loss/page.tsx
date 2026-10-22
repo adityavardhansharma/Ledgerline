@@ -1,19 +1,20 @@
 "use client";
 
-import { BarChart, FinancialStatement, KpiTile, Panel, PeriodPicker, ScenarioSwitcher, SegmentedControl, Treemap } from "@ledgerline/ui";
+import { PeriodPicker, ScenarioSwitcher, SegmentedControl } from "@ledgerline/ui";
 import { useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { DrillDrawer, type DrillTarget } from "@/components/app/DrillDrawer";
 import { Reconciliation } from "@/components/app/Reconciliation";
+import { PnlView } from "@/components/app/reports/PnlView";
 import { AnomalyStrip, useAnomalies } from "@/components/app/ai/Explainers";
 import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { periodLabel } from "@/lib/format";
 import type { Snapshot, StatementRow } from "@/lib/types";
-import { opexItems, pnlWithForecast } from "@/lib/views";
+import { pnlWithForecast } from "@/lib/views";
 
 export default function ProfitAndLossPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
@@ -51,49 +52,24 @@ export default function ProfitAndLossPage() {
         if (!snapshot) return null;
         const merged = pnlWithForecast(snapshot.pnl, forecast);
         const statement = view === "q" ? toQuarters(merged.columns, merged.rows) : merged;
-        const total = (label: string) => snapshot.pnl.rows.find((r) => r.label === label)?.values?.at(-1) ?? null;
-        const opex = opexItems(snapshot);
         return (
-          <>
-            <div className="ll-kpi-strip">
-              <KpiTile icon="euro" label="Revenue, year to date" value={(total("Sales") ?? sumRevenue(snapshot)) / 100} spark={snapshot.series.revenue.slice(-12).map((c) => c / 100)} />
-              <KpiTile icon="trend-up" label="Gross profit, year to date" value={(total("Gross profit") ?? 0) / 100} spark={snapshot.series.grossProfit.slice(-12).map((c) => c / 100)} />
-              <KpiTile icon="statement" label="EBITDA, year to date" value={(total("EBITDA") ?? 0) / 100} spark={snapshot.series.ebitda.slice(-12).map((c) => c / 100)} />
-              <KpiTile icon="balance" label="Net profit, year to date" value={(total("Net profit") ?? 0) / 100} spark={snapshot.series.netProfit.slice(-12).map((c) => c / 100)} />
-            </div>
-            <div className="ll-grid-2">
-              <Panel title="Operating costs by month" icon="statement">
-                <BarChart labels={snapshot.series.labels.slice(-12)} values={snapshot.series.overheads.slice(-12).map((c) => c / 100)} seriesName="Operating costs" height={260} />
-              </Panel>
-              <Panel title="Costs year to date" icon="overview">
-                {opex.length ? <Treemap items={opex} height={190} /> : <p className="ll-muted">No operating costs yet this year.</p>}
-              </Panel>
-            </div>
-            <AnomalyStrip flags={anomalies.flags} />
-            <FinancialStatement
-              title="Account"
-              flags={view === "m" ? anomalies.map : undefined}
-              columns={statement.columns}
-              rows={statement.rows as never}
-              forecastFrom={statement.forecastFrom}
-              totalColumn
-              drillable={view === "m"}
-              onDrill={(row: StatementRow, column: number) => {
-                const period = snapshot.pnl.columns[column]?.period;
-                if (!row.accountId || !period) return;
-                setDrill({ accountId: row.accountId, label: row.label ?? "", code: row.code, period, value: row.values?.[column] ?? null });
-              }}
-            />
-            <Reconciliation />
-          </>
+          <PnlView
+            snapshot={snapshot}
+            statement={statement}
+            flags={view === "m" ? anomalies.map : undefined}
+            strip={<AnomalyStrip flags={anomalies.flags} />}
+            check={<Reconciliation />}
+            drillable={view === "m"}
+            onDrill={(row: StatementRow, column: number) => {
+              const period = snapshot.pnl.columns[column]?.period;
+              if (!row.accountId || !period) return;
+              setDrill({ accountId: row.accountId, label: row.label ?? "", code: row.code, period, value: row.values?.[column] ?? null });
+            }}
+          />
         );
       }}
     </AppPage>
   );
-}
-
-function sumRevenue(snapshot: Snapshot) {
-  return snapshot.series.revenue.slice(-12).reduce((a, b) => a + b, 0);
 }
 
 /** Fold twelve monthly columns (plus the year column) into four quarters. */
