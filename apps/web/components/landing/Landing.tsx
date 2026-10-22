@@ -1,11 +1,13 @@
 "use client";
 
-import { Button, HeroMetric, Icon, KpiTile, LedgerTable, LineChart, Logo, ReconcileCheck, RunwayGauge } from "@ledgerline/ui";
+import { Button, HeroMetric, Icon, KpiTile, LineChart, Logo } from "@ledgerline/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "../ThemeToggle";
-import { ActionCards, AskPill, BoardSample, ChatDemo } from "./AiShowcase";
-import { DOORS_SEPTEMBER, HISTORY, TOOLS } from "./aiSamples";
+import { AskPill, ChatDemo, HeroChat } from "./AiShowcase";
+import { HISTORY, TOOLS } from "./aiSamples";
+import { ExplainScene, SearchScene, UnusualStill } from "./Scenes";
+import { BoardWidget, TrustWidget } from "./Widgets";
 import { WhatIf } from "./WhatIf";
 
 const FORECAST = TOOLS.forecast.rows.slice(0, 12);
@@ -60,16 +62,11 @@ const FAQ = [
   ["Can I try it without my own books?", "Yes. Load the sample company, a joinery with five years of books, or connect Xero's free Demo Company."],
 ] as const;
 
-function Head({ n, kicker, title, children }: { n?: string; kicker: string; title: React.ReactNode; children?: React.ReactNode }) {
+function Intro({ kicker, title, children, small }: { kicker: string; title: React.ReactNode; children?: React.ReactNode; small?: boolean }) {
   return (
-    <div className="lp-head lp-reveal">
-      <div>
-        <div className="lp-kicker">
-          {n ? <b>{n}</b> : null}
-          {kicker}
-        </div>
-        <h2 className="lp-h2">{title}</h2>
-      </div>
+    <div className="lp-intro">
+      <div className="lp-kicker">{kicker}</div>
+      <h2 className={small ? "lp-h2 is-small" : "lp-h2"}>{title}</h2>
       {children ? <p className="lp-p">{children}</p> : null}
     </div>
   );
@@ -93,7 +90,7 @@ export function Landing() {
           </Link>
           <nav className="lp-nav-links" aria-label="Sections">
             <a href="#ask">Ask</a>
-            <a href="#product">Product</a>
+            <a href="#actions">AI actions</a>
             <a href="#forecast">Forecasting</a>
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
@@ -111,29 +108,26 @@ export function Landing() {
       </header>
 
       <main>
-        <section className="lp-hero">
-          <div className="lp-wrap lp-hero-copy">
-            <a href="#ask" className="lp-eyebrow">
-              <b>New</b> Ask Ledgerline, an analyst that knows your books <Icon name="arrow-right" size={13} />
+        <section className="lp-hero lp-wrap">
+          <a href="#ask" className="lp-eyebrow">
+            <b>New</b> Ask Ledgerline, an analyst that knows your books <Icon name="arrow-right" size={13} />
+          </a>
+          <h1 className="lp-h1">
+            Your accounts, <em>explained</em> every morning.
+          </h1>
+          <p className="lp-lede">Ledgerline turns your Xero books into management accounts, a forecast and a board pack, checks every figure against Xero to the cent, and answers your questions about them in plain English.</p>
+          <div className="lp-ctas">
+            <Link href="/sign-up">
+              <Button variant="primary" size="lg" iconRight="arrow-right">
+                Connect Xero, free
+              </Button>
+            </Link>
+            <a href="#ask">
+              <Button size="lg">Watch it answer</Button>
             </a>
-            <h1 className="lp-h1">
-              Your accounts, <em>explained</em> every morning.
-            </h1>
-            <p className="lp-lede">Ledgerline turns your Xero books into management accounts, a forecast and a board pack, checks every figure against Xero to the cent, and answers your questions about them in plain English.</p>
-            <div className="lp-ctas">
-              <Link href="/sign-up">
-                <Button variant="primary" size="lg" iconRight="arrow-right">
-                  Connect Xero, free
-                </Button>
-              </Link>
-              <a href="#ask">
-                <Button size="lg">Watch it answer</Button>
-              </a>
-            </div>
-            <p className="lp-hero-note">Read-only access · Matches Xero to the cent · First report in about two minutes</p>
           </div>
 
-          <div className="lp-wrap">
+          <div className="lp-stage">
             <div className="lp-window" aria-label="Ledgerline's overview, for the sample company">
               <div className="lp-window-bar">
                 <i />
@@ -144,11 +138,9 @@ export function Landing() {
               <div className="lp-window-body">
                 <div className="lp-window-top">
                   <HeroMetric icon="bank" label="Cash at bank · 30 Sep 2026" value={228780} delta={-0.181} deltaLabel="vs 31 Aug" meta="Lowest point €187,469 in November, then it rebuilds">
-                    <LineChart labels={CASH_LABELS} series={CASH_SERIES as never} forecastFrom={12} todayLabel="Today" zero endLabels height={230} />
+                    <LineChart labels={CASH_LABELS} series={CASH_SERIES as never} forecastFrom={12} todayLabel="Today" zero endLabels height={220} />
                   </HeroMetric>
-                  <div className="lp-window-gauge">
-                    <RunwayGauge months={24} capped size={220} note="Positive through Sep 2028" />
-                  </div>
+                  <HeroChat />
                 </div>
                 <div className="ll-kpi-strip">
                   <KpiTile icon="euro" label="Revenue, September" value={246281} delta={0.169} deltaLabel="vs Aug" spark={HISTORY.revenue} />
@@ -156,213 +148,120 @@ export function Landing() {
                   <KpiTile icon="percent" label="Gross margin" value={0.423} format="pct" note="Within its usual range" />
                   <KpiTile icon="invoice" tone="warning" label="Debtor days" value={48} format="days" note="Up from 42 in June" />
                 </div>
-                <div className="lp-window-pill">
-                  <AskPill />
-                </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        <section className="lp-band" id="ask">
-          <div className="lp-wrap">
-            <Head n="01" kicker="Ask Ledgerline" title={<>Ask about your business. <em>Get the answer, and the chart.</em></>}>
-              Press Ctrl J on any page. It reads the parts of your books it needs, says what it found and what it thinks, and draws the figures from your data, never from memory. These are its real answers about the sample company.
-            </Head>
-            <ChatDemo />
-            <ul className="lp-notes">
-              <li>
-                <Icon name="reconcile" size={18} />
-                <div>
-                  <b>Figures from your books</b>
-                  <span>Charts, tiles and tables are filled from your data, not typed by the model.</span>
-                </div>
-              </li>
-              <li>
-                <Icon name="sparkle" size={18} />
-                <div>
-                  <b>A view when you want one</b>
-                  <span>Ask what it thinks and it says so, and what the figures can&apos;t tell you.</span>
-                </div>
-              </li>
-              <li>
-                <Icon name="lock" size={18} />
-                <div>
-                  <b>Private to you</b>
-                  <span>Each person&apos;s conversations are their own, inside your organisation.</span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="lp-section lp-wrap" id="product">
-          <Head n="02" kicker="Numbers you can trust" title={<>Every figure goes back to a journal, <em>and matches Xero.</em></>}>
-            Statements are built from your journals, not summaries. Click any figure to see the lines behind it, and after every sync each account is checked against Xero&apos;s own reports.
-          </Head>
-          <div className="lp-trust lp-reveal">
-            <div className="lp-card">
-              <div className="lp-card-cap">Profit and loss · September 2026</div>
-              <table className="lp-statement">
-                <tbody>
-                  <tr>
-                    <th>Sales: fitted kitchens</th>
-                    <td>114,216</td>
-                  </tr>
-                  <tr className="is-picked">
-                    <th>Sales: doors and joinery</th>
-                    <td>132,064</td>
-                  </tr>
-                  <tr className="is-total">
-                    <th>Revenue</th>
-                    <td>246,281</td>
-                  </tr>
-                  <tr>
-                    <th>Timber and materials</th>
-                    <td>(117,916)</td>
-                  </tr>
-                  <tr>
-                    <th>Subcontract fitters</th>
-                    <td>(24,087)</td>
-                  </tr>
-                  <tr className="is-total is-double">
-                    <th>Gross profit</th>
-                    <td>104,278</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="lp-drill">
-                <div className="lp-card-cap">
-                  <Icon name="ledger" size={14} /> Sales: doors and joinery · 3 journal lines
-                </div>
-                <LedgerTable hide={["account", "contact"]} lines={DOORS_SEPTEMBER} />
-              </div>
-            </div>
-            <div className="lp-card">
-              <div className="lp-card-cap">After every sync</div>
-              <div className="lp-recons">
-                <ReconcileCheck status="match" checkedAt="1 Oct 2026, 07:02" lines={13} />
-                <ReconcileCheck status="match" report="balance sheet" checkedAt="1 Oct 2026, 07:02" lines={15} />
-              </div>
-              <ul className="lp-checks">
-                <li>
-                  <Icon name="check" size={16} /> Every account, every month, to the cent
-                </li>
-                <li>
-                  <Icon name="check" size={16} /> Any difference named, with the account and the reason
-                </li>
-                <li>
-                  <Icon name="check" size={16} /> Changes in Xero arrive within a minute
-                </li>
-                <li>
-                  <Icon name="check" size={16} /> Negatives in brackets, double rules under totals
-                </li>
-              </ul>
+            <div className="lp-stage-pill">
+              <AskPill />
             </div>
           </div>
-        </section>
 
-        <section className="lp-section lp-wrap" id="forecast">
-          <Head n="03" kicker="Forecasting" title={<>Hire four fitters. <em>Watch the cash move.</em></>}>
-            Move the drivers. This runs on the sample company&apos;s real base case; in the app every change runs a full three-statement forecast built from your own actuals.
-          </Head>
-          <div className="lp-reveal">
-            <WhatIf />
-          </div>
-          <ul className="lp-notes">
+          <ul className="lp-proof">
             <li>
-              <Icon name="branch" size={18} />
-              <div>
-                <b>Scenarios like branches</b>
-                <span>Each stores only what it changes. Edit the base case and every branch inherits it.</span>
-              </div>
+              <Icon name="lock" size={15} /> Read-only Xero access
             </li>
             <li>
-              <Icon name="forecast" size={18} />
-              <div>
-                <b>Hires, equipment, loans, equity</b>
-                <span>Added month by month, or typed as a sentence and filled in for you.</span>
-              </div>
+              <Icon name="reconcile" size={15} /> Matches Xero to the cent
             </li>
             <li>
-              <Icon name="balance" size={18} />
-              <div>
-                <b>Three statements that agree</b>
-                <span>If the balance sheet ever fails to balance, the forecast refuses to run.</span>
-              </div>
+              <Icon name="clock" size={15} /> First report in about two minutes
             </li>
           </ul>
         </section>
 
-        <section className="lp-section lp-wrap" id="actions">
-          <Head n="04" kicker="AI actions" title={<>Small, sharp help, <em>where the question comes up.</em></>}>
-            One click beside the figure you&apos;re looking at. Every number in an answer links back to where it came from, and nothing changes until you say so.
-          </Head>
-          <div className="lp-reveal">
-            <ActionCards />
+        <section className="lp-section lp-wrap" id="ask">
+          <ChatDemo>
+            <Intro kicker="Ask Ledgerline" title="Ask about your business. Get the answer and the chart.">
+              Press Ctrl J on any page. It reads the parts of your books it needs and draws the figures from your data, never from memory. Real answers about the sample company:
+            </Intro>
+          </ChatDemo>
+        </section>
+
+        <section className="lp-small lp-wrap" id="actions">
+          <div className="lp-row is-small">
+            <Intro kicker="AI search" title="Search the ledger in your own words." small>
+              Type what you&apos;re looking for. Ledgerline turns it into filters you can see and change, then finds the lines.
+            </Intro>
+            <div className="lp-widget">
+              <SearchScene />
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-section lp-wrap" id="product">
+          <div className="lp-row">
+            <Intro kicker="Numbers you can trust" title="Every figure goes back to a journal, and matches Xero.">
+              Statements are built from your journals, not summaries. Open any figure to see the lines behind it. After every sync, each account is checked against Xero&apos;s own reports.
+            </Intro>
+            <TrustWidget />
+          </div>
+        </section>
+
+        <section className="lp-small lp-wrap">
+          <div className="lp-row is-small is-flipped">
+            <div className="lp-widget">
+              <ExplainScene />
+            </div>
+            <Intro kicker="AI explain" title="Ask why any figure is what it is." small>
+              Click a line of any statement for the reason in a sentence, with each figure traced to its journals.
+            </Intro>
+          </div>
+        </section>
+
+        <section className="lp-small lp-wrap">
+          <div className="lp-strip">
+            <div>
+              <div className="lp-kicker">AI flags</div>
+              <h3 className="lp-strip-title">Unusual movements, spotted for you.</h3>
+            </div>
+            <UnusualStill />
           </div>
           <p className="lp-also">Also in the app: a plan from a sentence, a downside case from your own history, payment reminders drafted for you, and fixes for an import that won&apos;t fit.</p>
         </section>
 
+        <section className="lp-section lp-wrap" id="forecast">
+          <div className="lp-row is-wide-right">
+            <Intro kicker="Forecasting" title="Hire four fitters. Watch the cash move.">
+              Drag the drivers. This runs on the sample company&apos;s real base case; in the app, every change runs a full three-statement forecast from your own actuals.
+            </Intro>
+            <WhatIf />
+          </div>
+        </section>
+
         <section className="lp-section lp-wrap" id="board">
-          <div className="lp-split">
-            <div className="lp-split-copy">
-              <div className="lp-kicker">
-                <b>05</b>Board pack
-              </div>
-              <h2 className="lp-h2">
-                A board pack that <em>writes itself</em>, and cites every number.
-              </h2>
-              <p className="lp-p">Performance, cash, outlook, risks, decisions and the questions a board will ask, drafted from the figures Ledgerline has already worked out. Add what only you know, reword any section, and accept it before it goes anywhere.</p>
-              <ul className="lp-checks">
-                <li>
-                  <Icon name="check" size={16} /> Written for a board, investors or a short note
-                </li>
-                <li>
-                  <Icon name="check" size={16} /> Hover any figure to see where it came from
-                </li>
-                <li>
-                  <Icon name="check" size={16} /> Versions kept; redraft one section at a time
-                </li>
-              </ul>
-            </div>
-            <div className="lp-reveal">
-              <BoardSample />
-            </div>
+          <div className="lp-row is-flipped">
+            <BoardWidget />
+            <Intro kicker="Board pack" title="A board pack that writes itself, and cites every number.">
+              Performance, cash, outlook, risks, decisions and the questions a board will ask, drafted from figures Ledgerline has already worked out. Hover any number for its source; reword any section; accept it before it goes anywhere.
+            </Intro>
           </div>
         </section>
 
         <section className="lp-section lp-wrap" id="security">
-          <Head kicker="Security" title={<>Built like it&apos;s <em>holding your books.</em></>} />
-          <div className="lp-security lp-reveal">
+          <div className="lp-security">
+            <h2 className="lp-h3">Built like it&apos;s holding your books.</h2>
             <div>
-              <Icon name="lock" size={20} />
+              <Icon name="lock" size={18} />
               <h3>Read-only by design</h3>
-              <p>Ledgerline can&apos;t write to Xero. Tokens are encrypted and never reach your browser.</p>
+              <p>It can&apos;t write to Xero. Tokens are encrypted and never reach your browser.</p>
             </div>
             <div>
-              <Icon name="organisation" size={20} />
+              <Icon name="organisation" size={18} />
               <h3>Isolated organisations</h3>
-              <p>Every query is scoped to your organisation. Roles separate owners, editors and accountants.</p>
+              <p>Every query is scoped to your organisation, with roles for owners, editors and accountants.</p>
             </div>
             <div>
-              <Icon name="audit" size={20} />
+              <Icon name="audit" size={18} />
               <h3>Append-only audit log</h3>
-              <p>Every sync, change and export is recorded, and nothing in the log can be edited.</p>
-            </div>
-            <div>
-              <Icon name="reconcile" size={20} />
-              <h3>Signed traffic</h3>
-              <p>Xero webhooks are signature-checked, and internal services sign every request.</p>
+              <p>Every sync, change and export is recorded, and nothing in it can be edited.</p>
             </div>
           </div>
         </section>
 
         <section className="lp-section lp-wrap" id="pricing">
-          <Head kicker="Pricing" title={<>Start free. <em>Upgrade for more AI.</em></>}>
-            Every plan has every report, forecast, scenario and board pack, and connects Xero. Plans differ only in how much AI you use each month.
-          </Head>
-          <div className="lp-pricing lp-reveal">
+          <Intro kicker="Pricing" title="Start free. Upgrade for more AI.">
+            Every plan has every report, forecast, scenario and board pack. Plans differ only in how much AI you use each month.
+          </Intro>
+          <div className="lp-pricing">
             {PLANS.map((plan) => (
               <div key={plan.name} className={`lp-plan${plan.featured ? " is-featured" : ""}`}>
                 <div className="lp-plan-head">
@@ -376,7 +275,7 @@ export function Landing() {
                 <ul>
                   {plan.items.map(([text, soon]) => (
                     <li key={text}>
-                      <Icon name="check" size={16} />
+                      <Icon name="check" size={15} />
                       <span>
                         {text}
                         {soon ? <em className="lp-soon">Soon</em> : null}
@@ -402,13 +301,8 @@ export function Landing() {
         </section>
 
         <section className="lp-section lp-wrap" id="faq">
-          <div className="lp-faq-grid">
-            <div className="lp-faq-side">
-              <div className="lp-kicker">Questions</div>
-              <h2 className="lp-h2">
-                Answers, <em>in plain English.</em>
-              </h2>
-            </div>
+          <div className="lp-row is-faq">
+            <Intro kicker="Questions" title="Answers, in plain English." />
             <div className="lp-faq">
               {FAQ.map(([q, a]) => (
                 <details key={q}>
@@ -422,7 +316,7 @@ export function Landing() {
 
         <section className="lp-wrap">
           <div className="lp-final">
-            <h2 className="lp-h2">
+            <h2 className="lp-h1 is-final">
               Know your cash <em>every morning.</em>
             </h2>
             <p className="lp-p">Connect Xero and see your first report in about two minutes.</p>
@@ -441,7 +335,7 @@ export function Landing() {
         <Logo size={22} />
         <span>© 2026 Ledgerline. Xero is a trademark of Xero Limited; Ledgerline is an independent product.</span>
         <nav aria-label="Footer">
-          <a href="#product">Product</a>
+          <a href="#actions">AI actions</a>
           <a href="#security">Security</a>
           <a href="#faq">FAQ</a>
           <Link href="/sign-in">Sign in</Link>

@@ -42,12 +42,7 @@ export function WhatIf() {
   const gap = end - BASE[BASE.length - 1];
   return (
     <div className="lp-whatif">
-      <div className="lp-whatif-controls">
-        <AssumptionField id="wi-fitters" label="Fitters hired in January" min={0} max={10} step={1} unit="people" defaultValue={4} base={0} onChange={setFitters} help="€42,000 a year each, plus employer PRSI." />
-        <AssumptionField id="wi-dd" label="Debtor days" min={20} max={90} step={1} unit="days" defaultValue={60} base={DEBTOR_DAYS} onChange={setDebtorDays} help="How long customers take to pay. It's 48 today." />
-        <AssumptionField id="wi-growth" label="Revenue growth a month" min={-3} max={4} step={0.5} unit="%" defaultValue={0} base={0} onChange={setGrowth} help="On top of the base case." />
-      </div>
-      <div className="lp-whatif-out">
+      <div className="lp-whatif-top">
         <div className="lp-whatif-figures">
           <div>
             <span>Lowest cash</span>
@@ -66,23 +61,26 @@ export function WhatIf() {
               Cash runs out in <em className="is-bad">{month(LABELS[out])}</em>.
             </>
           ) : (
-            <>
-              Cash stays <em>positive</em> for the next two years.
-            </>
+            <>Cash stays positive for the next two years.</>
           )}
         </p>
-        <LineChart
-          labels={LABELS}
-          zero
-          endLabels
-          scenarioArea
-          height={240}
-          thresholds={out >= 0 ? [{ value: 0, label: "CASH RUNS OUT", tone: "negative" }] : []}
-          series={[
-            { name: "Base case", kind: "forecast", values: BASE },
-            { name: "Your scenario", kind: "scenario", values: path },
-          ]}
-        />
+      </div>
+      <LineChart
+        labels={LABELS}
+        zero
+        endLabels
+        scenarioArea
+        height={220}
+        thresholds={out >= 0 ? [{ value: 0, label: "CASH RUNS OUT", tone: "negative" }] : []}
+        series={[
+          { name: "Base case", kind: "forecast", values: BASE },
+          { name: "Your scenario", kind: "scenario", values: path },
+        ]}
+      />
+      <div className="lp-whatif-controls">
+        <AssumptionField id="wi-fitters" label="Fitters hired" min={0} max={10} step={1} unit="people" defaultValue={4} base={0} onChange={setFitters} help="From January, €42,000 a year each." />
+        <AssumptionField id="wi-dd" label="Debtor days" min={20} max={90} step={1} unit="days" defaultValue={60} base={DEBTOR_DAYS} onChange={setDebtorDays} help="It's 48 today." />
+        <AssumptionField id="wi-growth" label="Growth a month" min={-3} max={4} step={0.5} unit="%" defaultValue={0} base={0} onChange={setGrowth} help="On top of the base case." />
       </div>
     </div>
   );
