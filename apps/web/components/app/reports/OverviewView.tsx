@@ -1,6 +1,7 @@
 "use client";
 
-import { BarChart, Button, formatMoney, LineChart, SankeyChart, WaterfallChart } from "@ledgerline/ui";
+import { BarChart, Button, CalendarHeatmap, formatMoney, LineChart, SankeyChart, WaterfallChart } from "@ledgerline/ui";
+import type { ComponentProps } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { monthName, periodLabel } from "@/lib/format";
@@ -15,7 +16,7 @@ type Bucket = { label: string; value: number };
  * The morning briefing: the four figures that matter, what changed since the last sync, then cash, with what needs
  * attention beside it. Further down, where the month's cash and revenue went.
  */
-export function OverviewView({ snapshot, forecast, scenarioName, isBase, receivable, assumedTerms, digest, owed, check }: { snapshot: Snapshot; forecast: ForecastRun | null | undefined; scenarioName: string; isBase: boolean; receivable: Bucket[]; assumedTerms: boolean; digest: ReactNode; owed: ReactNode; check: ReactNode }) {
+export function OverviewView({ snapshot, forecast, scenarioName, isBase, receivable, assumedTerms, digest, owed, check, days }: { days?: ComponentProps<typeof CalendarHeatmap>["days"] | null; snapshot: Snapshot; forecast: ForecastRun | null | undefined; scenarioName: string; isBase: boolean; receivable: Bucket[]; assumedTerms: boolean; digest: ReactNode; owed: ReactNode; check: ReactNode }) {
   const m = snapshot.measures;
   const month = monthName(snapshot.asOf);
   const chart = cashChart(snapshot, forecast);
@@ -56,15 +57,16 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
               <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels height={280} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
             </section>
             <section className="ll-report-hero">
-              <h2>Revenue by month</h2>
-              <BarChart
-                labels={[...months.map((p) => periodLabel(p, false)), ...(forecast?.months.slice(0, 3).map((x) => x.label.slice(0, 3)) ?? [])]}
-                values={[...revenue, ...forecastRevenue]}
-                forecastFrom={forecastRevenue.length ? revenue.length : undefined}
-                highlight={revenue.length - 1}
-                seriesName="Revenue"
-                height={260}
-              />
+              <h2>Every day in the bank</h2>
+              <p className="ll-report-hero-sub">Money in and out over the last six months. The darkest red days are payroll, rent and tax.</p>
+              {days && days.length ? (
+                <div className="ll-days">
+                  <CalendarHeatmap cell={15} days={days} />
+                  <DaySummary days={days} />
+                </div>
+              ) : (
+                <p className="ll-muted">No bank movements yet.</p>
+              )}
             </section>
           </div>
         }
@@ -107,6 +109,16 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
                 <p className="ll-rail-note">Nobody owes you money right now.</p>
               )}
             </RailBlock>
+            <RailBlock title="Revenue by month" aside={<b className="ll-rail-figure">{formatMoney(m.revenue / 100, { compact: true })}</b>}>
+              <BarChart
+                labels={[...months.map((p) => periodLabel(p, false)), ...(forecast?.months.slice(0, 3).map((x) => x.label.slice(0, 3)) ?? [])]}
+                values={[...revenue, ...forecastRevenue]}
+                forecastFrom={forecastRevenue.length ? revenue.length : undefined}
+                highlight={revenue.length - 1}
+                seriesName="Revenue"
+                height={170}
+              />
+            </RailBlock>
           </>
         }
       />
@@ -125,5 +137,38 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
       ) : null}
       <RailBlock title="Checked against Xero">{check}</RailBlock>
     </>
+  );
+}
+
+/** Beside the calendar: the biggest day out, the biggest day in, and how many days money left. */
+function DaySummary({ days }: { days: { date: string; value: number }[] }) {
+  const moved = days.filter((d) => d.value);
+  if (!moved.length) return null;
+  const out = moved.reduce((a, d) => (d.value < a.value ? d : a));
+  const into = moved.reduce((a, d) => (d.value > a.value ? d : a));
+  const outDays = moved.filter((d) => d.value < 0).length;
+  const day = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return (
+    <dl className="ll-days-sum">
+      {out.value < 0 ? (
+        <div>
+          <dt>Biggest day out</dt>
+          <dd className="is-out">{formatMoney(Math.abs(out.value), { compact: true })}</dd>
+          <small>{day(out.date)}</small>
+        </div>
+      ) : null}
+      {into.value > 0 ? (
+        <div>
+          <dt>Biggest day in</dt>
+          <dd className="is-in">{formatMoney(into.value, { compact: true })}</dd>
+          <small>{day(into.date)}</small>
+        </div>
+      ) : null}
+      <div>
+        <dt>Days money went out</dt>
+        <dd>{outDays}</dd>
+        <small>of {moved.length} with movement</small>
+      </div>
+    </dl>
   );
 }

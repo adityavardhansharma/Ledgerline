@@ -15,6 +15,7 @@ import { ChangeDigest } from "@/components/app/ai/Explainers";
 import { OwedList } from "@/components/app/ai/Reminder";
 import type { Snapshot } from "@/lib/types";
 import { OverviewView } from "@/components/app/reports/OverviewView";
+import { everyDay } from "@/lib/views";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -26,6 +27,7 @@ export default function OverviewPage() {
   const ageing = useQuery(api.reports.ageing);
   const scenario = useReportScenario();
   const forecast = useForecast(scenario.selected?.id, snapshot?.version);
+  const daily = useQuery(api.reports.dailyCash, snapshot ? { from: `${snapshot.series.periods.at(-6)}-01`, to: `${snapshot.asOf}-31` } : "skip");
 
   return (
     <AppPage
@@ -65,6 +67,7 @@ export default function OverviewPage() {
             digest={<ChangeDigest />}
             owed={<OwedList top={((ageing?.receivableTop ?? []) as { contact: string; value: number }[]).slice(0, 3)} />}
             check={<Reconciliation />}
+            days={daily ? everyDay(daily, snapshot.series.periods.at(-6)!, snapshot.asOf).map((d) => ({ ...d, label: new Date(d.date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) })) : null}
           />
         );
       }}
