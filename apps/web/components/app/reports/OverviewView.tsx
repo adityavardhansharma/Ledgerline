@@ -148,7 +148,7 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
           <SankeyChart {...sankeyData(snapshot)} height={340} />
         </section>
       ) : null}
-      <RailBlock title="Checked against Xero">{check}</RailBlock>
+      {check}
     </>
   );
 }

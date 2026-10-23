@@ -4,7 +4,7 @@ import { PeriodPicker } from "@ledgerline/ui";
 import { useQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
-import { Reconciliation } from "@/components/app/Reconciliation";
+import { XeroCheck } from "@/components/app/Reconciliation";
 import { BalanceSheetView } from "@/components/app/reports/BalanceSheetView";
 import { api } from "@/convex/_generated/api";
 import { statementCsv } from "@/lib/csv";
@@ -29,7 +29,7 @@ export default function BalanceSheetPage() {
     >
       {() => {
         if (!snapshot) return null;
-        return <BalanceSheetView snapshot={snapshot} check={<Reconciliation report="balance sheet" />} />;
+        return <BalanceSheetView snapshot={snapshot} check={<XeroCheck report="balance sheet" />} />;
       }}
     </AppPage>
   );

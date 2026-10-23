@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, monthlySummaryCsv } from "@/lib/csv";
-import { Reconciliation } from "@/components/app/Reconciliation";
+import { XeroCheck } from "@/components/app/Reconciliation";
 import { useForecast, useReportScenario } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
 import { periodLabel } from "@/lib/format";
@@ -66,7 +66,7 @@ export default function OverviewPage() {
             assumedTerms={(ageing as { source?: string } | null)?.source === "journals"}
             digest={<ChangeDigest />}
             owed={<OwedList top={((ageing?.receivableTop ?? []) as { contact: string; value: number }[]).slice(0, 3)} />}
-            check={<Reconciliation />}
+            check={<XeroCheck />}
             days={daily ? everyDay(daily, snapshot.series.periods.at(-6)!, snapshot.asOf).map((d) => ({ ...d, label: new Date(d.date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) })) : null}
           />
         );

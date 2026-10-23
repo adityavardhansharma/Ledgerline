@@ -637,6 +637,35 @@ function WaterfallChart(p) {
 }
 
 /* SankeyChart: a tree-shaped flow (revenue → costs and profit) with gradient ribbons. */
+/* Narrow screens: the same flow read top to bottom. Each stage, what it spends (a bar sized against revenue),
+   then what's left, so nothing has to share a few pixels of width with its neighbour. */
+function SankeyList(p, byId, root, fmt, ref) {
+  var total = root[0] ? root[0].value : 1, rows = [];
+  function walk(nd, depth) {
+    var stages = nd.outs.map(function (l) { return byId[l.target]; });
+    rows.push(h('li', { key: 'h' + nd.id, className: cx('ll-skl-stage', depth === 0 && 'is-first') },
+      h('span', { className: cx('ll-skl-dot', 'll-fill-' + (nd.tone || 'chart-1').replace('chart-', '')) }),
+      h('b', null, nd.label), h('span', { className: 'll-skl-v' }, fmt(nd.value))));
+    stages.filter(function (t) { return !t.outs.length && !t.emphasis; }).sort(function (a, b) { return b.value - a.value; }).forEach(function (t) {
+      rows.push(h('li', { key: 't' + t.id, className: 'll-skl-row' },
+        h('span', { className: 'll-skl-name' }, t.label),
+        h('span', { className: 'll-skl-bar' }, h('i', { className: 'll-fill-' + (t.tone || 'chart-1').replace('chart-', ''), style: { width: Math.max(1.5, t.value / total * 100) + '%' } })),
+        h('span', { className: 'll-skl-v' }, fmt(t.value), h('small', null, formatPct(t.value / total, 0)))));
+    });
+    stages.filter(function (t) { return t.outs.length; }).forEach(function (t) { walk(t, depth + 1); });
+    stages.filter(function (t) { return !t.outs.length && t.emphasis; }).forEach(function (t) {
+      rows.push(h('li', { key: 'e' + t.id, className: 'll-skl-stage is-end' },
+        h('span', { className: cx('ll-skl-dot', 'll-fill-' + (t.tone || 'chart-1').replace('chart-', '')) }),
+        h('b', null, t.label), h('span', { className: 'll-skl-v' }, fmt(t.value), h('small', null, formatPct(t.value / total, 0)))));
+    });
+  }
+  root.forEach(function (nd) { walk(nd, 0); });
+  return h('figure', { className: 'll-chart' },
+    h('div', { className: 'll-chart-plot', ref: ref },
+      h('ol', { className: 'll-skl', 'aria-label': p.label || 'Flow of revenue' }, rows)),
+    p.caption ? h('figcaption', { className: 'll-chart-cap' }, p.caption) : null);
+}
+
 function SankeyChart(p) {
   var mw = useWidth(720), W = mw[1], H = p.height || 380, pl = 16, pr = p.labelWidth || 168, pt = 30, pb = 12, nodeW = 12, gap = 10;
   var uid = useUid('sk'), hv = useState(null), hot = hv[0];
@@ -649,6 +678,8 @@ function SankeyChart(p) {
   });
   var cols = Math.max.apply(null, p.nodes.map(function (nd) { return nd.col; })) + 1;
   var root = p.nodes.filter(function (nd) { return nd.col === 0; }).map(function (nd) { return byId[nd.id]; });
+  // Under about 150px a column, the labels can't sit beside their bars: read it as a list instead.
+  if ((W - pl - pr) / Math.max(1, cols - 1) < 150) return SankeyList(p, byId, root, fmt, mw[0]);
   var maxChildren = Math.max.apply(null, p.nodes.map(function (nd) { return byId[nd.id].outs.length; }));
   var k = (H - pt - pb - gap * (maxChildren + 2)) / root.reduce(function (s, nd) { return s + nd.value; }, 0);
   var colX = function (c) { return pl + c * (W - pl - pr - nodeW) / (cols - 1); };

@@ -67,7 +67,7 @@ export function PnlView({ snapshot, statement, flags, strip, check, drillable, o
         </RailBlock>
         <RailBlock title="Where the year's costs go">{opex.length ? <Treemap items={opex} height={190} /> : <p className="ll-muted">No operating costs yet this year.</p>}</RailBlock>
       </div>
-      <RailBlock title="Checked against Xero">{check}</RailBlock>
+      {check}
     </>
   );
 }

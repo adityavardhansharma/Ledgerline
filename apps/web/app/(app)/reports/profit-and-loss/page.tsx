@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { DrillDrawer, type DrillTarget } from "@/components/app/DrillDrawer";
-import { Reconciliation } from "@/components/app/Reconciliation";
+import { XeroCheck } from "@/components/app/Reconciliation";
 import { PnlView } from "@/components/app/reports/PnlView";
 import { AnomalyStrip, useAnomalies } from "@/components/app/ai/Explainers";
 import { useForecast, useReportScenario } from "@/components/app/useForecast";
@@ -58,7 +58,7 @@ export default function ProfitAndLossPage() {
             statement={statement}
             flags={view === "m" ? anomalies.map : undefined}
             strip={<AnomalyStrip flags={anomalies.flags} />}
-            check={<Reconciliation />}
+            check={<XeroCheck />}
             drillable={view === "m"}
             onDrill={(row: StatementRow, column: number) => {
               const period = snapshot.pnl.columns[column]?.period;
