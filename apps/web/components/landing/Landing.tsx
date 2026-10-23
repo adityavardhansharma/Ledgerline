@@ -40,15 +40,15 @@ const PLANS: { name: string; price: string; per: string; for: string; featured?:
     for: "For owners who run the business on it.",
     featured: true,
     soon: true,
-    items: [["Everything in Free"], ["500 AI actions a month"], ["Unlimited AI ledger search"], ["500 AI chats a month", true]],
+    items: [["Everything in Free"], ["Up to 5 companies"], ["500 AI actions a month"], ["Unlimited AI ledger search"], ["500 AI chats a month", true]],
   },
   {
     name: "Max",
-    price: "€100",
+    price: "€50",
     per: "a month",
     for: "For finance leads who want the strongest analysis.",
     soon: true,
-    items: [["Everything in Pro"], ["Stronger AI models for analysis"], ["1,000 AI actions a month"], ["Unlimited AI ledger search"], ["1,000 AI chats a month", true]],
+    items: [["Everything in Pro"], ["Up to 5 companies"], ["Stronger AI models for analysis"], ["1,000 AI actions a month"], ["Unlimited AI ledger search"], ["1,000 AI chats a month", true]],
   },
 ];
 
