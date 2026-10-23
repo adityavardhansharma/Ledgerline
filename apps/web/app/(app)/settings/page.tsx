@@ -189,8 +189,8 @@ const METER: Record<string, { title: string; hint: string }> = {
 };
 
 const UPCOMING = [
-  { name: "Pro", price: "€20 a month", items: ["500 AI actions a month", "Unlimited AI ledger search", "500 AI chats a month"] },
-  { name: "Max", price: "€100 a month", items: ["Stronger AI models for analysis", "1,000 AI actions a month", "Unlimited AI ledger search", "1,000 AI chats a month"] },
+  { name: "Pro", price: "€20 a month", items: ["Up to 5 companies", "500 AI actions a month", "Unlimited AI ledger search", "500 AI chats a month"] },
+  { name: "Max", price: "€50 a month", items: ["Up to 5 companies", "Stronger AI models for analysis", "1,000 AI actions a month", "Unlimited AI ledger search", "1,000 AI chats a month"] },
 ];
 
 const resetDate = (at: number) => new Date(at).toLocaleDateString("en-IE", { day: "numeric", month: "long", timeZone: "UTC" });
