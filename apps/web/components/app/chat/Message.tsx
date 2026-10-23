@@ -70,6 +70,82 @@ function useToolProvider() {
   }, [convex, override]);
 }
 
+type Piece = { kind: "tiles" | "chart" | "table" | "callout" | "text" | "chips"; n?: number };
+
+/** What a ui block will draw, read from its code as it arrives, so the working block can say what it is doing. */
+function shapeOf(code: string): Piece[] {
+  const out: Piece[] = [];
+  for (const line of code.split("\n")) {
+    const m = /^\s*\w+\s*=\s*(\w+)\(/.exec(line);
+    if (!m) continue;
+    const type = m[1];
+    if (type === "Row") out.push({ kind: "tiles", n: Math.max(1, (line.match(/Kpi\(/g) ?? []).length) });
+    else if (type === "Kpi") out.push({ kind: "tiles", n: 1 });
+    else if (type === "LineChart" || type === "BarChart") out.push({ kind: "chart" });
+    else if (type === "Table") out.push({ kind: "table" });
+    else if (type === "Callout") out.push({ kind: "callout" });
+    else if (type === "Text") out.push({ kind: "text" });
+    else if (type === "FollowUps") out.push({ kind: "chips" });
+  }
+  return out.length ? out : [{ kind: "chart" }];
+}
+
+const DOING: Record<Piece["kind"], string> = {
+  tiles: "Pulling the headline figures",
+  chart: "Drawing the chart",
+  table: "Setting out the table",
+  callout: "Writing the takeaway",
+  text: "Writing it up",
+  chips: "Suggesting what to ask next",
+};
+
+/**
+ * Shown after the text, while a visual is being written and its figures fetched: a thinking-style line that says
+ * Ledgerline is making the visual and what it's on right now, read from the code as it arrives. It takes no more room
+ * than a line; the visual itself opens up beneath it once it's ready.
+ */
+function Working({ pieces, live }: { pieces: Piece[]; live: boolean }) {
+  const doing = live ? DOING[pieces[pieces.length - 1].kind] : "Fetching the figures";
+  const done = live ? pieces.length - 1 : pieces.length;
+  const [started] = useState(() => Date.now());
+  const [now, setNow] = useState(started);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
+  const secs = Math.floor((now - started) / 1000);
+  return (
+    <div className="ll-chat-work" role="status" aria-live="polite">
+      <span className="ll-chat-work-art" aria-hidden>
+        {[0.55, 0.9, 0.4, 1, 0.7].map((h, i) => (
+          <i key={i} style={{ "--h": h, animationDelay: `${i * 0.11}s` } as React.CSSProperties} />
+        ))}
+      </span>
+      <span className="ll-chat-work-copy">
+        <span className="ll-chat-work-who">Ledgerline is making the visual</span>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.b key={doing} className="ll-shimmer" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }}>
+            {doing}…
+          </motion.b>
+        </AnimatePresence>
+      </span>
+      {pieces.length > 1 ? (
+        <span className="ll-chat-work-pips" aria-hidden>
+          {pieces.map((_, i) => (
+            <i key={i} className={i < done ? "is-done" : i === done ? "is-now" : undefined} />
+          ))}
+        </span>
+      ) : null}
+      <span className="ll-chat-work-time">{secs}s</span>
+    </div>
+  );
+}
+
+/**
+ * A ui block in an answer. While its code is still arriving, a thinking-style line says Ledgerline is making the
+ * visual; once complete it renders behind that placeholder and, when its figures are in, cross-fades to the real thing,
+ * its pieces rising in one after another.
+ */
 const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: boolean }) {
   const tools = useToolProvider();
   const program = repairProgram(code);
@@ -77,9 +153,44 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
   const last = useRef({ program: "", generation: 0 });
   if (!program.startsWith(last.current.program)) last.current.generation += 1;
   last.current.program = program;
+  const pieces = useMemo(() => shapeOf(code), [code]);
+  const host = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (live) {
+      setReady(false);
+      return;
+    }
+    const el = host.current;
+    if (!el) return;
+    const check = () => {
+      if (el.childElementCount && !el.querySelector(".ll-chat-loading, .ll-chat-chart-wait, .ll-chat-table-wait")) setReady(true);
+    };
+    check();
+    const watch = new MutationObserver(check);
+    watch.observe(el, { subtree: true, childList: true });
+    const fallback = setTimeout(() => setReady(true), 5000);
+    return () => {
+      watch.disconnect();
+      clearTimeout(fallback);
+    };
+  }, [live]);
   return (
-    <motion.div className="ll-chat-ui" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-      <Renderer key={last.current.generation} response={program} library={chatLibrary} isStreaming={live} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
+    <motion.div className="ll-chat-ui" layout="size" transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}>
+      <div className="ll-chat-ui-stage">
+        <AnimatePresence>
+          {ready ? null : (
+            <motion.div key="working" className="ll-chat-ui-skel" style={{ overflow: "hidden" }} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } }}>
+              <Working pieces={pieces} live={live} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {live ? null : (
+          <div ref={host} className={`ll-chat-ui-real${ready ? " is-ready" : ""}`}>
+            <Renderer key={last.current.generation} response={program} library={chatLibrary} isStreaming={false} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 });

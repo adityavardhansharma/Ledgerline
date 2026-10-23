@@ -2,6 +2,7 @@
 
 import { Button, HeroMetric, Icon, KpiTile, LineChart, Logo } from "@ledgerline/ui";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "../ThemeToggle";
 import { AskPill, ChatDemo, HeroChat } from "./AiShowcase";
@@ -72,40 +73,77 @@ function Intro({ kicker, title, children, small }: { kicker: string; title: Reac
   );
 }
 
-export function Landing() {
+const SECTIONS = [
+  ["ask", "Ask"],
+  ["actions", "AI actions"],
+  ["forecast", "Forecasting"],
+  ["pricing", "Pricing"],
+  ["faq", "FAQ"],
+] as const;
+
+/**
+ * The header: clear and full width over the hero, then, once the page moves, it draws in to a floating glass pill.
+ * A soft highlight follows the pointer between links, and a dot marks the section you're reading.
+ */
+function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
+  const [current, setCurrent] = useState<string | null>(null);
   useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 8);
+    const on = () => setScrolled(window.scrollY > 24);
     on();
     window.addEventListener("scroll", on, { passive: true });
-    return () => window.removeEventListener("scroll", on);
+    const seen = new Map<string, boolean>();
+    const spy = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => seen.set(e.target.id, e.isIntersecting));
+        setCurrent(SECTIONS.find(([id]) => seen.get(id))?.[0] ?? null);
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    );
+    SECTIONS.forEach(([id]) => {
+      const el = document.getElementById(id);
+      if (el) spy.observe(el);
+    });
+    return () => {
+      window.removeEventListener("scroll", on);
+      spy.disconnect();
+    };
   }, []);
+  return (
+    <header className={`lp-nav${scrolled ? " is-scrolled" : ""}`}>
+      <div className="lp-nav-inner">
+        <Link href="/" aria-label="Ledgerline home" className="lp-nav-logo">
+          <Logo size={26} />
+        </Link>
+        <nav className="lp-nav-links" aria-label="Sections" onMouseLeave={() => setHover(null)}>
+          {SECTIONS.map(([id, label]) => (
+            <a key={id} href={`#${id}`} className={current === id ? "is-current" : undefined} aria-current={current === id ? "true" : undefined} onMouseEnter={() => setHover(id)} onFocus={() => setHover(id)}>
+              {hover === id ? <motion.span layoutId="lp-nav-hover" className="lp-nav-hover" transition={{ type: "spring", stiffness: 500, damping: 38 }} /> : null}
+              <span className="lp-nav-label">{label}</span>
+              {current === id ? <motion.i layoutId="lp-nav-dot" className="lp-nav-dot" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
+            </a>
+          ))}
+        </nav>
+        <div className="lp-nav-cta">
+          <ThemeToggle />
+          <Link href="/sign-in" className="lp-signin">
+            Sign in
+          </Link>
+          <Link href="/sign-up" className="lp-nav-start">
+            Start free
+            <Icon name="arrow-right" size={14} />
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
 
+export function Landing() {
   return (
     <div className="lp">
-      <header className={`lp-nav${scrolled ? " is-scrolled" : ""}`}>
-        <div className="lp-wrap lp-nav-inner">
-          <Link href="/" aria-label="Ledgerline home">
-            <Logo size={26} />
-          </Link>
-          <nav className="lp-nav-links" aria-label="Sections">
-            <a href="#ask">Ask</a>
-            <a href="#actions">AI actions</a>
-            <a href="#forecast">Forecasting</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
-          </nav>
-          <div className="lp-nav-cta">
-            <ThemeToggle />
-            <Link href="/sign-in" className="lp-signin">
-              Sign in
-            </Link>
-            <Link href="/sign-up">
-              <Button variant="primary">Start free</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main>
         <section className="lp-hero lp-wrap">

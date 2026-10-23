@@ -15,7 +15,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const HOLD = 8000;
 
 function SampleTools({ children }: { children: React.ReactNode }) {
-  const tools = useMemo(() => Object.fromEntries(Object.entries(TOOLS).map(([name, data]) => [name, async () => data])), []);
+  const tools = useMemo(() => Object.fromEntries(Object.entries(TOOLS).map(([name, data]) => [name, () => new Promise((r) => setTimeout(() => r(data), 900))])), []);
   return <ToolOverride.Provider value={tools}>{children}</ToolOverride.Provider>;
 }
 
@@ -42,17 +42,19 @@ function Replay({ index, onDone }: { index: number; onDone: (index: number) => v
   const [steps, setSteps] = useState(0);
   const [chars, setChars] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
-  const done = chars >= prose.length;
+  // The words stream, then the visual is written (quicker, as it isn't read) while a line says it's being made.
+  const total = prose.length + (ui ? ui.length + 2 : 0);
+  const done = chars >= total;
 
   useEffect(() => {
     const timers = convo.steps.map((_, i) => setTimeout(() => setSteps(i + 1), 450 + i * 700));
     let tick: ReturnType<typeof setInterval> | undefined;
-    timers.push(setTimeout(() => (tick = setInterval(() => setChars((n) => Math.min(prose.length, n + 9)), 28)), 450 + convo.steps.length * 700 + 250));
+    timers.push(setTimeout(() => (tick = setInterval(() => setChars((n) => Math.min(total, n + (n < prose.length ? 9 : 14))), 28)), 450 + convo.steps.length * 700 + 250));
     return () => {
       timers.forEach(clearTimeout);
       if (tick) clearInterval(tick);
     };
-  }, [convo, prose]);
+  }, [convo, prose, total]);
 
   useEffect(() => {
     if (done) onDone(index);
@@ -70,7 +72,7 @@ function Replay({ index, onDone }: { index: number; onDone: (index: number) => v
         <div className="ll-ask-q">{convo.question}</div>
         <div className="ll-ask-a">
           <Reading steps={convo.steps.slice(0, steps).map(([tool, label]) => ({ tool, label }))} phase={phase} />
-          {chars > 0 ? <AnswerBody content={done ? `${prose}\n\n${ui}` : prose.slice(0, chars)} live={!done} /> : null}
+          {chars > 0 ? <AnswerBody content={chars <= prose.length ? prose.slice(0, chars) : `${prose}\n\n${ui.slice(0, chars - prose.length - 2)}`} live={!done} /> : null}
         </div>
       </div>
     </motion.div>
