@@ -1,6 +1,7 @@
 'use client';
 /* Ledgerline design system: every component, chart and helper. Generated from the published system, now the source of truth. */
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 const ICONS = {
 "overview": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"8\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1.5\"/><rect x=\"3\" y=\"15\" width=\"7\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1.5\"/>",
@@ -1055,7 +1056,9 @@ function Dialog(p) {
     h('div', { className: 'll-dialog-head' }, h('h2', { id: 'll-dlg-t', className: 'll-dialog-title' }, p.title), h(IconButton, { icon: 'close', label: 'Close', onClick: p.onClose })),
     h('div', { className: 'll-dialog-body' }, p.children),
     p.footer ? h('div', { className: 'll-dialog-foot' }, p.footer) : null);
-  return h('div', { className: cx('ll-scrim', p.inline && 'is-inline') }, body);
+  var layer = h('div', { className: cx('ll-scrim', p.inline && 'is-inline') }, body);
+  // Rendered at the top of the document so a sticky or transformed ancestor can't trap it under later content.
+  return !p.inline && typeof document !== 'undefined' ? createPortal(layer, document.body) : layer;
 }
 function Drawer(p) {
   return h('div', { className: cx('ll-drawer-layer', p.inline && 'is-inline') },

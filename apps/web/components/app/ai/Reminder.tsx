@@ -7,6 +7,26 @@ import { api } from "@/convex/_generated/api";
 import { AiButton, plainText, Thinking, useAi } from "./AiAction";
 
 /**
+ * A paragraph of the drafted email as text. Invoices are cited one after another with nothing between them, so each
+ * cited figure that follows another (or follows a colon) starts its own line.
+ */
+function lines(paragraph: Parameters<typeof plainText>[0]) {
+  let out = "";
+  let lastWasFact = false;
+  for (const part of paragraph) {
+    if (typeof part === "string") {
+      out += part;
+      lastWasFact = false;
+      continue;
+    }
+    if (lastWasFact || /:\s*$/.test(out)) out = `${out.trimEnd()}\n`;
+    out += part.text;
+    lastWasFact = true;
+  }
+  return out.trim();
+}
+
+/**
  * The customers who owe the most, each with a drafted payment reminder. Ledgerline never sends it: the person
  * copies it or opens it in their own email, and can edit it first.
  */
@@ -25,7 +45,7 @@ export function OwedList({ top }: { top: { contact: string; value: number }[] })
     const result = await ai.run({ contact: name });
     if (result) {
       setSubject(plainText(result.subject));
-      setBody(result.body.map(plainText).join("\n\n"));
+      setBody(result.body.map(lines).join("\n\n"));
     }
   };
   const close = () => {

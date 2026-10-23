@@ -12,5 +12,5 @@
     "./styles/components.css": "./styles/components.css"
   },
   "sideEffects": ["*.css"],
-  "peerDependencies": { "react": ">=18" }
+  "peerDependencies": { "react": ">=18", "react-dom": ">=18" }
 }
