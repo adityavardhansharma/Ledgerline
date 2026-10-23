@@ -1,16 +1,17 @@
 "use client";
 
-import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, KpiTile, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
+import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { pctChange, SummaryLine } from "@/components/app/report/Report";
 import { BoardCommentary, BoardNotes, CommentaryToolbar, errorText, VersionHistory } from "@/components/app/BoardCommentary";
 import type { Section } from "@/convex/commentary";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { api } from "@/convex/_generated/api";
-import { periodLabel } from "@/lib/format";
+import { monthName, periodLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/types";
 import { cashChart, sankeyData } from "@/lib/views";
 
@@ -104,12 +105,14 @@ export default function BoardPackPage() {
                 </div>
                 <Logo size={30} />
               </div>
-              <div className="ll-kpi-strip">
-                <KpiTile icon="euro" label="Revenue" value={m.revenue / 100} delta={m.revenueDelta ?? undefined} deltaLabel="vs previous month" />
-                <KpiTile icon="trend-up" label="EBITDA" value={m.ebitda / 100} />
-                <KpiTile icon="bank" label="Cash" value={m.cash / 100} delta={m.cashDelta ?? undefined} deltaLabel="vs previous month" />
-                <KpiTile icon="runway" tone="forecast" label="Runway" value={forecast?.runwayMonths ?? null} format="months" note={forecast && forecast.runwayMonths === null ? "Cash stays positive" : undefined} />
-              </div>
+              <SummaryLine
+                figures={[
+                  { label: "Revenue", value: formatMoney(m.revenue / 100), change: m.revenueDelta, changeText: m.revenueDelta === null ? undefined : pctChange(m.revenueDelta), good: "up", note: "on last month" },
+                  { label: "EBITDA", value: formatMoney(m.ebitda / 100), note: monthName(snapshot.asOf) },
+                  { label: "Cash at bank", value: formatMoney(m.cash / 100), change: m.cashDelta, changeText: m.cashDelta === null ? undefined : pctChange(m.cashDelta), good: "up", note: "on last month" },
+                  { label: "Runway", value: forecast ? (forecast.cashOutPeriod ? `${(forecast.runwayMonths ?? 0).toFixed(1)} months` : "24+ months") : "–", note: forecast ? (forecast.cashOutPeriod ? `cash runs out in ${periodLabel(forecast.cashOutPeriod)}` : "cash stays positive") : undefined },
+                ]}
+              />
               {commentary?.sections ? (
                 <>
                   <BoardCommentary commentary={commentary} busy={busy} onRedraft={(section) => void write({ section })} />

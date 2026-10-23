@@ -1462,3 +1462,29 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-report-pair { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; }
 .ll-rail-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-subtle); }
 @media (max-width: 900px) { .ll-report-pair { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- overview briefing ---------- */
+.ll-report-hero-sub { margin: -2px 0 10px; font-size: 13px; color: var(--ink-subtle); }
+.ll-report-pair.is-even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.ll-rail-figure { font: 500 13px var(--font-mono); }
+.ll-attention { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.ll-attention li { position: relative; padding-left: 16px; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.ll-attention li::before { content: ''; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
+.ll-attention li.is-bad::before { background: var(--negative); }
+.ll-age { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 7px; }
+.ll-age li { display: grid; grid-template-columns: 116px minmax(0, 1fr) 62px; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink-muted); }
+.ll-age li i { display: block; height: 6px; min-width: 2px; border-radius: 3px; background: var(--brand); }
+.ll-age li.is-late i { background: var(--warning); }
+.ll-age li b { font: 500 12px var(--font-mono); color: var(--ink); text-align: right; }
+.ll-report-rail .ll-owed li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+.ll-report-rail .ll-owed li > :last-child { grid-column: 1 / -1; justify-self: start; }
+
+/* ---------- a quieter, more modern frame for every page ---------- */
+.ll-page { gap: 28px; }
+.ll-panel { border-radius: 14px; }
+.ll-panel-icon { display: none; }
+.ll-panel-title { font: 600 14px/1.35 var(--font-sans); letter-spacing: 0; }
+.ll-panel-sub { margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--ink-subtle); }
+.ll-report-hero { border-radius: 14px; }
+@media (max-width: 900px) { .ll-report-pair.is-even { grid-template-columns: minmax(0, 1fr); } }
+.ll-stack-lg { display: flex; flex-direction: column; gap: 20px; min-width: 0; }

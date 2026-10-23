@@ -10,6 +10,7 @@ import { ExportMenu } from "@/components/app/ExportMenu";
 import { euro, forecastCsv, toCsv } from "@/lib/csv";
 import { BranchDialog } from "@/components/app/BranchDialog";
 import { useScenarios } from "@/components/app/useForecast";
+import { RailBlock, ReportGrid } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { periodLabel } from "@/lib/format";
@@ -126,8 +127,11 @@ export default function ScenariosPage() {
             </div>
             {other && b ? (
               <>
-                <div className="ll-grid-2">
-                  <Panel title={`Base case against ${other.name}`} icon="compare" subtitle="Month-end cash over the next two years">
+                <ReportGrid
+                  main={
+                  <section className="ll-report-hero">
+                    <h2>Base case against {other.name}</h2>
+                    <p className="ll-report-hero-sub">Month-end cash over the next two years{otherRun?.cashOutPeriod ? `; ${other.name} runs out in ${periodLabel(otherRun.cashOutPeriod)}` : ""}.</p>
                     {baseRun && otherRun ? (
                       <LineChart
                         labels={baseRun.months.map((m) => m.label)}
@@ -144,11 +148,14 @@ export default function ScenariosPage() {
                     ) : (
                       <p className="ll-muted">Running both forecasts…</p>
                     )}
-                  </Panel>
-                  <Panel title="Runway by scenario" icon="runway">
-                    <BulletChart rows={scenarios.map((s) => ({ label: s.name, actual: s.summary?.runwayMonths ?? 24, target: 12, max: 24, bands: [6, 12, 24], format: (v: number) => (s.summary?.runwayMonths == null ? "24+ mo" : `${v.toFixed(1)} mo`) }))} />
-                  </Panel>
-                </div>
+                  </section>
+                  }
+                  rail={
+                    <RailBlock title="Runway by scenario">
+                      <BulletChart rows={scenarios.map((s) => ({ label: s.name, actual: s.summary?.runwayMonths ?? 24, target: 12, max: 24, bands: [6, 12, 24], format: (v: number) => (s.summary?.runwayMonths == null ? "24+ mo" : `${v.toFixed(1)} mo`) }))} />
+                    </RailBlock>
+                  }
+                />
                 <Panel title="What changes" icon="statement" subtitle={otherRun?.cashOutPeriod ? `${other.name} runs out of cash in ${periodLabel(otherRun.cashOutPeriod)}` : undefined} flush>
                   <div style={{ padding: "0 20px 20px" }}>
                     <ScenarioCompare a={a} b={b} horizon={24} cashLabel="Cash in 2 years" />

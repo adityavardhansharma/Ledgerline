@@ -5,12 +5,12 @@ import {
   Badge,
   Banner,
   FinancialStatement,
+  formatMoney,
   Button,
   Icon,
   Select,
   LineChart,
   Panel,
-  RunwayGauge,
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
@@ -25,6 +25,7 @@ import { CashDipExplainer } from "@/components/app/ai/Explainers";
 import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/ai/Planners";
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
+import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { money, periodLabel } from "@/lib/format";
@@ -114,8 +115,21 @@ function ForecastScreen() {
         const parentValue = (key: string) => scenario.inherited[key] ?? drivers[key];
         const chart = cashChart(snapshot, scenario.isBase ? forecast : baseForecast ?? forecast, scenario.isBase ? null : forecast);
         const ownHires = scenario.own.hires;
+        const cashAt = (i: number) => (forecast?.months[i] ? forecast.months[i].cash / 100 : null);
+        const vsBase = (mine: number | null, theirs: number | null) => (scenario.isBase || mine === null || theirs === null ? {} : { change: mine - theirs, changeText: moneyChange(mine - theirs), good: "up" as const, note: "on the base case" });
+        const baseAt = (i: number) => (baseForecast?.months[i] ? baseForecast.months[i].cash / 100 : null);
         return (
           <>
+          {forecast ? (
+            <SummaryLine
+              figures={[
+                { label: "Lowest cash", value: forecast.lowestCash === null ? "–" : formatMoney(forecast.lowestCash / 100), note: forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : undefined },
+                { label: "Cash in a year", value: cashAt(11) === null ? "–" : formatMoney(cashAt(11)!), ...vsBase(cashAt(11), baseAt(11)) },
+                { label: "Cash in two years", value: cashAt(23) === null ? "–" : formatMoney(cashAt(23)!), ...vsBase(cashAt(23), baseAt(23)) },
+                { label: "Runway", value: forecast.cashOutPeriod ? `${(forecast.runwayMonths ?? 0).toFixed(1)} months` : "24+ months", note: forecast.cashOutPeriod ? `cash runs out in ${periodLabel(forecast.cashOutPeriod)}` : "lasts the whole forecast" },
+              ]}
+            />
+          ) : null}
           <div className="ll-grid-plan">
             <Panel title="Drivers" icon="settings" subtitle={readOnly ? "The base case follows your actuals. Branch it to change drivers." : "Changes from the parent scenario are marked"}>
               {!readOnly && scenarioId ? <ScenarioComposer scenarioId={scenarioId} startPeriod={snapshot.drivers.startPeriod} own={scenario.own} /> : null}
@@ -213,10 +227,6 @@ function ForecastScreen() {
                     : ""}
                   Add a loan or equity under Financing, or move costs later.
                 </Banner>
-              ) : forecast ? (
-                <Banner tone="positive" title="Cash stays positive for the whole forecast.">
-                  The lowest balance is {money(forecast.lowestCash)}, in {forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}.
-                </Banner>
               ) : null}
               {forecast && scenarioId ? <CashDipExplainer scenarioId={scenarioId} onOpenArea={(area) => { setTab(area); document.querySelector(".ll-grid-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} /> : null}
               <Panel title="Cash at bank" icon="bank" subtitle={scenario.isBase ? "Base case with its likely range" : "This scenario against the base case and its likely range"} actions={forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}>
@@ -226,20 +236,6 @@ function ForecastScreen() {
                   <p className="ll-muted">Running the forecast…</p>
                 )}
               </Panel>
-              <div className="ll-grid-halves">
-                <Panel title="Runway" icon="runway">
-                  {forecast ? (
-                    <RunwayGauge
-                      months={forecast.runwayMonths ?? 24}
-                      capped={!forecast.cashOutPeriod}
-                      cashOut={forecast.cashOutPeriod ? `in ${periodLabel(forecast.cashOutPeriod)}` : undefined}
-                      note={forecast.cashOutPeriod ? undefined : "Lasts the whole 24-month forecast"}
-                      compare={!scenario.isBase && baseForecast ? (baseForecast.runwayMonths ?? 24) : undefined}
-                      compareLabel="Base case"
-                      size={230}
-                    />
-                  ) : null}
-                </Panel>
                 <Panel title="What moves runway most" icon="compare" subtitle="Each driver from its downside to its upside">
                   {forecast?.sensitivity?.rows.length && forecast.sensitivity.rows.some((r) => Math.abs(r.low) >= 0.05 || Math.abs(r.high) >= 0.05) ? (
                     <TornadoChart base={forecast.sensitivity.base} rows={forecast.sensitivity.rows.slice(0, 5)} baseLabel="Base" />
@@ -252,7 +248,6 @@ function ForecastScreen() {
                     <p className="ll-muted">Appears once the forecast has run.</p>
                   )}
                 </Panel>
-              </div>
             </div>
           </div>
           {forecast ? (
