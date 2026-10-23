@@ -233,7 +233,7 @@ export const draft = action({
   handler: async (ctx, args): Promise<{ id: Id<"commentaries"> }> => {
     // Out of AI actions: the saved drafts stay on the page; only a new one waits for the reset.
     const allowance = await ctx.runQuery(internal.billing.left, { meter: "actions" });
-    if (allowance.left <= 0) throw limitError("actions", allowance.resetsAt);
+    if (allowance.left <= 0) throw limitError("actions", allowance.resetsAt, null, allowance.limit);
     const input = await prepare(ctx);
     const current = input.latest?.sections ?? null;
     if (args.section && !current) throw new ConvexError("Draft the whole commentary first, then redraft a section.");
@@ -451,7 +451,7 @@ export const ask = action({
     if (!text) throw new ConvexError("Ask a question about the figures.");
     if (text.length > 500) throw new ConvexError("Keep questions under 500 characters.");
     const allowance = await ctx.runQuery(internal.billing.left, { meter: "chats" });
-    if (allowance.left <= 0) throw limitError("chats", allowance.resetsAt);
+    if (allowance.left <= 0) throw limitError("chats", allowance.resetsAt, null, allowance.limit);
     const input = await prepare(ctx);
     try {
       const answer = await engine<{ answer: Prose[] }>("/commentary/ask", { ...input.payload, question: text, notes: input.notes, history: (history ?? []).slice(-4) });

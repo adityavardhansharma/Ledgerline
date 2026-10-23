@@ -275,6 +275,25 @@ export default defineSchema({
     at: v.number(),
   }).index("by_org_at", ["orgId", "at"]),
 
+  // Vouchers raise a company's monthly AI allowances; a company redeems each code once.
+  vouchers: defineTable({
+    code: v.string(),
+    limits: v.object({ actions: v.optional(v.number()), searches: v.optional(v.number()), chats: v.optional(v.number()) }),
+    active: v.boolean(),
+    maxRedemptions: v.optional(v.number()),
+    redemptions: v.number(),
+    createdAt: v.number(),
+  }).index("by_code", ["code"]),
+  voucherRedemptions: defineTable({
+    orgId: v.id("organizations"),
+    voucherId: v.id("vouchers"),
+    code: v.string(),
+    by: v.string(),
+    at: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_voucher", ["orgId", "voucherId"]),
+
   // Context for a month's commentary that only the team knows ("lost the Murphy contract").
   boardNotes: defineTable({
     orgId: v.id("organizations"),

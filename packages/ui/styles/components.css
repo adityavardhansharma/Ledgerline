@@ -1574,13 +1574,15 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-invite > .ll-btn { grid-column: 1 / -1; justify-self: start; }
 .ll-plan-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-top: 8px; padding: 18px 20px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
 .ll-plan-card p { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-subtle); max-width: 52ch; }
-.ll-plan-name { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1.4 var(--font-sans); color: var(--ink); }
+.ll-plan-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 600 15px/1.4 var(--font-sans); color: var(--ink); }
 .ll-plan-price { font: 600 22px/1.2 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink); }
 .ll-meter { display: flex; flex-direction: column; gap: 8px; }
 .ll-meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; color: var(--ink-subtle); }
 .ll-meter-head b { font: 600 15px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink); }
 .ll-meter-head b small { font-weight: 400; font-size: 13px; color: var(--ink-subtle); }
 .ll-meter-head .is-out { color: var(--warning); font-weight: 500; }
+.ll-voucher { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.ll-voucher input { text-transform: uppercase; letter-spacing: .04em; font-family: var(--font-mono); }
 .ll-plan-soon { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
 .ll-plan-soon > div { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 12px; box-shadow: 0 0 0 1px var(--rule); color: var(--ink-muted); }
 .ll-plan-soon small { font-size: 13px; color: var(--ink-subtle); }

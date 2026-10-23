@@ -78,7 +78,7 @@ export const cacheSet = internalMutation({
 export const paused = internalQuery({
   args: { orgId: v.id("organizations"), key: v.string() },
   handler: async (ctx, { orgId, key }) => {
-    const { left, resetsAt } = await remaining(ctx, orgId, "actions");
+    const { left, resetsAt, limit } = await remaining(ctx, orgId, "actions");
     if (left > 0) return null;
     const row = key
       ? await ctx.db
@@ -86,7 +86,7 @@ export const paused = internalQuery({
           .withIndex("by_org_key", (q) => q.eq("orgId", orgId).eq("key", key))
           .first()
       : null;
-    return { resetsAt, last: row?.data ?? null };
+    return { resetsAt, limit, last: row?.data ?? null };
   },
 });
 
@@ -97,7 +97,7 @@ async function once<T>(ctx: ActionCtx, c: Context, name: string, key: string | n
     if (hit) return hit as T;
   }
   const stop = await ctx.runQuery(internal.aiActions.paused, { orgId: c.orgId, key: key ?? "" });
-  if (stop) throw limitError("actions", stop.resetsAt, stop.last);
+  if (stop) throw limitError("actions", stop.resetsAt, stop.last, stop.limit);
   let data: T;
   try {
     data = await fn();

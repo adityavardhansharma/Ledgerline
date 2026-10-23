@@ -88,8 +88,8 @@ export const begin = internalMutation({
       .order("desc")
       .take(HISTORY);
     await ctx.db.insert("chatMessages", { threadId: id, role: "user", content: text, status: "done", page, createdAt: now });
-    const { left, resetsAt } = await remaining(ctx, org._id, "chats");
-    const paused = left <= 0 ? pausedMessage("chats", resetsAt) : null;
+    const { left, resetsAt, limit } = await remaining(ctx, org._id, "chats");
+    const paused = left <= 0 ? pausedMessage("chats", resetsAt, limit) : null;
     const answerId = await ctx.db.insert("chatMessages", {
       threadId: id,
       role: "assistant",
