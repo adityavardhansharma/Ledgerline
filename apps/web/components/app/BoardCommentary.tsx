@@ -32,7 +32,11 @@ const LENGTHS = [
 
 /** A server error in plain words: a ConvexError's own message, never "Server Error" or a stack trace. */
 export const errorText = (err: unknown, fallback: string) => {
-  if (err instanceof ConvexError) return typeof err.data === "string" ? err.data : fallback;
+  if (err instanceof ConvexError) {
+    if (typeof err.data === "string") return err.data;
+    const message = (err.data as { message?: unknown } | null)?.message;
+    return typeof message === "string" ? message : fallback;
+  }
   if (!(err instanceof Error)) return fallback;
   const text = err.message.replace(/^[\s\S]*?(ConvexError|Uncaught Error|Error): /, "").replace(/\s+at [\s\S]*$/, "");
   return !text || /Server Error|Request ID/.test(text) ? fallback : text;

@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, IconButton } from "@ledgerline/ui";
+import { ConvexError } from "convex/values";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Citation, Prose } from "@/convex/commentary";
@@ -65,7 +66,18 @@ export function Thinking({ steps = DEFAULT_STEPS }: { steps?: string[] }) {
   );
 }
 
-export function AiNote({ title, children, onClose, footer, busy, error, steps }: { title: string; children?: ReactNode; onClose?: () => void; footer?: ReactNode; busy?: boolean; error?: string | null; steps?: string[] }) {
+/** The month's allowance ran out: the answer shown is the last one, and new ones wait for the reset. */
+export function Paused({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <p className="ll-ai-paused" role="status">
+      <Icon name="clock" size={13} />
+      <span>{text}</span>
+    </p>
+  );
+}
+
+export function AiNote({ title, children, onClose, footer, busy, error, notice, steps }: { title: string; children?: ReactNode; onClose?: () => void; footer?: ReactNode; busy?: boolean; error?: string | null; notice?: string | null; steps?: string[] }) {
   const reduce = useReducedMotion();
   return (
     <motion.section
@@ -95,6 +107,7 @@ export function AiNote({ title, children, onClose, footer, busy, error, steps }:
             </motion.div>
           ) : (
             <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+              <Paused text={notice ?? null} />
               {children}
             </motion.div>
           )}
@@ -160,37 +173,67 @@ export function AiProse({ paragraphs }: { paragraphs: Prose[] }) {
 
 export const plainText = (parts: Prose) => parts.map((p) => (typeof p === "string" ? p : p.text)).join("");
 
-/** Run an action once on demand, keeping its answer, error and progress. */
+/** The server's "allowance used" answer: its message, and the last answer kept for the same question. */
+const limitOf = (err: unknown) => {
+  if (!(err instanceof ConvexError) || typeof err.data !== "object" || err.data?.code !== "limit") return null;
+  return err.data as { message: string; last?: unknown };
+};
+
+/**
+ * Run an action once on demand, keeping its answer, error and progress. When the month's AI actions have run
+ * out, the last answer stays on screen (this one, or the one the server kept) with a note that new ones are paused.
+ */
 export function useAi<A, R>(fn: (args: A) => Promise<R>) {
-  const [data, setData] = useState<R | null>(null);
+  const [data, setDataState] = useState<R | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const live = useRef(0);
+  const shown = useRef<R | null>(null);
+  const asked = useRef<string | null>(null);
+  const setData = useCallback((next: R | null) => {
+    shown.current = next;
+    setDataState(next);
+  }, []);
   const run = useCallback(
     async (args: A) => {
       const ticket = ++live.current;
       setOpen(true);
       setBusy(true);
       setError(null);
+      setNotice(null);
       try {
         const result = await fn(args);
-        if (ticket === live.current) setData(result);
+        if (ticket === live.current) {
+          setData(result);
+          asked.current = JSON.stringify(args);
+        }
         return result;
       } catch (err) {
-        if (ticket === live.current) setError(errorText(err, "That didn't work. Try again."));
+        if (ticket !== live.current) return null;
+        const limit = limitOf(err);
+        // The server's kept answer for this question, or the one on screen if it answered these same arguments.
+        const last = (limit?.last as R | undefined) ?? (asked.current === JSON.stringify(args) ? shown.current : null);
+        if (limit && last) {
+          setData(last);
+          setNotice(limit.message);
+          return last;
+        }
+        setError(errorText(err, "That didn't work. Try again."));
         return null;
       } finally {
         if (ticket === live.current) setBusy(false);
       }
     },
-    [fn],
+    [fn, setData],
   );
   const close = useCallback(() => {
     live.current++;
     setOpen(false);
     setBusy(false);
     setError(null);
+    setNotice(null);
   }, []);
-  return { run, data, error, busy, open, close, setData };
+  return { run, data, error, notice, busy, open, close, setData };
 }

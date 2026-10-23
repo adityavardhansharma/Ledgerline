@@ -14,7 +14,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { BackendStatus } from "./BackendStatus";
 import { ImportProgress, useImport } from "./ImportPanel";
 import { SetupNeeded } from "./SetupNeeded";
-import { useWorkspace, type Workspace } from "./useWorkspace";
+import { useCompanyLimit, useWorkspace, type Workspace } from "./useWorkspace";
 
 
 interface Props {
@@ -69,6 +69,7 @@ export function AppPage(props: Props) {
 
 function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay, needsData, children }: Props) {
   const workspace = useWorkspace();
+  const companyLimit = useCompanyLimit(workspace);
   const { orgId, isLoaded } = useAuth();
   const { user } = useUser();
   const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || workspace?.user || "";
@@ -136,7 +137,9 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   ) : null;
 
   let body: ReactNode;
-  if (workspace === undefined || workspace === null) {
+  if (workspace === null && companyLimit) {
+    body = <CompanyLimit limit={companyLimit.limit} names={companyLimit.names} />;
+  } else if (workspace === undefined || workspace === null) {
     body = <BackendStatus waiting />;
   } else if (needsData && !workspace.org.asOf) {
     const finished = workspace.lastSync && ["done", "needsReview"].includes(workspace.lastSync.status);
@@ -330,5 +333,15 @@ function FirstSyncPending({ workspace }: { workspace: Workspace }) {
             : `${(run?.journalsStored ?? 0).toLocaleString("en-IE")} journals stored so far. Reports appear as soon as it finishes.`}
       </EmptyState>
     </div>
+  );
+}
+
+/** The Free plan's companies are used: say so, and point back to the ones that exist. */
+export function CompanyLimit({ limit, names }: { limit: number; names: string[] }) {
+  return (
+    <Banner tone="warning" title={`The Free plan has ${limit} companies, and you've set up both.`}>
+      This organisation wasn&apos;t set up in Ledgerline. Switch to {names.length ? names.join(" or ") : "one of your companies"} from the company menu, or remove one there first.
+      Paid plans with more companies are coming soon.
+    </Banner>
   );
 }

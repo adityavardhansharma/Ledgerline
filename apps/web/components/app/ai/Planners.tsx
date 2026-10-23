@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ParsedScenario } from "@/convex/aiActions";
 import { money, periodLabel } from "@/lib/format";
-import { AiButton, RevealText, Thinking, useAi } from "./AiAction";
+import { AiButton, Paused, RevealText, Thinking, useAi } from "./AiAction";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DRIVER: Record<string, [string, (v: number) => string]> = {
@@ -107,6 +107,7 @@ export function ScenarioComposer({ scenarioId, startPeriod, own }: { scenarioId:
           <p className="ll-ai-error">{ai.error}</p>
         ) : p ? (
           <div className="ll-composer-result ll-chat-in">
+            <Paused text={ai.notice} />
             {rows.length ? (
               <ul>
                 {rows.map((r, i) => (
@@ -202,6 +203,7 @@ export function DownsideButton({ onCreated }: { onCreated: (id: Id<"scenarios">)
             <Thinking steps={["Reading your last twelve months", "Finding the weakest months", "Writing the case"]} />
           ) : (
             <div className="ll-stack">
+              <Paused text={ai.notice} />
               <p className="ll-ai-muted">Each assumption moves to the weakest level your last twelve months actually showed. You can change any of them after.</p>
               <Input id="downside-name" label="Scenario name" value={name ?? data.name} onChange={(e) => setName(e.target.value)} />
               <ul className="ll-ai-changes">
@@ -254,7 +256,9 @@ export function NameSuggest({ scenarioId, current }: { scenarioId: Id<"scenarios
           {ai.error ? (
             <p className="ll-ai-error">{ai.error}</p>
           ) : (
-            (ai.data?.names ?? []).map((n) => (
+            <>
+            <Paused text={ai.notice} />
+            {(ai.data?.names ?? []).map((n) => (
               <button
                 key={n}
                 type="button"
@@ -266,7 +270,8 @@ export function NameSuggest({ scenarioId, current }: { scenarioId: Id<"scenarios
               >
                 {n}
               </button>
-            ))
+            ))}
+            </>
           )}
         </div>
       ) : null}

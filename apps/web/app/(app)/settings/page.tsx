@@ -1,8 +1,8 @@
 "use client";
 
 import { useOrganization } from "@clerk/nextjs";
-import { Avatar, Badge, Banner, Button, Icon, Input, RadioGroup, Select, Switch } from "@ledgerline/ui";
-import { useMutation } from "convex/react";
+import { Avatar, Badge, Banner, Button, Icon, Input, ProgressBar, RadioGroup, Select, Switch } from "@ledgerline/ui";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { api } from "@/convex/_generated/api";
@@ -18,12 +18,13 @@ const SECTIONS = [
   { id: "team", label: "Team", icon: "team", hint: "Who can see and change things" },
   { id: "organisation", label: "Organisation", icon: "organisation", hint: "Financial year and basis" },
   { id: "alerts", label: "Alerts", icon: "bell", hint: "What to be told about" },
+  { id: "billing", label: "Billing", icon: "euro", hint: "Your plan and AI allowance" },
 ] as const;
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<(typeof SECTIONS)[number]["id"]>("team");
   return (
-    <AppPage active="settings" title="Settings" subtitle="Your team, how the figures are reported, and alerts" breadcrumbs={["Settings"]}>
+    <AppPage active="settings" title="Settings" subtitle="Your team, how the figures are reported, alerts and billing" breadcrumbs={["Settings"]}>
       {(workspace) => (
         <div className="ll-settings">
           <nav className="ll-settings-nav" aria-label="Settings sections">
@@ -41,6 +42,7 @@ export default function SettingsPage() {
             {tab === "team" ? <Team canInvite={workspace.role === "owner"} /> : null}
             {tab === "organisation" ? <Organisation workspace={workspace} /> : null}
             {tab === "alerts" ? <Alerts workspace={workspace} /> : null}
+            {tab === "billing" ? <Billing /> : null}
           </div>
         </div>
       )}
@@ -177,5 +179,83 @@ function Alerts({ workspace }: { workspace: { role: string; org: { alerts: { run
         </Row>
       </fieldset>
     </Group>
+  );
+}
+
+const METER: Record<string, { title: string; hint: string }> = {
+  actions: { title: "AI actions", hint: "Explaining a figure, drafting the board-pack commentary, filling in a plan from a sentence. Asking about the same figures again is free." },
+  searches: { title: "AI ledger searches", hint: "Searching the ledger in your own words." },
+  chats: { title: "AI chats", hint: "Each question to Ask Ledgerline." },
+};
+
+const UPCOMING = [
+  { name: "Pro", price: "€20 a month", items: ["500 AI actions a month", "Unlimited AI ledger search", "500 AI chats a month"] },
+  { name: "Max", price: "€100 a month", items: ["Stronger AI models for analysis", "1,000 AI actions a month", "Unlimited AI ledger search", "1,000 AI chats a month"] },
+];
+
+const resetDate = (at: number) => new Date(at).toLocaleDateString("en-IE", { day: "numeric", month: "long", timeZone: "UTC" });
+
+function Billing() {
+  const billing = useQuery(api.billing.overview);
+  if (!billing) return null;
+  const reset = resetDate(billing.resetsAt);
+  return (
+    <>
+      <Group title="Plan">
+        <div className="ll-plan-card">
+          <div>
+            <span className="ll-plan-name">
+              {billing.plan} <Badge tone="brand">Current plan</Badge>
+            </span>
+            <p>€0, forever. Every report, forecast, scenario and board pack, for an unlimited team.</p>
+          </div>
+          <span className="ll-plan-price">€0</span>
+        </div>
+        <Row title="Companies" hint={billing.companies.mine ? "Companies you've set up, from Xero or CSV." : "Counted against the person who set this company up."}>
+          <span className="ll-setting-value">
+            {billing.companies.used} of {billing.companies.limit}
+          </span>
+        </Row>
+      </Group>
+      <Group title={`AI this month · resets ${reset}`}>
+        <p className="ll-setting-note">Shared by everyone in this company. When one runs out, the last answers stay on screen and new ones wait for the reset; the others keep working.</p>
+        {billing.meters.map((m) => {
+          const out = m.used >= m.limit;
+          return (
+            <Row key={m.meter} title={METER[m.meter].title} hint={METER[m.meter].hint}>
+              <div className="ll-meter">
+                <div className="ll-meter-head">
+                  <b>
+                    {Math.min(m.used, m.limit)} <small>of {m.limit}</small>
+                  </b>
+                  <span className={out ? "is-out" : undefined}>{out ? `Paused until ${reset}` : `${m.limit - m.used} left`}</span>
+                </div>
+                <ProgressBar value={m.used / m.limit} label={`${METER[m.meter].title} used`} tone={out || m.used / m.limit >= 0.8 ? "warning" : undefined} />
+              </div>
+            </Row>
+          );
+        })}
+      </Group>
+      <Group title="Coming soon">
+        <p className="ll-setting-note">Paid plans open once payments are set up. Nothing to do until then.</p>
+        <div className="ll-plan-soon">
+          {UPCOMING.map((plan) => (
+            <div key={plan.name}>
+              <span className="ll-plan-name">
+                {plan.name} <Badge>Coming soon</Badge>
+              </span>
+              <small>{plan.price}</small>
+              <ul>
+                {plan.items.map((item) => (
+                  <li key={item}>
+                    <Icon name="check" size={13} /> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Group>
+    </>
   );
 }

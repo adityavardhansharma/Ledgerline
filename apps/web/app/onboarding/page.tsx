@@ -5,10 +5,10 @@ import { Badge, Banner, Button, Icon, Logo, Stepper } from "@ledgerline/ui";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { DataSources } from "@/components/app/AppPage";
+import { CompanyLimit, DataSources } from "@/components/app/AppPage";
 import { BackendStatus } from "@/components/app/BackendStatus";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
-import { useWorkspace } from "@/components/app/useWorkspace";
+import { useCompanyLimit, useWorkspace } from "@/components/app/useWorkspace";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 
 const XERO_ERRORS: Record<string, string> = {
@@ -24,6 +24,7 @@ function Onboarding() {
   const params = useSearchParams();
   const xeroError = params.get("xero");
   const workspace = useWorkspace();
+  const companyLimit = useCompanyLimit(workspace);
   const started = Boolean(workspace && (workspace.connection || workspace.lastSync || workspace.org.asOf));
   const step = !orgId ? 1 : started ? (workspace?.org.asOf ? 3 : 2) : 1;
   const fromXero = !workspace?.org.source || workspace.org.source === "xero";
@@ -82,7 +83,7 @@ function Onboarding() {
               <h1>Add your figures</h1>
               <p>Connect Xero for figures that stay current, import a chart of accounts and journals from CSV, or explore with the sample company. You can switch later.</p>
               {xeroError ? <Banner tone="negative" title="Xero wasn't connected.">{XERO_ERRORS[xeroError] ?? XERO_ERRORS.failed}</Banner> : null}
-              {workspace ? <DataSources workspace={workspace} /> : <BackendStatus waiting />}
+              {workspace ? <DataSources workspace={workspace} /> : companyLimit ? <CompanyLimit limit={companyLimit.limit} names={companyLimit.names} /> : <BackendStatus waiting />}
               <p className="ll-onb-trust">
                 <Icon name="lock" size={16} />
                 <span>

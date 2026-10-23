@@ -54,6 +54,19 @@ describe("organisations", () => {
     expect((await compact.query(api.orgs.current, {}))?.org.name).toBe("Kestrel Joinery Ltd");
   });
 
+  it("lets each person set up two companies on the Free plan", async () => {
+    const { t } = await setup();
+    const second = t.withIdentity({ ...OWNER, org_id: "org_second", org_name: "Second Ltd" } as never);
+    const third = t.withIdentity({ ...OWNER, org_id: "org_third", org_name: "Third Ltd" } as never);
+    expect(await second.mutation(api.orgs.ensure, {})).not.toBeNull();
+    expect(await third.query(api.billing.newCompany, {})).toMatchObject({ blocked: true, limit: 2, names: ["Kestrel Joinery Ltd", "Second Ltd"] });
+    await expect(third.mutation(api.orgs.ensure, {})).rejects.toThrow();
+    expect(await third.query(api.orgs.current, {})).toBeNull();
+    // Someone else's companies don't count against them.
+    expect(await t.withIdentity(STRANGER as never).mutation(api.orgs.ensure, {})).not.toBeNull();
+    expect((await second.query(api.billing.overview, {}))?.companies).toMatchObject({ used: 2, limit: 2, mine: true });
+  });
+
   it("only owners change settings", async () => {
     const { t, owner } = await setup();
     await owner.mutation(api.orgs.updateSettings, { fyStartMonth: 4 });
@@ -618,6 +631,55 @@ describe("AI actions and search", () => {
     expect((sent[0].body.lines as { cents: number; contact: string }[])[0]).toMatchObject({ cents: 25_000, contact: "Seaview Hotel" });
     const usage = await t.run((ctx) => ctx.db.query("aiUsage").collect());
     expect(usage.map((u) => u.action)).toEqual(["explainFigure"]);
+  });
+
+  it("keeps separate monthly allowances, and shows the last answer once AI actions run out", async () => {
+    const { t, owner, orgId, calls } = await books();
+    const first = await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" });
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 19; i++) await ctx.db.insert("aiUsage", { orgId, action: "digest", by: "Aoife Byrne", at: Date.now() });
+      // Last month's calls don't count.
+      await ctx.db.insert("aiUsage", { orgId, action: "chat", by: "Aoife Byrne", at: Date.UTC(2020, 0, 1) });
+    });
+    // A kept answer for the same figures is still free.
+    expect(await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" })).toEqual(first);
+    // New figures would need a model call: the last answer comes back with the paused message instead.
+    await t.run((ctx) => ctx.db.patch(orgId, { actualsVersion: 99 }));
+    const paused = await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" }).catch((err) => err);
+    expect(paused.data).toMatchObject({ code: "limit", meter: "actions", last: first });
+    expect(paused.data.message).toMatch(/20 AI actions .* paused until/);
+    // A question never asked before has nothing to show.
+    const fresh = await owner.action(api.aiActions.explainFigure, { accountId: "csv:400", period: "2026-09" }).catch((err) => err);
+    expect(fresh.data).toMatchObject({ code: "limit" });
+    expect(fresh.data.last).toBeUndefined();
+    expect(calls.filter((c) => c.url.endsWith("/actions/explain-figure"))).toHaveLength(1);
+    // Search and chat have their own allowances.
+    await owner.action(api.search.parse, { text: "Seaview over 100 since September" });
+    const billing = await owner.query(api.billing.overview, {});
+    expect(billing?.meters).toEqual([
+      { meter: "actions", used: 20, limit: 20 },
+      { meter: "searches", used: 1, limit: 100 },
+      { meter: "chats", used: 0, limit: 50 },
+    ]);
+  });
+
+  it("pauses search and chat at their own limits, answering in the chat itself", async () => {
+    const { t, owner, orgId, calls } = await books();
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 100; i++) await ctx.db.insert("aiUsage", { orgId, action: "search", by: "Aoife Byrne", at: Date.now() });
+      for (let i = 0; i < 50; i++) await ctx.db.insert("aiUsage", { orgId, action: "chat", by: "Aoife Byrne", at: Date.now() });
+    });
+    await expect(owner.action(api.search.parse, { text: "Seaview" })).rejects.toThrow();
+    const turn = await owner.action(api.chat.turn, { text: "How did September go?" });
+    expect(turn.answer).toMatch(/50 AI chats .* New answers are paused until/);
+    const messages = await t.run((ctx) => ctx.db.query("chatMessages").collect());
+    expect(messages.map((m) => [m.role, m.status, m.paused ?? false])).toEqual([
+      ["user", "done", false],
+      ["assistant", "done", true],
+    ]);
+    expect(calls.some((c) => c.url.endsWith("/search/parse") || c.url.includes("/chat"))).toBe(false);
+    // AI actions still work.
+    await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" });
   });
 
   it("works out unpaid invoices from imported journals and drafts a reminder from them", async () => {

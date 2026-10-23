@@ -7,6 +7,7 @@ import { audit } from "./lib/audit";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
 import { toNumber } from "./lib/money";
+import { limitError } from "./lib/plan";
 import { persistRotated } from "./lib/tokens";
 import { ledgerInput } from "./reports";
 import type { Tokens } from "./xero";
@@ -230,6 +231,9 @@ function plain(err: unknown): string {
 export const draft = action({
   args: { tone: v.optional(tone), length: v.optional(length), section: v.optional(section) },
   handler: async (ctx, args): Promise<{ id: Id<"commentaries"> }> => {
+    // Out of AI actions: the saved drafts stay on the page; only a new one waits for the reset.
+    const allowance = await ctx.runQuery(internal.billing.left, { meter: "actions" });
+    if (allowance.left <= 0) throw limitError("actions", allowance.resetsAt);
     const input = await prepare(ctx);
     const current = input.latest?.sections ?? null;
     if (args.section && !current) throw new ConvexError("Draft the whole commentary first, then redraft a section.");
@@ -269,6 +273,13 @@ export const save = internalMutation({
     await ctx.db.insert("aiUsage", { orgId: args.orgId, action: "commentary", by: args.createdBy, at: Date.now() });
     await prune(ctx, args.orgId, args.period);
     return id;
+  },
+});
+
+export const logAsk = internalMutation({
+  args: { orgId: v.id("organizations"), by: v.string() },
+  handler: async (ctx, { orgId, by }) => {
+    await ctx.db.insert("aiUsage", { orgId, action: "chat", by, at: Date.now() });
   },
 });
 
@@ -439,9 +450,13 @@ export const ask = action({
     const text = question.trim();
     if (!text) throw new ConvexError("Ask a question about the figures.");
     if (text.length > 500) throw new ConvexError("Keep questions under 500 characters.");
+    const allowance = await ctx.runQuery(internal.billing.left, { meter: "chats" });
+    if (allowance.left <= 0) throw limitError("chats", allowance.resetsAt);
     const input = await prepare(ctx);
     try {
-      return await engine<{ answer: Prose[] }>("/commentary/ask", { ...input.payload, question: text, notes: input.notes, history: (history ?? []).slice(-4) });
+      const answer = await engine<{ answer: Prose[] }>("/commentary/ask", { ...input.payload, question: text, notes: input.notes, history: (history ?? []).slice(-4) });
+      await ctx.runMutation(internal.commentary.logAsk, { orgId: input.orgId, by: input.who });
+      return answer;
     } catch (err) {
       throw new ConvexError(plain(err));
     }

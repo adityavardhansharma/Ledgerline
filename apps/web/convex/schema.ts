@@ -59,8 +59,12 @@ export default defineSchema({
     sourceLabel: v.optional(v.string()),
     importedAt: v.optional(v.number()),
     alerts: v.object({ runwayUnder6: v.boolean(), syncFailsTwice: v.boolean(), differsFromXero: v.boolean() }),
+    // The person who set the company up: the Free plan allows each person two.
+    createdBy: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_clerk", ["clerkOrgId"]),
+  })
+    .index("by_clerk", ["clerkOrgId"])
+    .index("by_creator", ["createdBy"]),
 
   oauthStates: defineTable({
     orgId: v.id("organizations"),
@@ -251,6 +255,8 @@ export default defineSchema({
     status: v.union(v.literal("streaming"), v.literal("done"), v.literal("error")),
     tools: v.optional(v.array(v.string())),
     page: v.optional(v.string()),
+    // An answer that wasn't written because the month's chats ran out; kept out of the model's history.
+    paused: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_thread", ["threadId", "createdAt"]),
 

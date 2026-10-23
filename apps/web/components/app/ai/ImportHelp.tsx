@@ -44,6 +44,7 @@ export function ImportHelp({ file, text, unknownTypes, onApply }: { file: "accou
       title={`Suggested fix for the ${label}`}
       busy={ai.busy}
       error={ai.error}
+      notice={ai.notice}
       onClose={ai.close}
       steps={["Reading the columns", "Matching them to what Ledgerline needs", "Checking the account types"]}
       footer={

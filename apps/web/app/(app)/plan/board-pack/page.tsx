@@ -2,6 +2,7 @@
 
 import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { pctChange, SummaryLine } from "@/components/app/report/Report";
@@ -26,14 +27,17 @@ export default function BoardPackPage() {
   const [accepting, setAccepting] = useState(false);
   const [history, setHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
 
   const write = async (args: { tone?: string; length?: string; section?: Section }) => {
     setBusy(args.section ?? "all");
     setError(null);
+    setPaused(false);
     try {
       await draft(args as never);
     } catch (err) {
       setError(errorText(err, "Couldn't draft commentary."));
+      setPaused(err instanceof ConvexError && (err.data as { code?: string } | null)?.code === "limit");
     } finally {
       setBusy(null);
     }
@@ -81,7 +85,9 @@ export default function BoardPackPage() {
           <>
             {error ? (
               <div className="no-print">
-                <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner>
+                <Banner tone={paused ? "warning" : "negative"} title={paused ? (commentary ? "Showing the last draft." : "New drafts are paused.") : "Commentary wasn't drafted."}>
+                  {error}
+                </Banner>
               </div>
             ) : null}
             <div className="ll-doc">
