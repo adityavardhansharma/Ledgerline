@@ -1,6 +1,6 @@
 "use client";
 
-import { Banner, Button, DataTable, Dialog, IntegrationCard, Panel, StatusPill, SyncProgress } from "@ledgerline/ui";
+import { Banner, Button, DataTable, Dialog, StatusPill, SyncProgress } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -9,6 +9,7 @@ import { ImportPanel } from "@/components/app/ImportPanel";
 import { Reconciliation } from "@/components/app/Reconciliation";
 import { useWorkspace, type Workspace } from "@/components/app/useWorkspace";
 import { errorText } from "@/components/app/BoardCommentary";
+import { RailBlock, ReportGrid, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
 
@@ -32,26 +33,16 @@ const took = (a: number, b: number | null) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
 
-function ImportedCard({ workspace }: { workspace: Workspace }) {
-  const { org, lastSync } = workspace;
-  const sample = org.source === "sample";
+function Facts({ rows }: { rows: [string, string][] }) {
   return (
-    <IntegrationCard
-      name={sample ? "Sample company" : "CSV import"}
-      org={org.sourceLabel ?? (sample ? "Kestrel Joinery Ltd" : "Imported file")}
-      status={lastSync?.status === "failed" ? "error" : "synced"}
-      facts={[
-        ["Imported", org.importedAt ? ago(org.importedAt) : "–"],
-        ["Journals", (lastSync && lastSync.source !== "xero" ? lastSync.journalsStored : 0).toLocaleString("en-IE")],
-        ["Actuals to", org.asOf ? periodLabel(org.asOf) : "Not built yet"],
-        ["Updates", "When you import again"],
-      ]}
-      actions={
-        <a href="#import">
-          <Button variant="ghost" icon="upload">Import a new file</Button>
-        </a>
-      }
-    />
+    <dl className="ll-facts">
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -138,96 +129,106 @@ function SyncScreen() {
                 />
               )
             ) : null}
-            <div className="ll-grid-2">
-              {imported ? (
-                <ImportedCard workspace={workspace} />
-              ) : connection ? (
-                <IntegrationCard
-                  name="Xero"
-                  org={connection.tenantName}
-                  status={connection.status === "connected" ? "connected" : "disconnected"}
-                  facts={[
-                    ["Last sync", connection.lastSyncAt ? ago(connection.lastSyncAt) : "Not yet"],
-                    ...(connection.mode === "reports"
-                      ? ([
-                          ["Detail", "Monthly balances and documents"],
-                          ["History", connection.historyFrom && connection.balancesThrough ? `${periodLabel(connection.historyFrom)} to ${periodLabel(connection.balancesThrough)}` : "Not yet"],
-                        ] as [string, string][])
-                      : ([
-                          ["Detail", "Every journal line"],
-                          ["Journals stored", connection.journalsStored.toLocaleString("en-IE")],
-                          ["Last journal", `#${connection.lastJournalNumber.toLocaleString("en-IE")}`],
-                        ] as [string, string][])),
-                    ["Access", "Read-only"],
-                    ["Connected", new Date(connection.connectedAt).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })],
-                    ["Token renews", connection.tokenExpiresAt > Date.now() ? `in ${Math.round((connection.tokenExpiresAt - Date.now()) / 60000)} min` : "on next sync"],
-                  ]}
-                  actions={
-                    connection.status === "connected" ? (
+            <SummaryLine
+              figures={[
+                { label: "Figures from", value: imported ? (workspace.org.source === "sample" ? "Sample company" : "CSV import") : connection ? "Xero" : "Nowhere yet", note: imported ? workspace.org.sourceLabel ?? undefined : connection?.tenantName },
+                { label: "Actuals to", value: workspace.org.asOf ? periodLabel(workspace.org.asOf) : "–", note: "the latest month with figures" },
+                { label: imported ? "Imported" : "Last sync", value: imported ? (workspace.org.importedAt ? ago(workspace.org.importedAt) : "–") : connection?.lastSyncAt ? ago(connection.lastSyncAt) : "Not yet", note: imported ? "stays as is until you import again" : connection ? "nightly at 02:00, and on every change" : undefined },
+                { label: "Journals stored", value: (imported ? (run && run.source !== "xero" ? run.journalsStored : 0) : connection?.mode === "reports" ? 0 : (connection?.journalsStored ?? 0)).toLocaleString("en-IE"), note: connection?.mode === "reports" ? "monthly balances instead" : "every line, balanced" },
+              ]}
+            />
+            <ReportGrid
+              main={
+                <div className="ll-stack-lg">
+                  <section className="ll-report-hero is-flush">
+                    <header className="ll-section-head">
+                      <h2>History</h2>
+                      <span>Every sync and import, newest first</span>
+                    </header>
+                    {history && history.length ? (
+                      <DataTable
+                        columns={[
+                          { key: "started", label: "Started", render: (r: { startedAt: number }) => when(r.startedAt) },
+                          { key: "trigger", label: "Trigger" },
+                          { key: "journalsStored", label: "New journals", numeric: true, render: (r: { journalsStored: number }) => r.journalsStored.toLocaleString("en-IE") },
+                          { key: "took", label: "Took", numeric: true, render: (r: { startedAt: number; finishedAt: number | null }) => took(r.startedAt, r.finishedAt) },
+                          {
+                            key: "status",
+                            label: "Result",
+                            render: (r: { status: string; source: string; error: string | null }) => {
+                              const pill = STATUS_PILL[r.status] ?? STATUS_PILL.queued;
+                              const word = r.source !== "xero" && r.status === "done" ? "Imported" : pill.word;
+                              return <span title={r.error ?? undefined}><StatusPill status={pill.status}>{word}</StatusPill></span>;
+                            },
+                          },
+                        ]}
+                        rows={history}
+                      />
+                    ) : (
+                      <p className="ll-muted ll-pad">Nothing synced or imported yet.</p>
+                    )}
+                  </section>
+                  <div id="import">
+                    <ImportPanel workspace={workspace} />
+                  </div>
+                </div>
+              }
+              rail={
+                <>
+                  <RailBlock title={imported ? (workspace.org.source === "sample" ? "Sample company" : "Imported file") : "Xero connection"} aside={<StatusPill status={imported ? (run?.status === "failed" ? "error" : "synced") : connection?.status === "connected" ? "connected" : "disconnected"} />}>
+                    {imported ? (
                       <>
-                        <a href="https://go.xero.com" target="_blank" rel="noreferrer"><Button variant="ghost" icon="external">Open Xero</Button></a>
-                        {workspace.role === "owner" ? <ConnectButton label="Switch organisation" variant="ghost" /> : null}
-                        {workspace.role === "owner" ? <Button variant="danger" onClick={() => setConfirming(true)}>Disconnect</Button> : null}
+                        <Facts rows={[["Company", workspace.org.sourceLabel ?? (workspace.org.source === "sample" ? "Kestrel Joinery Ltd" : "Imported file")], ["Imported", workspace.org.importedAt ? ago(workspace.org.importedAt) : "–"], ["Updates", "When you import again"]]} />
+                        <a href="#import"><Button size="sm" icon="upload">Import a new file</Button></a>
+                      </>
+                    ) : connection ? (
+                      <>
+                        <Facts
+                          rows={[
+                            ["Organisation", connection.tenantName],
+                            ["Access", "Read-only"],
+                            ["Detail", connection.mode === "reports" ? "Monthly balances and documents" : "Every journal line"],
+                            ...(connection.mode === "reports"
+                              ? ([["History", connection.historyFrom && connection.balancesThrough ? `${periodLabel(connection.historyFrom)} to ${periodLabel(connection.balancesThrough)}` : "Not yet"]] as [string, string][])
+                              : ([["Last journal", `#${connection.lastJournalNumber.toLocaleString("en-IE")}`]] as [string, string][])),
+                            ["Connected", new Date(connection.connectedAt).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" })],
+                          ]}
+                        />
+                        <div className="ll-row">
+                          {connection.status === "connected" ? (
+                            <>
+                              <a href="https://go.xero.com" target="_blank" rel="noreferrer"><Button size="sm" icon="external">Open Xero</Button></a>
+                              {workspace.role === "owner" ? <ConnectButton label="Switch" variant="ghost" /> : null}
+                              {workspace.role === "owner" ? <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>Disconnect</Button> : null}
+                            </>
+                          ) : (
+                            <ConnectButton label="Reconnect" />
+                          )}
+                        </div>
                       </>
                     ) : (
-                      <ConnectButton label="Reconnect" />
-                    )
-                  }
-                />
-              ) : (
-                <Panel title="Connect Xero" icon="plug">
-                  <div className="ll-stack">
-                    <p>Ledgerline reads your accounts, monthly balances, invoices and payments with read-only access, syncs nightly and checks every figure against Xero.</p>
-                    <ConnectButton />
-                  </div>
-                </Panel>
-              )}
-              <Panel title="How your figures stay current" icon="sync">
-                <ul className="ll-perm" style={{ gridTemplateColumns: "1fr" }}>
-                  {connection?.mode === "reports" ? (
-                    <li>
-                      Xero shares journals only with apps it has approved for them, so Ledgerline reads each month-end trial balance instead: two years on the first sync, then the last three
-                      months every night. Clicking a figure shows the invoices, bills, payments and bank transactions behind it.
-                    </li>
+                      <>
+                        <p className="ll-rail-note">Read-only access to your accounts, monthly balances, invoices and payments. Synced nightly and checked against Xero.</p>
+                        <ConnectButton />
+                      </>
+                    )}
+                  </RailBlock>
+                  {connection && !imported ? (
+                    <RailBlock title="Checked against Xero">
+                      <Reconciliation />
+                    </RailBlock>
                   ) : null}
-                  <li>Connected to Xero, Ledgerline syncs every night at 02:00 and within a minute of a change.</li>
-                  <li>Imported from CSV, figures stay as they are until you import again. Each import replaces the last.</li>
-                  <li>Either way, every journal must balance, and every month is built into the same three statements.</li>
-                  <li>Connecting Xero later replaces imported figures with Xero's own.</li>
-                </ul>
-              </Panel>
-            </div>
-            <div id="import">
-              <ImportPanel workspace={workspace} />
-            </div>
-            {connection && !imported ? <Reconciliation /> : null}
-            <Panel title="History" icon="clock" flush>
-              <div style={{ padding: "0 20px 20px" }}>
-                {history && history.length ? (
-                  <DataTable
-                    columns={[
-                      { key: "started", label: "Started", render: (r: { startedAt: number }) => when(r.startedAt) },
-                      { key: "trigger", label: "Trigger" },
-                      { key: "pagesDone", label: "Batches", numeric: true },
-                      { key: "journalsStored", label: "New journals", numeric: true, render: (r: { journalsStored: number }) => r.journalsStored.toLocaleString("en-IE") },
-                      { key: "took", label: "Took", numeric: true, render: (r: { startedAt: number; finishedAt: number | null }) => took(r.startedAt, r.finishedAt) },
-                      {
-                        key: "status",
-                        label: "Result",
-                        render: (r: { status: string; source: string; error: string | null }) => {
-                          const pill = STATUS_PILL[r.status] ?? STATUS_PILL.queued;
-                          const word = r.source !== "xero" && r.status === "done" ? "Imported" : pill.word;
-                          return <span title={r.error ?? undefined}><StatusPill status={pill.status}>{word}</StatusPill></span>;
-                        },
-                      },
-                    ]}
-                    rows={history}
-                  />
-                ) : (
-                  <p className="ll-muted">Nothing synced or imported yet.</p>
-                )}
-              </div>
-            </Panel>
+                  <RailBlock title="How figures stay current">
+                    <ul className="ll-rail-list">
+                      {connection?.mode === "reports" ? <li>Xero shares journals only with approved apps, so Ledgerline reads each month-end trial balance: two years at first, then the last three months nightly.</li> : null}
+                      <li>From Xero: every night at 02:00, and within a minute of a change.</li>
+                      <li>From a file: as imported, until you import again.</li>
+                      <li>Every journal must balance, and every month becomes the same three statements.</li>
+                    </ul>
+                  </RailBlock>
+                </>
+              }
+            />
           </>
         );
       }}

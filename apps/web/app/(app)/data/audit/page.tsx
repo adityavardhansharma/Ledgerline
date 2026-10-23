@@ -1,6 +1,6 @@
 "use client";
 
-import { AuditTimeline, Button, Panel } from "@ledgerline/ui";
+import { Button, Icon } from "@ledgerline/ui";
 import { useConvex, usePaginatedQuery } from "convex/react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
@@ -51,14 +51,39 @@ export default function AuditPage() {
       actions={<ExportMenu title="Audit log" html={false} csv={[{ label: "Audit log", build: auditCsv }]} />}
     >
       {() => (
-        <Panel>
-          {groups.length ? <AuditTimeline groups={groups as never} /> : <p className="ll-muted">Nothing has happened yet.</p>}
+        <div className="ll-timeline">
+          {groups.length ? (
+            groups.map((g) => (
+              <section key={g.day} className="ll-tl-day">
+                <h2>{g.day}</h2>
+                <ol>
+                  {g.items.map((it, i) => (
+                    <li key={i} className={it.tone ? `is-${it.tone}` : undefined}>
+                      <time>{it.at}</time>
+                      <span className="ll-tl-dot" aria-hidden>
+                        <Icon name={(it.icon ?? "audit") as never} size={13} />
+                      </span>
+                      <div>
+                        <p>
+                          <b>{it.actor}</b> {it.action}
+                          {it.target ? <> <em>{it.target}</em></> : null}
+                        </p>
+                        {it.detail ? <small>{it.detail}</small> : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))
+          ) : (
+            <p className="ll-muted">Nothing has happened yet.</p>
+          )}
           {status === "CanLoadMore" ? (
-            <div style={{ marginTop: 12 }}>
+            <div className="ll-journals-foot">
               <Button onClick={() => loadMore(40)}>Show older events</Button>
             </div>
           ) : null}
-        </Panel>
+        </div>
       )}
     </AppPage>
   );

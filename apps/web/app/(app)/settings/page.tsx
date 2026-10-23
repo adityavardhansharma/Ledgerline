@@ -1,7 +1,7 @@
 "use client";
 
 import { useOrganization } from "@clerk/nextjs";
-import { Avatar, Badge, Banner, Button, DataTable, Input, Panel, RadioGroup, Select, Switch, Tabs } from "@ledgerline/ui";
+import { Avatar, Badge, Banner, Button, Icon, Input, RadioGroup, Select, Switch } from "@ledgerline/ui";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
@@ -14,19 +14,59 @@ const ROLE: Record<string, { label: string; tone?: "brand" | "forecast"; can: st
   "org:accountant": { label: "Accountant", tone: "forecast", can: "Read and comment" },
 };
 
+const SECTIONS = [
+  { id: "team", label: "Team", icon: "team", hint: "Who can see and change things" },
+  { id: "organisation", label: "Organisation", icon: "organisation", hint: "Financial year and basis" },
+  { id: "alerts", label: "Alerts", icon: "bell", hint: "What to be told about" },
+] as const;
+
 export default function SettingsPage() {
-  const [tab, setTab] = useState("team");
+  const [tab, setTab] = useState<(typeof SECTIONS)[number]["id"]>("team");
   return (
-    <AppPage active="settings" title="Settings" breadcrumbs={["Settings"]}>
+    <AppPage active="settings" title="Settings" subtitle="Your team, how the figures are reported, and alerts" breadcrumbs={["Settings"]}>
       {(workspace) => (
-        <>
-          <Tabs label="Settings" value={tab} onChange={setTab} tabs={[{ id: "team", label: "Team" }, { id: "organisation", label: "Organisation" }, { id: "alerts", label: "Alerts" }]} />
-          {tab === "team" ? <Team canInvite={workspace.role === "owner"} /> : null}
-          {tab === "organisation" ? <Organisation workspace={workspace} /> : null}
-          {tab === "alerts" ? <Alerts workspace={workspace} /> : null}
-        </>
+        <div className="ll-settings">
+          <nav className="ll-settings-nav" aria-label="Settings sections">
+            {SECTIONS.map((section) => (
+              <button key={section.id} type="button" className={tab === section.id ? "is-on" : undefined} aria-current={tab === section.id ? "page" : undefined} onClick={() => setTab(section.id)}>
+                <Icon name={section.icon} size={16} />
+                <span>
+                  <b>{section.label}</b>
+                  <small>{section.hint}</small>
+                </span>
+              </button>
+            ))}
+          </nav>
+          <div className="ll-settings-body">
+            {tab === "team" ? <Team canInvite={workspace.role === "owner"} /> : null}
+            {tab === "organisation" ? <Organisation workspace={workspace} /> : null}
+            {tab === "alerts" ? <Alerts workspace={workspace} /> : null}
+          </div>
+        </div>
       )}
     </AppPage>
+  );
+}
+
+/** One setting: what it is on the left, the control on the right. */
+function Row({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="ll-setting">
+      <div>
+        <h3>{title}</h3>
+        {hint ? <p>{hint}</p> : null}
+      </div>
+      <div className="ll-setting-control">{children}</div>
+    </div>
+  );
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="ll-setting-group">
+      <h2>{title}</h2>
+      {children}
+    </section>
   );
 }
 
@@ -40,46 +80,48 @@ function Team({ canInvite }: { canInvite: boolean }) {
     return { name, email: m.publicUserData?.identifier ?? "", role: m.role, since: m.createdAt };
   });
   const pending = (invitations?.data ?? []).map((i) => ({ name: i.emailAddress, email: "Invitation sent", role: i.role, since: i.createdAt }));
+  const invite = async () => {
+    try {
+      await organization?.inviteMember({ emailAddress: email, role });
+      setMessage({ tone: "positive", text: `Invitation sent to ${email}.` });
+      setEmail("");
+      await invitations?.revalidate?.();
+    } catch (err) {
+      setMessage({ tone: "negative", text: err instanceof Error ? err.message : "Invitation not sent." });
+    }
+  };
   return (
-    <div className="ll-stack">
-      <DataTable
-        columns={[
-          { key: "name", label: "Name", render: (r: { name: string; email: string }) => <span className="ll-row" style={{ flexWrap: "nowrap" }}><Avatar name={r.name} size={32} /><span><strong>{r.name}</strong><br /><span className="ll-muted">{r.email}</span></span></span> },
-          { key: "role", label: "Role", render: (r: { role: string }) => <Badge tone={ROLE[r.role]?.tone}>{ROLE[r.role]?.label ?? r.role}</Badge> },
-          { key: "can", label: "Can", render: (r: { role: string }) => ROLE[r.role]?.can ?? "Read" },
-          { key: "since", label: "Since", render: (r: { since: Date }) => new Date(r.since).toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" }) },
-        ]}
-        rows={[...rows, ...pending]}
-      />
+    <>
+      <Group title={`Members · ${rows.length + pending.length}`}>
+        <ul className="ll-members">
+          {[...rows, ...pending].map((r) => (
+            <li key={`${r.name}-${r.email}`}>
+              <Avatar name={r.name} size={34} />
+              <span className="ll-member-name">
+                <b>{r.name}</b>
+                <small>{r.email}</small>
+              </span>
+              <span className="ll-member-can">{ROLE[r.role]?.can ?? "Read"}</span>
+              <Badge tone={ROLE[r.role]?.tone}>{ROLE[r.role]?.label ?? r.role}</Badge>
+            </li>
+          ))}
+        </ul>
+      </Group>
       {canInvite ? (
-        <Panel title="Invite someone" icon="team">
-          <div className="ll-grid-halves" style={{ alignItems: "end" }}>
-            <Input id="invite-email" label="Email" type="email" placeholder="accounts@yourfirm.ie" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Select id="invite-role" label="Role" value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "org:member", label: "Editor" }, { value: "org:admin", label: "Owner" }, { value: "org:accountant", label: "Accountant (read and comment)" }]} />
-          </div>
-          <div className="ll-row" style={{ marginTop: 12 }}>
-            <Button
-              variant="primary"
-              icon="plus"
-              disabled={!/.+@.+\..+/.test(email)}
-              onClick={async () => {
-                try {
-                  await organization?.inviteMember({ emailAddress: email, role });
-                  setMessage({ tone: "positive", text: `Invitation sent to ${email}.` });
-                  setEmail("");
-                  await invitations?.revalidate?.();
-                } catch (err) {
-                  setMessage({ tone: "negative", text: err instanceof Error ? err.message : "Invitation not sent." });
-                }
-              }}
-            >
-              Send invitation
-            </Button>
-          </div>
-          {message ? <div style={{ marginTop: 12 }}><Banner tone={message.tone}>{message.text}</Banner></div> : null}
-        </Panel>
+        <Group title="Invite someone">
+          <Row title="Email and role" hint="Owners can do everything; editors change scenarios and export; accountants read and comment.">
+            <div className="ll-invite">
+              <Input id="invite-email" label="Email" type="email" placeholder="accounts@yourfirm.ie" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Select id="invite-role" label="Role" value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "org:member", label: "Editor" }, { value: "org:admin", label: "Owner" }, { value: "org:accountant", label: "Accountant" }]} />
+              <Button variant="primary" icon="plus" disabled={!/.+@.+\..+/.test(email)} onClick={() => void invite()}>
+                Send invitation
+              </Button>
+            </div>
+            {message ? <Banner tone={message.tone}>{message.text}</Banner> : null}
+          </Row>
+        </Group>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -87,26 +129,32 @@ function Organisation({ workspace }: { workspace: { role: string; org: { fyStart
   const update = useMutation(api.orgs.updateSettings);
   const owner = workspace.role === "owner";
   return (
-    <div className="ll-grid-halves">
-      <Panel title="Reporting" icon="statement" subtitle={owner ? "Changes apply from the next sync" : "Only an owner can change these"}>
-        <fieldset disabled={!owner} style={{ border: 0, padding: 0, margin: 0 }} className="ll-stack">
-          <Select id="fy-start" label="Financial year starts" value={String(workspace.org.fyStartMonth)} onChange={(e) => void update({ fyStartMonth: Number(e.target.value) })} options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
-          <RadioGroup
-            name="basis"
-            label="Basis"
-            value={workspace.org.basis}
-            onChange={(v) => void update({ basis: v as "accrual" | "cash" })}
-            options={[{ value: "accrual", label: "Accrual", hint: "Matches Xero's default" }, { value: "cash", label: "Cash", hint: "When money moves" }]}
-          />
+    <>
+      <Group title="Reporting">
+        <fieldset disabled={!owner} className="ll-setting-fields">
+          <Row title="Financial year starts" hint={owner ? "Year-to-date figures and the board pack follow this. Applies from the next sync." : "Only an owner can change this."}>
+            <Select id="fy-start" label="Financial year starts" value={String(workspace.org.fyStartMonth)} onChange={(e) => void update({ fyStartMonth: Number(e.target.value) })} options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
+          </Row>
+          <Row title="Basis" hint="Accrual counts sales when invoiced, as Xero does by default. Cash counts them when paid.">
+            <RadioGroup
+              name="basis"
+              label="Basis"
+              value={workspace.org.basis}
+              onChange={(v) => void update({ basis: v as "accrual" | "cash" })}
+              options={[{ value: "accrual", label: "Accrual", hint: "Matches Xero's default" }, { value: "cash", label: "Cash", hint: "When money moves" }]}
+            />
+          </Row>
         </fieldset>
-      </Panel>
-      <Panel title="Organisation" icon="organisation">
-        <dl className="ll-integ-facts">
-          <div><dt>Name</dt><dd>{workspace.org.name}</dd></div>
-          <div><dt>Currency</dt><dd>{workspace.org.currency}</dd></div>
-        </dl>
-      </Panel>
-    </div>
+      </Group>
+      <Group title="Organisation">
+        <Row title="Name" hint="From Xero or your import.">
+          <span className="ll-setting-value">{workspace.org.name}</span>
+        </Row>
+        <Row title="Currency" hint="All reports are in this currency.">
+          <span className="ll-setting-value">{workspace.org.currency}</span>
+        </Row>
+      </Group>
+    </>
   );
 }
 
@@ -115,12 +163,19 @@ function Alerts({ workspace }: { workspace: { role: string; org: { alerts: { run
   const alerts = workspace.org.alerts;
   const set = (key: keyof typeof alerts) => (on: boolean) => void update({ alerts: { ...alerts, [key]: on } });
   return (
-    <Panel title="Alerts" icon="bell" subtitle="Saved now; email delivery to owners arrives with the board-pack release">
-      <fieldset disabled={workspace.role !== "owner"} style={{ border: 0, padding: 0, margin: 0 }} className="ll-stack">
-        <Switch id="al-runway" label="Runway falls under 6 months" checked={alerts.runwayUnder6} onChange={set("runwayUnder6")} />
-        <Switch id="al-sync" label="A sync fails twice in a row" checked={alerts.syncFailsTwice} onChange={set("syncFailsTwice")} />
-        <Switch id="al-diff" label="Figures differ from Xero" checked={alerts.differsFromXero} onChange={set("differsFromXero")} />
+    <Group title="Alerts">
+      <p className="ll-setting-note">Saved now. Emails to owners start with the board-pack release.</p>
+      <fieldset disabled={workspace.role !== "owner"} className="ll-setting-fields">
+        <Row title="Runway falls under 6 months" hint="On the base case, after any sync.">
+          <Switch id="al-runway" label="Runway falls under 6 months" checked={alerts.runwayUnder6} onChange={set("runwayUnder6")} />
+        </Row>
+        <Row title="A sync fails twice in a row" hint="So figures don't quietly go stale.">
+          <Switch id="al-sync" label="A sync fails twice in a row" checked={alerts.syncFailsTwice} onChange={set("syncFailsTwice")} />
+        </Row>
+        <Row title="Figures differ from Xero" hint="When the check after a sync finds a difference.">
+          <Switch id="al-diff" label="Figures differ from Xero" checked={alerts.differsFromXero} onChange={set("differsFromXero")} />
+        </Row>
       </fieldset>
-    </Panel>
+    </Group>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Amount, Banner, Button, Panel } from "@ledgerline/ui";
+import { Amount, Banner, Button } from "@ledgerline/ui";
 import Link from "next/link";
 import { usePaginatedQuery } from "convex/react";
 import { useState } from "react";
@@ -45,49 +45,56 @@ export default function LedgerPage() {
         ) : null}
         {workspace.connection?.mode === "reports" && workspace.org.source !== "csv" && workspace.org.source !== "sample" ? null : <LedgerSearch filters={filters} onFilters={setFilters} />}
         {filters ? (
-          <Panel title="Search results" icon="search" flush>
-            <div style={{ padding: "0 20px 20px" }}>
+          <section className="ll-report-hero is-flush">
+            <header className="ll-section-head">
+              <h2>Search results</h2>
+              <span>Lines that match every filter above</span>
+            </header>
+            <div className="ll-pad">
               <SearchResults filters={filters} />
             </div>
-          </Panel>
+          </section>
         ) : (
-        <Panel title="Journals" icon="journal" flush>
-          <div style={{ padding: "0 20px 20px" }}>
-            <div className="ll-table-wrap">
-              <table className="ll-table ll-ledger">
-                <thead>
-                  <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Journal</th>
-                    <th scope="col">Account</th>
-                    <th scope="col">Description</th>
-                    <th scope="col" className="is-num">Debit</th>
-                    <th scope="col" className="is-num">Credit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.flatMap((j) =>
-                    j.lines.map((l, i) => (
-                      <tr key={`${j.id}-${i}`} style={i === 0 ? { borderTop: "1px solid var(--rule-strong)" } : undefined}>
-                        <td className="ll-nowrap">{i === 0 ? fmtDate(j.date) : ""}</td>
-                        <td>{i === 0 ? <span className="ll-code">JNL-{String(j.journalNumber).padStart(6, "0")}</span> : null}</td>
-                        <td className="ll-nowrap"><span className="ll-fs-code">{l.code}</span> {l.account}</td>
-                        <td className="ll-desc">{l.description || (i === 0 ? [j.sourceType, j.reference].filter(Boolean).join(" · ") : "")}</td>
-                        <td className="is-num">{l.debitCents ? <Amount value={l.debitCents / 100} decimals={2} /> : null}</td>
-                        <td className="is-num">{l.creditCents ? <Amount value={l.creditCents / 100} decimals={2} /> : null}</td>
-                      </tr>
-                    )),
-                  )}
-                </tbody>
-              </table>
+          <section className="ll-report-hero is-flush">
+            <header className="ll-section-head">
+              <h2>Journals</h2>
+              <span>{results.length ? `${results.length.toLocaleString("en-IE")} shown, newest first` : "Newest first"}</span>
+            </header>
+            <div className="ll-journals">
+              {results.map((j) => {
+                const total = j.lines.reduce((n, l) => n + (l.debitCents ?? 0), 0);
+                return (
+                  <article key={j.id} className="ll-journal">
+                    <header>
+                      <time>{fmtDate(j.date)}</time>
+                      <span className="ll-code">JNL-{String(j.journalNumber).padStart(6, "0")}</span>
+                      <span className="ll-journal-src">{[j.sourceType, j.reference].filter(Boolean).join(" · ")}</span>
+                      <Amount value={total / 100} decimals={2} />
+                    </header>
+                    <table>
+                      <tbody>
+                        {j.lines.map((l, i) => (
+                          <tr key={i}>
+                            <td className="ll-journal-acct">
+                              <span className="ll-fs-code">{l.code}</span> {l.account}
+                            </td>
+                            <td className="ll-desc">{l.description}</td>
+                            <td className="is-num">{l.debitCents ? <Amount value={l.debitCents / 100} decimals={2} /> : null}</td>
+                            <td className="is-num">{l.creditCents ? <Amount value={l.creditCents / 100} decimals={2} /> : null}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </article>
+                );
+              })}
             </div>
-            <div className="ll-row" style={{ marginTop: 12 }}>
-              {status === "CanLoadMore" ? <Button onClick={() => loadMore(50)}>Load 50 more journals</Button> : null}
+            <footer className="ll-journals-foot">
+              {status === "CanLoadMore" ? <Button onClick={() => loadMore(50)}>Show 50 more</Button> : null}
               {status === "LoadingMore" || status === "LoadingFirstPage" ? <span className="ll-muted">Loading…</span> : null}
-              {status === "Exhausted" ? <span className="ll-muted">That's every journal.</span> : null}
-            </div>
-          </div>
-        </Panel>
+              {status === "Exhausted" ? <span className="ll-muted">That&apos;s every journal.</span> : null}
+            </footer>
+          </section>
         )}
         </>
       )}

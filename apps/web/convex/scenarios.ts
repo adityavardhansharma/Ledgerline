@@ -216,6 +216,13 @@ export const remove = mutation({
   },
 });
 
+/** A driver as people read it: days, euros for monthly overheads (held in cents), rates as percentages. */
+function shown(key: string, value: number) {
+  if (key.endsWith("Days")) return `${Math.round(value)} days`;
+  if (key === "overheadsMonthly") return `€${Math.round(value / 100).toLocaleString("en-IE")}`;
+  return `${Number((value * 100).toFixed(2))}%`;
+}
+
 export const setOverride = mutation({
   args: { id: v.id("scenarios"), key: v.string(), value: v.union(v.number(), v.null()) },
   handler: async (ctx, { id, key, value }) => {
@@ -234,7 +241,7 @@ export const setOverride = mutation({
       actor: who.name,
       action: value === null ? `reset ${limits[2]} in` : `changed ${limits[2]} in`,
       target: scenario.name,
-      detail: value === null ? "Back to the parent's value" : `${before ?? "inherited"} → ${value}`,
+      detail: value === null ? "Back to the parent's value" : `${before === undefined ? "inherited" : shown(key, before)} → ${shown(key, value)}`,
       icon: "edit",
       tone: "forecast",
     });
