@@ -29,6 +29,35 @@ interface Props {
   children: (workspace: Workspace) => ReactNode;
 }
 
+const COLLAPSED_KEY = "ll-sidebar-collapsed";
+
+/** Whether the sidebar is narrowed to icons: remembered per browser, toggled with "[" anywhere but a text field. */
+function useCollapsed() {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
+    } catch {}
+  }, []);
+  const toggle = () =>
+    setCollapsed((was) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, was ? "0" : "1");
+      } catch {}
+      return !was;
+    });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
+      toggle();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return [collapsed, toggle] as const;
+}
+
 function NextLink({ href, ...rest }: { href: string } & Record<string, unknown>) {
   return <Link href={href} {...rest} />;
 }
@@ -45,6 +74,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || workspace?.user || "";
   const roleName = workspace ? { owner: "Owner", editor: "Editor", accountant: "Accountant" }[workspace.role] : "";
   const router = useRouter();
+  const [collapsed, toggleCollapsed] = useCollapsed();
+  const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     if (isLoaded && !orgId) router.replace("/onboarding");
   }, [isLoaded, orgId, router]);
@@ -54,6 +85,10 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   const sidebar = {
     linkAs: NextLink,
     items: NAV_ITEMS,
+    homeHref: ROUTES.overview,
+    collapsed: collapsed && !navOpen,
+    onCollapse: navOpen ? () => setNavOpen(false) : toggleCollapsed,
+    org: workspace?.org.name,
     settingsHref: ROUTES.settings,
     runway: null as number | null,
     user: userName || " ",
@@ -71,12 +106,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
         <OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/overview" afterCreateOrganizationUrl="/onboarding" />
       </div>
     ),
-    userMenu: (
-      <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-        <ThemeToggle />
-        <UserButton />
-      </span>
-    ),
+    userAvatar: <UserButton />,
+    userMenu: <ThemeToggle />,
   };
 
   const status = imported && !syncing ? (
@@ -125,6 +156,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
       actions={actions}
       overlay={overlay}
       sidebar={sidebar}
+      navOpen={navOpen}
+      onMenu={() => setNavOpen((open) => !open)}
     >
       {body}
     </AppShell>

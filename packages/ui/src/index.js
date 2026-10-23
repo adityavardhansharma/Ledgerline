@@ -1143,11 +1143,10 @@ function Pagination(p) {
     h(IconButton, { icon: 'chevron-right', label: 'Next page', size: 'sm', variant: 'outline', disabled: p.page >= p.pages }));
 }
 function NavItem(p) {
-  return h(p.linkAs || 'a', { href: p.href || '#' + p.id, className: cx('ll-nav-item', p.active && 'is-active'), 'aria-current': p.active ? 'page' : undefined, title: p.rail ? p.label : undefined },
-    h('span', { className: 'll-nav-ico' }, h(Icon, { name: p.icon, size: 18 })), p.rail ? null : h('span', { className: 'll-nav-label' }, p.label),
-    !p.rail && p.badge ? h('span', { className: 'll-nav-badge' }, p.badge) : null,
-    !p.rail && p.kbd ? h('span', { className: 'll-nav-kbd' }, p.kbd) : null,
-    p.rail && p.badge ? h('span', { className: 'll-nav-dot' }) : null);
+  return h(p.linkAs || 'a', { href: p.href || '#' + p.id, className: cx('ll-nav-item', p.active && 'is-active'), 'aria-current': p.active ? 'page' : undefined, 'data-label': p.label },
+    h('span', { className: 'll-nav-ico' }, h(Icon, { name: p.icon, size: 17 })), h('span', { className: 'll-nav-label' }, p.label),
+    p.badge ? h('span', { className: 'll-nav-badge' }, p.badge) : null,
+    p.kbd ? h('span', { className: 'll-nav-kbd' }, p.kbd) : null);
 }
 function OrgSwitcher(p) {
   return h('button', { type: 'button', className: 'll-org', 'aria-haspopup': 'menu' },
@@ -1183,26 +1182,28 @@ function MiniRunway(p) {
     h('div', { className: 'll-minirun-sync' }, h('span', { className: cx('ll-sync-dot', p.syncing && 'is-live') }), p.syncText || 'Synced 4 min ago'));
 }
 function Sidebar(p) {
-  var items = p.items || NAV;
-  if (p.rail) return h('nav', { className: 'll-sidebar is-rail', 'aria-label': 'Main' },
-    h('div', { className: 'll-rail-logo' }, h(Logo, { size: 30, variant: 'mark' })),
-    h('span', { className: 'll-org-avatar', title: p.org || 'Kestrel Joinery Ltd' }, initials(p.org || 'Kestrel Joinery Ltd')),
-    h(IconButton, { icon: 'search', label: 'Search', className: 'll-rail-btn' }),
-    h('div', { className: 'll-sidebar-nav' }, items.filter(function (it) { return !it.heading; }).map(function (it) { return h(NavItem, Object.assign({ key: it.id, rail: true, linkAs: p.linkAs }, it, { active: it.id === p.active })); })),
-    h('div', { className: 'll-sidebar-foot' }, h(NavItem, { id: 'settings', label: 'Settings', icon: 'settings', rail: true, href: p.settingsHref, linkAs: p.linkAs }), h(Avatar, { name: p.user || 'Aoife Byrne', size: 32 })));
-  return h('nav', { className: 'll-sidebar', 'aria-label': 'Main' },
-    h('div', { className: 'll-sidebar-top' }, h(Logo, { size: 28 }), h(IconButton, { icon: 'menu', label: 'Collapse sidebar', size: 'sm' })),
-    p.orgSwitcher || h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }),
-    h('button', { type: 'button', className: 'll-search', onClick: p.onSearch }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')),
+  // One sidebar that narrows to icons when collapsed, so the change can animate. Labels stay in the accessibility
+  // tree and show as tooltips while collapsed.
+  var items = p.items || NAV, collapsed = !!(p.collapsed || p.rail);
+  var Link = p.linkAs || 'a';
+  return h('nav', { className: cx('ll-sidebar', collapsed && 'is-collapsed'), 'aria-label': 'Main' },
+    h('div', { className: 'll-sidebar-top' },
+      h(Link, { href: p.homeHref || '#', className: 'll-sidebar-logo', 'aria-label': 'Ledgerline home' }, h(Logo, { size: 26, variant: collapsed ? 'mark' : undefined })),
+      p.onCollapse ? h('button', { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
+        h(Icon, { name: collapsed ? 'chevron-right' : 'chevron-left', size: 15 })) : null),
+    h('div', { className: 'll-sidebar-org' },
+      collapsed ? h('span', { className: 'll-org-avatar', title: p.org || '' }, initials(p.org || '?')) : (p.orgSwitcher || h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }))),
+    p.onSearch ? h('button', { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
     h('div', { className: 'll-sidebar-nav' }, items.map(function (it, i) {
-      if (it.heading) return h('div', { key: i, className: 'll-nav-head' }, it.heading);
+      if (it.heading) return h('div', { key: i, className: 'll-nav-head' }, h('span', null, it.heading));
       return h(NavItem, Object.assign({ key: it.id, linkAs: p.linkAs }, it, { active: it.id === p.active }));
     })),
     h('div', { className: 'll-sidebar-foot' },
-      p.runway === null ? null : h(MiniRunway, { months: p.runway != null ? p.runway : 14.0, syncText: p.syncText, syncing: p.syncing }),
-      h('div', { className: 'll-user' }, h(Avatar, { name: p.user || 'Aoife Byrne', size: 32 }),
+      p.settingsHref ? h(NavItem, { id: 'settings', label: 'Settings', icon: 'settings', href: p.settingsHref, linkAs: p.linkAs, active: p.active === 'settings' }) : null,
+      p.syncText ? h('div', { className: 'll-sidebar-status', title: p.syncText }, h('span', { className: cx('ll-sync-dot', p.syncing && 'is-live') }), h('span', null, p.syncText)) : null,
+      h('div', { className: 'll-user' }, p.userAvatar || h(Avatar, { name: p.user || 'Aoife Byrne', size: 30 }),
         h('span', { className: 'll-user-text' }, h('span', { className: 'll-user-name' }, p.user || 'Aoife Byrne'), h('span', { className: 'll-user-role' }, p.role || 'Owner')),
-        p.userMenu || h(IconButton, { icon: 'settings', label: 'Settings', size: 'sm', onClick: p.onSettings }))));
+        p.userMenu || null)));
 }
 function PeriodPicker(p) {
   // Shows the period the page covers. It only behaves as a control once it is given a way to change it.
@@ -1240,18 +1241,21 @@ function ScenarioSwitcher(p) {
     })) }) : null);
 }
 function Topbar(p) {
-  return h('header', { className: 'll-topbar' },
-    h('div', { className: 'll-topbar-l' },
-      p.breadcrumbs ? h(Breadcrumbs, { items: p.breadcrumbs }) : null,
-      h('div', { className: 'll-topbar-titlerow' }, h('h1', { className: 'll-page-title' }, p.title), p.status || null),
-      p.subtitle ? h('div', { className: 'll-page-sub' }, p.subtitle) : null),
-    h('div', { className: 'll-topbar-r' }, p.children));
+  // A slim bar that stays put (where you are, its status, the page's actions), then the title, which scrolls away.
+  return h(React.Fragment, null,
+    h('header', { className: 'll-topbar' },
+      p.onMenu ? h('button', { type: 'button', className: 'll-topbar-menu', onClick: p.onMenu, 'aria-label': 'Open navigation' }, h(Icon, { name: 'menu', size: 18 })) : null,
+      h('div', { className: 'll-topbar-l' }, p.breadcrumbs ? h(Breadcrumbs, { items: p.breadcrumbs }) : null, p.status ? h('span', { className: 'll-topbar-status' }, p.status) : null),
+      h('div', { className: 'll-topbar-r' }, p.children)),
+    h('div', { className: 'll-pagehead' }, h('h1', { className: 'll-page-title' }, p.title), p.subtitle ? h('p', { className: 'll-page-sub' }, p.subtitle) : null));
 }
 function AppShell(p) {
-  return h('div', { className: cx('ll-shell', p.rail && 'is-rail') },
-    h(Sidebar, Object.assign({ active: p.active, org: p.org, rail: p.rail, runway: p.runway, syncText: p.syncText, syncing: p.syncing }, p.sidebar || {})),
+  var sidebar = Object.assign({ active: p.active, org: p.org, rail: p.rail, runway: p.runway, syncText: p.syncText, syncing: p.syncing }, p.sidebar || {});
+  return h('div', { className: cx('ll-shell', sidebar.collapsed && 'is-collapsed', p.navOpen && 'is-nav-open') },
+    h(Sidebar, sidebar),
+    p.navOpen ? h('button', { type: 'button', className: 'll-nav-scrim', 'aria-label': 'Close navigation', onClick: p.onMenu }) : null,
     h('main', { className: 'll-main' },
-      h(Topbar, { title: p.title, subtitle: p.subtitle, breadcrumbs: p.breadcrumbs, status: p.status }, p.actions),
+      h(Topbar, { title: p.title, subtitle: p.subtitle, breadcrumbs: p.breadcrumbs, status: p.status, onMenu: p.onMenu }, p.actions),
       h('div', { className: 'll-page' }, p.children)),
     p.overlay || null);
 }
