@@ -2,12 +2,13 @@
 
 import { Button } from "@ledgerline/ui";
 import { useAction, useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Anomaly } from "@/convex/aiActions";
 import { periodLabel } from "@/lib/format";
-import { AiButton, AiNote, AiProse, plainText, RevealText, Thinking, useAi } from "./AiAction";
+import { AiButton, AiNote, AiProse, Paused, plainText, RevealText, Thinking, useAi } from "./AiAction";
 
 /** "Why is it this figure?" inside the drawer that opens from any statement figure. */
 export function ExplainFigure({ accountId, period, label }: { accountId: string; period: string; label: string }) {
@@ -22,7 +23,7 @@ export function ExplainFigure({ accountId, period, label }: { accountId: string;
     );
   }
   return (
-    <AiNote title={`${label}, ${periodLabel(period)}`} busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Reading the transactions", "Comparing with last month and last year", "Writing it up"]}>
+    <AiNote title={`${label}, ${periodLabel(period)}`} busy={ai.busy} error={ai.error} notice={ai.notice} onClose={ai.close} steps={["Reading the transactions", "Comparing with last month and last year", "Writing it up"]}>
       {ai.data ? <AiProse paragraphs={ai.data.paragraphs} /> : null}
     </AiNote>
   );
@@ -37,7 +38,7 @@ export function CashDipExplainer({ scenarioId, onOpenArea }: { scenarioId: Id<"s
   useEffect(() => ai.close(), [scenarioId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ai.open) return <AiButton size="sm" onClick={() => void ai.run({ scenarioId })}>Why does cash dip?</AiButton>;
   return (
-    <AiNote title="Why cash dips" busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Reading the forecast", "Finding what drains cash", "Weighing the fixes"]}>
+    <AiNote title="Why cash dips" busy={ai.busy} error={ai.error} notice={ai.notice} onClose={ai.close} steps={["Reading the forecast", "Finding what drains cash", "Weighing the fixes"]}>
       {ai.data ? (
         <>
           <AiProse paragraphs={ai.data.paragraphs} />
@@ -70,7 +71,7 @@ export function MismatchExplainer() {
   const ai = useAi(explain);
   if (!ai.open) return <AiButton size="sm" onClick={() => void ai.run({})}>Why is this different?</AiButton>;
   return (
-    <AiNote title="Why it differs from Xero" busy={ai.busy} error={ai.error} onClose={ai.close} steps={["Comparing with Xero's reports", "Checking the sync timing", "Writing it up"]}>
+    <AiNote title="Why it differs from Xero" busy={ai.busy} error={ai.error} notice={ai.notice} onClose={ai.close} steps={["Comparing with Xero's reports", "Checking the sync timing", "Writing it up"]}>
       {ai.data ? (
         <>
           <ul className="ll-ai-list">
@@ -133,7 +134,9 @@ export function ChangeDigest() {
         ) : ai.busy ? (
           <Thinking steps={["Comparing with the last sync", "Picking out what moved", "Writing it up"]} />
         ) : ai.data ? (
-          ai.data.first ? (
+          <>
+          <Paused text={ai.notice} />
+          {ai.data.first ? (
             <p className="ll-ai-muted">This is the first build of your figures, so there's nothing to compare yet.</p>
           ) : ai.data.unchanged ? (
             <p className="ll-ai-muted">Nothing changed in the figures at the last sync.</p>
@@ -145,7 +148,8 @@ export function ChangeDigest() {
                 </li>
               ))}
             </ul>
-          )
+          )}
+          </>
         ) : null
       ) : null}
     </section>
@@ -164,7 +168,8 @@ export function useAnomalies(enabled: boolean) {
     let live = true;
     check({})
       .then((result) => live && setFlags(result))
-      .catch(() => live && setFlags([]));
+      // Out of AI actions: the flags found last time, if there were any.
+      .catch((err) => live && setFlags(err instanceof ConvexError && Array.isArray(err.data?.last) ? (err.data.last as Anomaly[]) : []));
     return () => {
       live = false;
     };

@@ -7,6 +7,7 @@ import { describe, type Prose } from "./commentary";
 import { requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
 import { toNumber } from "./lib/money";
+import { limitError, remaining } from "./lib/plan";
 import { importedOpenItems, monthEnd } from "./lib/openItems";
 import { persistRotated } from "./lib/tokens";
 import { ledgerInput } from "./reports";
@@ -17,7 +18,8 @@ import type { Tokens } from "./xero";
  * AI actions: small, single-purpose AI steps placed where they're needed (explain a figure, read a scenario
  * sentence, map a CSV). Explaining actions cite figures the engine computed, as the board-pack commentary does;
  * parsing actions return fields for the person to confirm. Answers are kept until the figures they explain
- * change, so asking twice costs nothing, and every model call is logged per organisation for metering.
+ * change, so asking twice costs nothing, and every model call is logged per organisation for metering. When the
+ * month's AI actions run out, the last answer kept for the same question comes back with the paused message.
  */
 
 export type Explanation = { paragraphs: Prose[] };
@@ -72,12 +74,30 @@ export const cacheSet = internalMutation({
   },
 });
 
+/** Null while AI actions are left this month; otherwise when they reset and the last answer kept for this key. */
+export const paused = internalQuery({
+  args: { orgId: v.id("organizations"), key: v.string() },
+  handler: async (ctx, { orgId, key }) => {
+    const { left, resetsAt } = await remaining(ctx, orgId, "actions");
+    if (left > 0) return null;
+    const row = key
+      ? await ctx.db
+          .query("aiCache")
+          .withIndex("by_org_key", (q) => q.eq("orgId", orgId).eq("key", key))
+          .first()
+      : null;
+    return { resetsAt, last: row?.data ?? null };
+  },
+});
+
 /** Run an action once per version of the figures: cached answers come back without a model call. */
 async function once<T>(ctx: ActionCtx, c: Context, name: string, key: string | null, version: number, fn: () => Promise<T>, fresh = false): Promise<T> {
   if (key && !fresh) {
     const hit = await ctx.runQuery(internal.aiActions.cacheGet, { orgId: c.orgId, key, version });
     if (hit) return hit as T;
   }
+  const stop = await ctx.runQuery(internal.aiActions.paused, { orgId: c.orgId, key: key ?? "" });
+  if (stop) throw limitError("actions", stop.resetsAt, stop.last);
   let data: T;
   try {
     data = await fn();

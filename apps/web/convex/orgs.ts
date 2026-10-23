@@ -1,9 +1,10 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { caller, currentOrg, requireOrg } from "./lib/auth";
+import { FREE } from "./lib/plan";
 
-/** Create the Ledgerline organisation for the caller's active Clerk organisation, once. */
+/** Create the Ledgerline organisation for the caller's active Clerk organisation, once, within the plan's companies. */
 export const ensure = mutation({
   args: {},
   handler: async (ctx) => {
@@ -14,9 +15,18 @@ export const ensure = mutation({
       .withIndex("by_clerk", (q) => q.eq("clerkOrgId", who.clerkOrgId))
       .unique();
     if (existing) {
-      if (who.orgName && existing.name !== who.orgName) await ctx.db.patch(existing._id, { name: who.orgName });
+      const patch: { name?: string; createdBy?: string } = {};
+      if (who.orgName && existing.name !== who.orgName) patch.name = who.orgName;
+      // Companies set up before the plan existed belong to their owner.
+      if (!existing.createdBy && who.role === "owner") patch.createdBy = who.userId;
+      if (Object.keys(patch).length) await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
+    const mine = await ctx.db
+      .query("organizations")
+      .withIndex("by_creator", (q) => q.eq("createdBy", who.userId))
+      .take(FREE.companies);
+    if (mine.length >= FREE.companies) throw new ConvexError({ code: "companies", message: `The Free plan has ${FREE.companies} companies, and you've set up both.` });
     const orgId = await ctx.db.insert("organizations", {
       clerkOrgId: who.clerkOrgId,
       name: who.orgName || "Your organisation",
@@ -25,6 +35,7 @@ export const ensure = mutation({
       basis: "accrual",
       actualsVersion: 0,
       alerts: { runwayUnder6: true, syncFailsTwice: true, differsFromXero: false },
+      createdBy: who.userId,
       createdAt: Date.now(),
     });
     await audit(ctx, orgId, { actor: who.name, action: "created", target: who.orgName || "Your organisation", icon: "organisation", tone: "brand" });

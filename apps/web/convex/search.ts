@@ -5,6 +5,7 @@ import { action, internalQuery, query } from "./_generated/server";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
 import { toNumber } from "./lib/money";
+import { limitError, remaining } from "./lib/plan";
 
 /**
  * Ledger search in plain words. The model only turns the words into filters (accounts from the chart, a contact
@@ -49,6 +50,7 @@ export const vocabulary = internalQuery({
       accounts: accounts.map((a) => ({ code: a.code, name: a.name })),
       contacts: [...contacts].sort((a, b) => b[1] - a[1]).slice(0, 400).map(([name]) => name),
       firstDate: first?.date ?? null,
+      ...(await remaining(ctx, org._id, "searches").then(({ left, resetsAt }) => ({ searchesLeft: left, resetsAt }))),
     };
   },
 });
@@ -60,6 +62,7 @@ export const parse = action({
     if (!words) throw new ConvexError("Type what you're looking for.");
     if (words.length > 300) throw new ConvexError("Keep searches under 300 characters.");
     const vocab = await ctx.runQuery(internal.search.vocabulary, {});
+    if (vocab.searchesLeft <= 0) throw limitError("searches", vocab.resetsAt);
     try {
       const result = await engine<Filters>("/search/parse", {
         text: words,

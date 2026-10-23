@@ -10,6 +10,7 @@
 
 import type * as aiActions from "../aiActions.js";
 import type * as audit from "../audit.js";
+import type * as billing from "../billing.js";
 import type * as chat from "../chat.js";
 import type * as chatTools from "../chatTools.js";
 import type * as commentary from "../commentary.js";
@@ -26,6 +27,7 @@ import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_engine from "../lib/engine.js";
 import type * as lib_money from "../lib/money.js";
 import type * as lib_openItems from "../lib/openItems.js";
+import type * as lib_plan from "../lib/plan.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as orgs from "../orgs.js";
 import type * as reports from "../reports.js";
@@ -43,6 +45,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   aiActions: typeof aiActions;
   audit: typeof audit;
+  billing: typeof billing;
   chat: typeof chat;
   chatTools: typeof chatTools;
   commentary: typeof commentary;
@@ -59,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "lib/engine": typeof lib_engine;
   "lib/money": typeof lib_money;
   "lib/openItems": typeof lib_openItems;
+  "lib/plan": typeof lib_plan;
   "lib/tokens": typeof lib_tokens;
   orgs: typeof orgs;
   reports: typeof reports;

@@ -6,11 +6,13 @@ import { currentOrg, requireOrg } from "./lib/auth";
 import { CHAT_PROMPT } from "./lib/chatPrompt";
 import { allowedTools, CHAT_SOURCES, CHAT_TOOLS, functionTools, toolNamed } from "./lib/chatSpec";
 import { EngineError, engineStream } from "./lib/engine";
+import { pausedMessage, remaining } from "./lib/plan";
 
 /**
  * The global chat. Threads are private to one person in one organisation. A turn: save the question, then run
  * the model with the chat tools until it stops calling them, streaming its words to the browser as they come,
  * and save the answer. Tools run as the signed-in person, so they only ever see that organisation's figures.
+ * When the month's chats run out, the question is kept and the answer says new answers are paused until the reset.
  */
 
 const MAX_ROUNDS = 5;
@@ -86,17 +88,27 @@ export const begin = internalMutation({
       .order("desc")
       .take(HISTORY);
     await ctx.db.insert("chatMessages", { threadId: id, role: "user", content: text, status: "done", page, createdAt: now });
-    const answerId = await ctx.db.insert("chatMessages", { threadId: id, role: "assistant", content: "", status: "streaming", createdAt: now + 1 });
-    await ctx.db.insert("aiUsage", { orgId: org._id, action: "chat", by: who.name, at: now });
+    const { left, resetsAt } = await remaining(ctx, org._id, "chats");
+    const paused = left <= 0 ? pausedMessage("chats", resetsAt) : null;
+    const answerId = await ctx.db.insert("chatMessages", {
+      threadId: id,
+      role: "assistant",
+      content: paused ?? "",
+      status: paused ? "done" : "streaming",
+      ...(paused ? { paused: true } : {}),
+      createdAt: now + 1,
+    });
+    if (!paused) await ctx.db.insert("aiUsage", { orgId: org._id, action: "chat", by: who.name, at: now });
     return {
       threadId: id,
       answerId,
+      paused,
       company: org.name,
       asOf: org.asOf ?? null,
       who: who.name,
       history: earlier
         .reverse()
-        .filter((m) => m.status === "done" && m.content)
+        .filter((m) => m.status === "done" && m.content && !m.paused)
         .map((m) => ({ role: m.role, content: m.content })),
     };
   },
@@ -223,6 +235,11 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThreads">; text: string; page?: string; pageTitle?: string; sources?: string[] }, emit: (event: ChatEvent) => Promise<void>): Promise<{ threadId: Id<"chatThreads">; answer: string; tools: string[] }> {
   const turn = await ctx.runMutation(internal.chat.begin, { threadId: input.threadId, text: input.text, page: input.page });
   await emit({ type: "thread", threadId: turn.threadId, answerId: turn.answerId });
+  if (turn.paused) {
+    await emit({ type: "delta", text: turn.paused });
+    await emit({ type: "done" });
+    return { threadId: turn.threadId, answer: turn.paused, tools: [] };
+  }
   const today = new Date();
   const chosen = CHAT_SOURCES.filter((s) => input.sources?.includes(s.id));
   const allowed = allowedTools(input.sources);

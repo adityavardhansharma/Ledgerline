@@ -4,7 +4,7 @@ import { Amount, Button, Dialog, Icon } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
-import { AiButton, plainText, Thinking, useAi } from "./AiAction";
+import { AiButton, Paused, plainText, Thinking, useAi } from "./AiAction";
 
 /**
  * A paragraph of the drafted email as text. Invoices are cited one after another with nothing between them, so each
@@ -137,6 +137,7 @@ export function OwedList({ top }: { top: { contact: string; value: number }[] })
             <Thinking steps={["Reading their unpaid invoices", "Working out what's overdue", "Drafting the message"]} />
           ) : (
             <div className="ll-stack">
+              <Paused text={ai.notice} />
               <p className="ll-ai-muted">Drafted from their unpaid invoices. Edit anything before you send it yourself; Ledgerline never emails customers.</p>
               <label className="ll-field">
                 <span className="ll-field-label">Subject</span>
