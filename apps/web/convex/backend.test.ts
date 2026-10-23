@@ -663,6 +663,33 @@ describe("AI actions and search", () => {
     ]);
   });
 
+  it("raises a company's allowances with a voucher, once per company", async () => {
+    const { t, owner, orgId, calls } = await books();
+    await t.mutation(internal.billing.setVoucher, { code: "ledgertest", limits: { actions: 40, chats: 80 } });
+    await expect(owner.mutation(api.billing.redeem, { code: "NOPE" })).rejects.toThrow(/isn't valid/);
+    await expect(t.withIdentity(ACCOUNTANT as never).mutation(api.billing.redeem, { code: "LEDGERTEST" })).rejects.toThrow(/Accountants/);
+    expect(await owner.mutation(api.billing.redeem, { code: " ledgertest " })).toMatchObject({ code: "LEDGERTEST", limits: { actions: 40, chats: 80 } });
+    await expect(owner.mutation(api.billing.redeem, { code: "LEDGERTEST" })).rejects.toThrow(/already applied/);
+    const billing = await owner.query(api.billing.overview, {});
+    expect(billing?.vouchers).toEqual(["LEDGERTEST"]);
+    expect(billing?.meters).toEqual([
+      { meter: "actions", used: 0, limit: 40 },
+      { meter: "searches", used: 0, limit: 100 },
+      { meter: "chats", used: 0, limit: 80 },
+    ]);
+    // Past the Free plan's 20, still allowed; at 40, paused with the voucher's figure.
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 39; i++) await ctx.db.insert("aiUsage", { orgId, action: "digest", by: "Aoife Byrne", at: Date.now() });
+    });
+    await owner.action(api.aiActions.explainFigure, { accountId: "csv:200", period: "2026-09" });
+    expect(calls.filter((c) => c.url.endsWith("/actions/explain-figure"))).toHaveLength(1);
+    const paused = await owner.action(api.aiActions.explainFigure, { accountId: "csv:400", period: "2026-09" }).catch((err) => err);
+    expect(paused.data.message).toMatch(/40 AI actions/);
+    // Turning the voucher off returns the company to the Free plan.
+    await t.mutation(internal.billing.setVoucher, { code: "LEDGERTEST", limits: { actions: 40, chats: 80 }, active: false });
+    expect((await owner.query(api.billing.overview, {}))?.meters[0]).toMatchObject({ limit: 20 });
+  });
+
   it("pauses search and chat at their own limits, answering in the chat itself", async () => {
     const { t, owner, orgId, calls } = await books();
     await t.run(async (ctx) => {

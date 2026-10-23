@@ -6,6 +6,7 @@ import type { QueryCtx } from "../_generated/server";
  * The Free plan, the only one for now: two companies per person, and a monthly AI allowance per company shared
  * by its team. Every model call is already logged in aiUsage; the allowance is counted from those rows, and it
  * resets at the start of each calendar month (UTC). Answers kept in the cache cost nothing and never count.
+ * A voucher a company redeems raises its allowances for as long as the voucher stays active.
  */
 
 export const FREE = { name: "Free", companies: 2, actions: 20, searches: 100, chats: 50 } as const;
@@ -30,8 +31,8 @@ const resetDay = (at: number) => `${new Date(at).getUTCDate()} ${MONTHS[new Date
 const NOUN: Record<Meter, string> = { actions: "AI actions", searches: "AI searches", chats: "AI chats" };
 
 /** What the person reads when an allowance runs out. */
-export const pausedMessage = (meter: Meter, resetsAt = nextReset()) =>
-  `You've used this month's ${FREE[meter]} ${NOUN[meter]} on the Free plan. New ${meter === "searches" ? "searches" : "answers"} are paused until your allowance resets on ${resetDay(resetsAt)}.`;
+export const pausedMessage = (meter: Meter, resetsAt = nextReset(), limit: number = FREE[meter]) =>
+  `You've used this month's ${limit} ${NOUN[meter]} on the Free plan. New ${meter === "searches" ? "searches" : "answers"} are paused until your allowance resets on ${resetDay(resetsAt)}.`;
 
 export type LimitError = { code: "limit"; meter: Meter; message: string; resetsAt: number; last?: Value };
 
@@ -45,20 +46,38 @@ export async function usage(ctx: QueryCtx, orgId: Id<"organizations">, now = Dat
   return { used, resetsAt: nextReset(now) };
 }
 
+/** The company's monthly allowances: the Free plan's, raised by any voucher it has redeemed. */
+export async function limitsFor(ctx: QueryCtx, orgId: Id<"organizations">) {
+  const limits: Record<Meter, number> = { actions: FREE.actions, searches: FREE.searches, chats: FREE.chats };
+  const redeemed = await ctx.db
+    .query("voucherRedemptions")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const vouchers: { code: string }[] = [];
+  for (const r of redeemed) {
+    const voucher = await ctx.db.get(r.voucherId);
+    if (!voucher || !voucher.active) continue;
+    vouchers.push({ code: voucher.code });
+    for (const meter of ["actions", "searches", "chats"] as const) limits[meter] = Math.max(limits[meter], voucher.limits[meter] ?? 0);
+  }
+  return { limits, vouchers };
+}
+
 /** How many calls of this kind are left this month. */
 export async function remaining(ctx: QueryCtx, orgId: Id<"organizations">, meter: Meter) {
   const { used, resetsAt } = await usage(ctx, orgId);
-  return { left: Math.max(0, FREE[meter] - used[meter]), resetsAt };
+  const { limits } = await limitsFor(ctx, orgId);
+  return { left: Math.max(0, limits[meter] - used[meter]), resetsAt, limit: limits[meter] };
 }
 
-export function limitError(meter: Meter, resetsAt: number, last?: Value | null) {
-  const data: LimitError = { code: "limit", meter, message: pausedMessage(meter, resetsAt), resetsAt };
+export function limitError(meter: Meter, resetsAt: number, last?: Value | null, limit?: number) {
+  const data: LimitError = { code: "limit", meter, message: pausedMessage(meter, resetsAt, limit), resetsAt };
   if (last != null) data.last = last;
   return new ConvexError(data);
 }
 
 /** Throw the paused message when the allowance for this kind of call has run out. */
 export async function requireAllowance(ctx: QueryCtx, orgId: Id<"organizations">, meter: Meter) {
-  const { left, resetsAt } = await remaining(ctx, orgId, meter);
-  if (left <= 0) throw limitError(meter, resetsAt);
+  const { left, resetsAt, limit } = await remaining(ctx, orgId, meter);
+  if (left <= 0) throw limitError(meter, resetsAt, null, limit);
 }

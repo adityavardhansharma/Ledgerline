@@ -5,6 +5,7 @@ import { Avatar, Badge, Banner, Button, Icon, Input, ProgressBar, RadioGroup, Se
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
+import { errorText } from "@/components/app/BoardCommentary";
 import { api } from "@/convex/_generated/api";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -206,6 +207,11 @@ function Billing() {
           <div>
             <span className="ll-plan-name">
               {billing.plan} <Badge tone="brand">Current plan</Badge>
+              {billing.vouchers.map((code) => (
+                <Badge key={code} tone="forecast">
+                  {code}
+                </Badge>
+              ))}
             </span>
             <p>€0, forever. Every report, forecast, scenario and board pack, for an unlimited team.</p>
           </div>
@@ -215,6 +221,11 @@ function Billing() {
           <span className="ll-setting-value">
             {billing.companies.used} of {billing.companies.limit}
           </span>
+        </Row>
+      </Group>
+      <Group title="Voucher">
+        <Row title="Voucher code" hint={billing.vouchers.length ? `Applied: ${billing.vouchers.join(", ")}. The allowances below include it.` : "Have a code? It raises this company's monthly AI allowances."}>
+          {billing.canRedeem ? <Voucher /> : <span className="ll-setting-value">Accountants can&apos;t apply vouchers.</span>}
         </Row>
       </Group>
       <Group title={`AI this month · resets ${reset}`}>
@@ -256,6 +267,47 @@ function Billing() {
           ))}
         </div>
       </Group>
+    </>
+  );
+}
+
+function Voucher() {
+  const redeem = useMutation(api.billing.redeem);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "positive" | "negative"; text: string } | null>(null);
+  const apply = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await redeem({ code });
+      const raised = (["actions", "searches", "chats"] as const)
+        .filter((m) => result.limits[m] !== undefined)
+        .map((m) => `${result.limits[m]} ${METER[m].title}`)
+        .join(", ");
+      setMessage({ tone: "positive", text: `${result.code} applied${raised ? `: ${raised} a month` : ""}.` });
+      setCode("");
+    } catch (err) {
+      setMessage({ tone: "negative", text: errorText(err, "That voucher didn't apply. Try again.") });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <form
+        className="ll-voucher"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (code.trim()) void apply();
+        }}
+      >
+        <Input id="voucher-code" label="Voucher code" placeholder="LEDGERTEST" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <Button type="submit" variant="primary" loading={busy} disabled={!code.trim()}>
+          Apply
+        </Button>
+      </form>
+      {message ? <Banner tone={message.tone}>{message.text}</Banner> : null}
     </>
   );
 }
