@@ -84,8 +84,19 @@ export default function BoardPackPage() {
                 <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner>
               </div>
             ) : null}
-            <div className="ll-workspace is-doc">
-              <div className="ll-workspace-main">
+            <div className="ll-doc">
+              <div className="ll-docbar no-print">
+                <span className={`ll-docbar-status${commentary?.status === "accepted" ? " is-done" : ""}`} title={commentary?.status === "accepted" ? `Accepted by ${commentary.acceptedBy}. Export the PDF from the top bar.` : "Read it, edit or redraft any section, then accept it to export."}>
+                  <span aria-hidden />
+                  {commentary?.status === "accepted" ? "Ready to send" : commentary ? "Draft" : "No commentary yet"}
+                </span>
+                <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
+                {commentary?.sections && commentary.status === "draft" ? (
+                  <Button variant="primary" size="sm" icon="check" loading={accepting} disabled={Boolean(busy)} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
+                    Accept for the board
+                  </Button>
+                ) : null}
+              </div>
             <div className="ll-board">
               <div className="ll-board-cover">
                 <div>
@@ -142,30 +153,6 @@ export default function BoardPackPage() {
               />
             </div>
                 <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
-              </div>
-              <aside className="ll-inspector no-print" aria-label="Board pack">
-                <div className="ll-inspector-inner">
-                  <section className={`ll-pack-status${commentary?.status === "accepted" ? " is-done" : ""}`}>
-                    <span className="ll-pack-status-dot" aria-hidden />
-                    <div>
-                      <b>{commentary?.status === "accepted" ? "Ready to send" : commentary ? "Draft" : "No commentary yet"}</b>
-                      <small>
-                        {commentary?.status === "accepted"
-                          ? `Accepted by ${commentary.acceptedBy}. Export the PDF from the top bar.`
-                          : commentary
-                            ? "Read it, edit or redraft any section, then accept it to export."
-                            : "Draft the commentary, then accept it to export."}
-                      </small>
-                    </div>
-                  </section>
-                  {commentary?.sections && commentary.status === "draft" ? (
-                    <Button variant="primary" icon="check" block loading={accepting} disabled={Boolean(busy)} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
-                      Accept for the board
-                    </Button>
-                  ) : null}
-                  <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
-                </div>
-              </aside>
             </div>
           </>
         );

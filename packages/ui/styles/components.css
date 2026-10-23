@@ -1859,3 +1859,19 @@ input[type=range].ll-drv-range:focus-visible::-webkit-slider-thumb { box-shadow:
 .ll-workspace.is-doc .ll-workspace-main > .ll-notes { max-width: none; margin: 0; }
 .ll-workspace.is-doc .ll-inspector-inner { top: 92px; }
 .ll-inspector-inner { top: 92px; max-height: calc(100vh - 108px); }
+
+/* ---------- board pack: one column, with a slim bar of document controls that stays at the top ---------- */
+.ll-doc { width: 100%; max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.ll-doc > .ll-board, .ll-doc > .ll-notes { max-width: none; margin: 0; }
+.ll-docbar { position: sticky; top: 80px; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 8px 8px 14px; border: 1px solid var(--rule); border-radius: 14px; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); box-shadow: 0 8px 24px -18px rgba(14, 22, 19, .35); }
+.ll-docbar-status { display: inline-flex; align-items: center; gap: 8px; font: 600 13px/1 var(--font-sans); white-space: nowrap; }
+.ll-docbar-status > span { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 3px var(--warning-tint); }
+.ll-docbar-status.is-done > span { background: var(--positive); box-shadow: 0 0 0 3px var(--positive-tint); }
+.ll-docbar .ll-studio { flex: 1; width: auto; max-width: none; margin: 0; padding: 0 0 0 12px; border: 0; border-left: 1px solid var(--rule); border-radius: 0; background: none; }
+.ll-docbar .ll-studio-intro { display: none; }
+.ll-docbar .ll-studio-options { flex: 1; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.ll-docbar .ll-studio-field { flex-direction: row; align-items: center; gap: 6px; }
+.ll-docbar .ll-studio-field > span { font-size: 12px; color: var(--ink-subtle); white-space: nowrap; }
+@media (max-width: 1100px) { .ll-docbar .ll-studio-field > span { display: none; } }
+@media (max-width: 760px) { .ll-docbar { position: static; } .ll-docbar .ll-studio { border-left: 0; padding-left: 0; } }
+.ll-docbar .ll-studio-field > span { display: none; }

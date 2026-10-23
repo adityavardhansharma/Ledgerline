@@ -346,7 +346,7 @@ export function CommentaryToolbar({
             Versions
           </Button>
         ) : null}
-        <Button variant="primary" size="sm" icon="sparkle" loading={busy} onClick={() => onDraft({ tone, length })}>
+        <Button variant={commentary ? "secondary" : "primary"} size="sm" icon="sparkle" loading={busy} onClick={() => onDraft({ tone, length })}>
           {commentary ? "Redraft all" : "Draft commentary"}
         </Button>
       </div>
