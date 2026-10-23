@@ -322,7 +322,7 @@ function useWidth(initial) {
     measure();
     if (window.ResizeObserver) { var ro = new ResizeObserver(measure); ro.observe(el); return function () { ro.disconnect(); }; }
   }, []);
-  return [ref, Math.max(300, st[0])];
+  return [ref, Math.max(200, st[0])];
 }
 // Stable across server and client render, so SVG gradient and pattern ids hydrate cleanly.
 function useUid(prefix) {

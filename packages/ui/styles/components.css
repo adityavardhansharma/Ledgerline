@@ -244,6 +244,7 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .ll-spark-negative .ll-spark-line { stroke: var(--negative); } .ll-spark-negative .ll-spark-end, .ll-spark-negative .ll-spark-halo { fill: var(--negative); }
 .ll-spark-forecast .ll-spark-line { stroke: var(--forecast); } .ll-spark-forecast .ll-spark-end, .ll-spark-forecast .ll-spark-halo { fill: var(--forecast); }
 .ll-sparkfill { width: 100%; }
+.ll-spark { max-width: 100%; height: auto; }
 
 /* sankey */
 .ll-sk-ribbon { transition: opacity .2s; cursor: pointer; } .ll-sk-ribbon:hover { opacity: 1; }
@@ -517,7 +518,7 @@ g.is-dim { opacity: .3; }
 /* overlays */
 .ll-scrim { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(3px); display: grid; place-items: center; padding: var(--space-4); z-index: var(--z-overlay); }
 .ll-scrim.is-inline, .ll-drawer-layer.is-inline { position: relative; inset: auto; min-height: 100%; }
-.ll-dialog { width: 520px; max-width: 100%; background: var(--surface-raised); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); display: flex; flex-direction: column; max-height: calc(100vh - 32px); border: 1px solid var(--rule); }
+.ll-dialog { width: 520px; max-width: 100%; background: var(--surface-raised); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); display: flex; flex-direction: column; max-height: calc(100dvh - 32px); border: 1px solid var(--rule); }
 .ll-dialog-sm { width: 420px; }
 .ll-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding: var(--space-6) var(--space-5) var(--space-2) var(--space-6); }
 .ll-dialog-title { margin: 0; font: 400 28px/32px var(--font-display); letter-spacing: -0.01em; text-wrap: balance; }
@@ -564,7 +565,7 @@ g.is-dim { opacity: .3; }
 .ll-crumbs .ll-icon { color: var(--ink-subtle); }
 .ll-pager { display: flex; align-items: center; gap: var(--space-2); font: 400 12.5px var(--font-mono); color: var(--ink-muted); }
 .ll-pager-info { margin-right: auto; }
-.ll-sidebar { width: 264px; flex: none; align-self: stretch; margin: 12px 0 12px 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-3) var(--space-3); box-sizing: border-box; position: sticky; top: 12px; max-height: calc(100vh - 24px); }
+.ll-sidebar { width: 264px; flex: none; align-self: stretch; margin: 12px 0 12px 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-3) var(--space-3); box-sizing: border-box; position: sticky; top: 12px; max-height: calc(100dvh - 24px); }
 .ll-sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 8px; }
 .ll-sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 .ll-nav-head { padding: var(--space-3) 10px 6px; font-size: 10.5px; line-height: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-subtle); }
@@ -628,7 +629,7 @@ g.is-dim { opacity: .3; }
 .ll-page-title { margin: 0; font: 400 40px/44px var(--font-display); letter-spacing: -0.015em; color: var(--ink); text-wrap: balance; }
 .ll-page-sub { font-size: 13.5px; color: var(--ink-muted); }
 .ll-topbar-r { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
-.ll-shell { display: flex; min-height: 100vh; background: var(--bg); position: relative; }
+.ll-shell { display: flex; min-height: 100dvh; background: var(--bg); position: relative; }
 .ll-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ll-page { padding: var(--space-2) var(--space-8) var(--space-10); display: flex; flex-direction: column; gap: var(--space-5); }
 .ll-shell > .ll-drawer-layer { position: absolute; }
@@ -722,7 +723,7 @@ g.is-dim { opacity: .3; }
 /* screens: auth and onboarding */
 .ll-divider-text { display: flex; align-items: center; gap: var(--space-3); color: var(--ink-subtle); font-size: 12px; }
 .ll-divider-text::before, .ll-divider-text::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
-.ll-onb { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
+.ll-onb { min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; }
 .ll-onb-top { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-8); }
 .ll-onb-body { flex: 1; display: grid; grid-template-columns: 280px minmax(0, 640px); gap: var(--space-12); padding: var(--space-8) var(--space-8) var(--space-10); justify-content: center; }
 .ll-onb-main { display: flex; flex-direction: column; gap: var(--space-5); }
@@ -757,9 +758,9 @@ g.is-dim { opacity: .3; }
 /* ===== Composition: one sheet, hairlines, no ornament ===== */
 /* shell: sidebar flush on the ground, content on a single inset sheet */
 .ll-shell { background: var(--bg); }
-.ll-shell > .ll-sidebar, .ll-sidebar { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; top: 0; max-height: 100vh; padding: var(--space-4) var(--space-3); }
+.ll-shell > .ll-sidebar, .ll-sidebar { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; top: 0; max-height: 100dvh; padding: var(--space-4) var(--space-3); }
 .ll-shell > .ll-sidebar { border-right: 0; }
-.ll-main { margin: 8px 8px 8px 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; min-height: calc(100vh - 16px); overflow: clip; }
+.ll-main { margin: 8px 8px 8px 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; min-height: calc(100dvh - 16px); overflow: clip; }
 .ll-topbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--rule); padding: var(--space-5) var(--space-8) var(--space-4); }
 .ll-page-title { font-size: 34px; line-height: 38px; }
 .ll-page { padding: var(--space-6) var(--space-8) var(--space-10); gap: var(--space-6); }
@@ -879,7 +880,7 @@ g.is-dim { opacity: .3; }
 .ll-source h3 { margin: 0; font: 600 14px/20px var(--font-sans); color: var(--ink); display: flex; gap: 8px; align-items: center; }
 .ll-source h3 .ll-icon { color: var(--ink-subtle); }
 .ll-source p { margin: 0; font-size: 13px; line-height: 19px; color: var(--ink-muted); flex: 1; }
-@media (max-width: 900px) {
+@container main (max-width: 700px) {
   .ll-drop-grid, .ll-sources { grid-template-columns: 1fr; }
   .ll-import-summary { grid-template-columns: 1fr 1fr; }
   .ll-import-summary div:nth-child(3) { border-left: 0; }
@@ -896,7 +897,7 @@ g.is-dim { opacity: .3; }
 .ll-drop.is-invalid > .ll-icon { color: var(--negative); }
 
 /* ---------- sign in and sign up ---------- */
-.ll-auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); background: var(--bg); }
+.ll-auth { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); background: var(--bg); }
 /* The left half is a page of ledger paper: faint ruled lines and a double margin rule, as on an analysis pad. */
 .ll-auth-art { position: relative; margin: 8px 0 8px 8px; padding: 28px 40px 28px 64px; border: 1px solid var(--rule); border-radius: 14px; background-color: var(--surface-sunken); background-image: linear-gradient(to right, transparent 39px, color-mix(in srgb, var(--negative) 35%, transparent) 39px, color-mix(in srgb, var(--negative) 35%, transparent) 40px, transparent 40px, transparent 42px, color-mix(in srgb, var(--negative) 35%, transparent) 42px, color-mix(in srgb, var(--negative) 35%, transparent) 43px, transparent 43px), repeating-linear-gradient(to bottom, transparent 0, transparent 31px, color-mix(in srgb, var(--forecast) 13%, transparent) 31px, color-mix(in srgb, var(--forecast) 13%, transparent) 32px); display: flex; flex-direction: column; gap: 28px; min-width: 0; }
 .ll-auth-art-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -1001,7 +1002,7 @@ g.is-dim { opacity: .3; }
 .ll-plan-form-foot { display: flex; justify-content: flex-end; gap: var(--space-2); }
 @keyframes ll-plan-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .ll-grid-plan { display: grid; grid-template-columns: minmax(360px, 2fr) minmax(0, 3fr); gap: var(--space-5); align-items: start; }
-@media (max-width: 1180px) { .ll-grid-plan { grid-template-columns: minmax(0, 1fr); } }
+@container main (max-width: 900px) { .ll-grid-plan { grid-template-columns: minmax(0, 1fr); } }
 .ll-plan-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: baseline; }
 .ll-plan-main .ll-plan-amt-v { font: 600 13px/18px var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
 .ll-plan-main .ll-plan-amt-v.is-neg { color: var(--negative); } .ll-plan-main .ll-plan-amt-v.is-pos { color: var(--positive); }
@@ -1242,7 +1243,7 @@ g.is-dim { opacity: .3; }
 .ll-ask-orb.is-big::after { inset: 5px; }
 @keyframes ll-orb { to { transform: rotate(360deg); } }
 .ll-ask-scrim { position: fixed; inset: 0; z-index: calc(var(--z-overlay) + 1); background: color-mix(in srgb, var(--ink) 14%, transparent); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); }
-.ll-ask-panel { width: min(720px, calc(100vw - 24px)); height: min(780px, calc(100vh - 40px)); border-radius: 20px; will-change: transform, opacity; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow-modal); overflow: hidden; }
+.ll-ask-panel { width: min(720px, calc(100vw - 24px)); height: min(780px, calc(100dvh - 40px)); border-radius: 20px; will-change: transform, opacity; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow-modal); overflow: hidden; }
 .ll-ask-inner { display: flex; flex-direction: column; height: 100%; }
 .ll-ask-head { display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 10px; border-bottom: 1px solid var(--rule); flex: none; }
 .ll-ask-title { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 6px; }
@@ -1449,9 +1450,12 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-ownowe li b { font: 500 12px var(--font-mono); color: var(--ink); }
 .ll-ownowe li.is-rest { color: var(--ink-subtle); }
 
-@media (max-width: 1100px) {
+/* Too narrow for the rail beside the report: the rail flows under it in columns, each block packed under the
+   one above, so a short block never leaves a gap beside a tall one. */
+@container main (max-width: 940px) {
   .ll-report { grid-template-columns: minmax(0, 1fr); }
-  .ll-report-rail { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px 28px; }
+  .ll-report-rail { position: static; display: block; columns: 2 280px; column-gap: 32px; }
+  .ll-report-rail > * { break-inside: avoid; margin-bottom: 22px; }
 }
 @container (max-width: 860px) {
   .ll-summary:has(> div:nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1470,7 +1474,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-report-hero h2 { margin: 0 0 8px; font: 600 14px/1.3 var(--font-sans); }
 .ll-report-pair { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; }
 .ll-rail-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-subtle); }
-@media (max-width: 900px) { .ll-report-pair { grid-template-columns: minmax(0, 1fr); } }
+@container main (max-width: 720px) { .ll-report-pair { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- overview briefing ---------- */
 .ll-report-hero-sub { margin: -2px 0 10px; font-size: 13px; color: var(--ink-subtle); }
@@ -1495,7 +1499,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-panel-title { font: 600 14px/1.35 var(--font-sans); letter-spacing: 0; }
 .ll-panel-sub { margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--ink-subtle); }
 .ll-report-hero { border-radius: 14px; }
-@media (max-width: 900px) { .ll-report-pair.is-even { grid-template-columns: minmax(0, 1fr); } }
+@container main (max-width: 640px) { .ll-report-pair.is-even { grid-template-columns: minmax(0, 1fr); } }
 .ll-stack-lg { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
 /* ---------- data and settings pages ---------- */
@@ -1592,7 +1596,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-member-name small { display: block; font-size: 12.5px; color: var(--ink-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ll-member-can { font-size: 12.5px; color: var(--ink-subtle); }
 
-@media (max-width: 900px) {
+@container main (max-width: 720px) {
   .ll-settings, .ll-tl-day, .ll-setting { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .ll-settings-nav { position: static; flex-direction: row; overflow-x: auto; }
   .ll-settings-nav button small { display: none; }
@@ -1689,18 +1693,18 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-section-head > div h2 { margin: 0; font: 600 14px/1.3 var(--font-sans); }
 .ll-section-head > div span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-subtle); }
 .ll-section-head { align-items: center; }
-.ll-inspector { position: sticky; top: 72px; max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 20px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface-sunken); scrollbar-width: thin; }
+.ll-inspector { position: sticky; top: 72px; max-height: calc(100dvh - 88px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 20px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface-sunken); scrollbar-width: thin; }
 .ll-inspector-head h2 { margin: 0; font: 600 15px/1.3 var(--font-sans); }
 .ll-inspector-head p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-subtle); }
 .ll-inspector .ll-drv-body { padding: 0; }
 .ll-inspector .ll-assume { padding: 12px 0; }
-@media (max-width: 1180px) {
+@container main (max-width: 1000px) {
   .ll-workspace { grid-template-columns: minmax(0, 1fr); }
   .ll-inspector { position: static; max-height: none; order: -1; }
 }
 
 /* ---------- Ask Ledgerline, redesigned: conversations on the left, a roomy chat on the right ---------- */
-.ll-ask-panel { width: min(1000px, calc(100vw - 24px)); height: min(760px, calc(100vh - 40px)); border-radius: 22px; }
+.ll-ask-panel { width: min(1000px, calc(100vw - 24px)); height: min(760px, calc(100dvh - 40px)); border-radius: 22px; }
 .ll-ask-inner { position: relative; display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100%; }
 .ll-ask-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 16px 12px 12px; background: var(--surface-sunken); border-right: 1px solid var(--rule); }
 .ll-ask-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 6px; }
@@ -1789,9 +1793,9 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-workspace { grid-template-columns: minmax(0, 1fr) 340px; gap: 0; align-items: stretch; }
 .ll-workspace-main { padding-right: 28px; }
 .ll-inspector { position: static; max-height: none; overflow: visible; padding: 0 0 0 28px; border: 0; border-left: 1px solid var(--rule); border-radius: 0; background: none; display: block; }
-.ll-inspector-inner { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; }
+.ll-inspector-inner { position: sticky; top: 76px; max-height: calc(100dvh - 92px); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; }
 .ll-inspector .ll-assume:first-child { padding-top: 4px; }
-@media (max-width: 1180px) {
+@container main (max-width: 1000px) {
   .ll-workspace { grid-template-columns: minmax(0, 1fr); }
   .ll-workspace-main { padding-right: 0; }
   .ll-inspector { order: -1; padding: 0 0 20px; border-left: 0; border-bottom: 1px solid var(--rule); }
@@ -1820,7 +1824,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-inspector .ll-notes-head h3 { font: 600 13.5px/1.35 var(--font-sans); letter-spacing: 0; }
 .ll-inspector .ll-notes-head p { font-size: 12.5px; line-height: 1.5; }
 .ll-inspector .ll-notes-box { min-height: 160px; font-size: 14px; line-height: 22px; }
-@media (max-width: 1180px) { .ll-workspace.is-doc { grid-template-columns: minmax(0, 1fr); } }
+@container main (max-width: 1000px) { .ll-workspace.is-doc { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- forecast drivers: grouped rows, value as editable text, a slim slider ---------- */
 .ll-inspector-inner { scrollbar-width: none; }
@@ -1881,14 +1885,14 @@ input[type=range].ll-drv-range:focus-visible::-webkit-slider-thumb { box-shadow:
 .ll-scn-num.is-bad { color: var(--negative); }
 .ll-scn-actions { position: relative; display: flex; justify-content: flex-end; }
 .ll-scn-menu { position: absolute; right: 0; top: 36px; z-index: 30; }
-@media (max-width: 900px) {
+@container main (max-width: 820px) {
   .ll-scn-row { grid-template-columns: minmax(0, 1fr) auto 40px; }
   .ll-scn-row.is-head, .ll-scn-spark, .ll-scn-row > .ll-scn-num:nth-of-type(3), .ll-scn-row > .ll-scn-num:nth-of-type(4) { display: none; }
 }
 /* Board pack: the notes keep their own card under the document; the side column stays short and clears the header. */
 .ll-workspace.is-doc .ll-workspace-main > .ll-notes { max-width: none; margin: 0; }
 .ll-workspace.is-doc .ll-inspector-inner { top: 92px; }
-.ll-inspector-inner { top: 92px; max-height: calc(100vh - 108px); }
+.ll-inspector-inner { top: 92px; max-height: calc(100dvh - 108px); }
 
 /* ---------- board pack: one column, with a slim bar of document controls that stays at the top ---------- */
 .ll-doc { width: 100%; max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
@@ -1902,8 +1906,8 @@ input[type=range].ll-drv-range:focus-visible::-webkit-slider-thumb { box-shadow:
 .ll-docbar .ll-studio-options { flex: 1; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .ll-docbar .ll-studio-field { flex-direction: row; align-items: center; gap: 6px; }
 .ll-docbar .ll-studio-field > span { font-size: 12px; color: var(--ink-subtle); white-space: nowrap; }
-@media (max-width: 1100px) { .ll-docbar .ll-studio-field > span { display: none; } }
-@media (max-width: 760px) { .ll-docbar { position: static; } .ll-docbar .ll-studio { border-left: 0; padding-left: 0; } }
+@container main (max-width: 900px) { .ll-docbar .ll-studio-field > span { display: none; } }
+@container main (max-width: 640px) { .ll-docbar { position: static; } .ll-docbar .ll-studio { border-left: 0; padding-left: 0; } }
 .ll-docbar .ll-studio-field > span { display: none; }
 
 /* ---------- the app's one tooltip ---------- */
@@ -1972,7 +1976,7 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-src-pop { position: fixed; left: auto; bottom: auto; z-index: 1000; }
 .ll-versions button > .ll-ver-tags { flex: none; display: inline-flex; flex-direction: row; gap: 6px; }
 .ll-report-pair.is-wide-left { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; }
-@media (max-width: 900px) { .ll-report-pair.is-wide-left { grid-template-columns: minmax(0, 1fr); } }
+@container main (max-width: 760px) { .ll-report-pair.is-wide-left { grid-template-columns: minmax(0, 1fr); } }
 .ll-days { display: flex; align-items: flex-start; gap: 28px; flex-wrap: wrap; }
 .ll-days > :first-child { flex: none; }
 .ll-days-sum { flex: 1; min-width: 160px; display: grid; gap: 14px; margin: 18px 0 0; padding-left: 20px; border-left: 1px solid var(--rule); }
@@ -2079,4 +2083,127 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 @media (prefers-reduced-motion: reduce) {
   .ll-chat-work::before, .ll-chat-work-art i, .ll-chat-work-pips i.is-now { animation: none; }
   .ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > * { animation: none; }
+}
+
+/* ================================================================================================
+   Every size: phones, folded and unfolded foldables, half-screen windows, laptops and wide screens.
+   Page layouts answer to the width the content actually has (the sheet beside the sidebar), not the
+   window, so a half-screen window, an open sidebar or a foldable's inner screen all get the layout
+   that fits. Fixed overlays still answer to the screen.
+   ================================================================================================ */
+.ll-main, .ll-onb-main { container: main / inline-size; }
+
+/* The bar stays opaque so scrolled content never ghosts through it. */
+.ll-topbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* Grids fold by the room they have. */
+@container main (max-width: 1040px) {
+  .ll-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container main (max-width: 760px) {
+  .ll-grid-2, .ll-grid-2r, .ll-grid-halves, .ll-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .ll-page-title { font-size: 30px; line-height: 34px; }
+  .ll-board { padding: var(--space-6) var(--space-5); }
+  .ll-board-cover h1 { font-size: 40px; line-height: 44px; }
+  .ll-bal { grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); }
+  .ll-plan-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Narrow sheets (phones, a folded foldable, a quarter-screen window): one compact header row whose actions
+   scroll sideways instead of stacking, tighter gutters, and tables that scroll inside their frame. */
+@container main (max-width: 640px) {
+  .ll-topbar { gap: 8px; }
+  .ll-topbar-l { flex: 1 1 auto; min-width: 0; }
+  .ll-topbar-l .ll-crumbs { min-width: 0; overflow: hidden; }
+  .ll-topbar-r { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; scroll-padding-inline: 16px; }
+  .ll-topbar-r::-webkit-scrollbar { display: none; }
+  .ll-page { padding-left: 16px; padding-right: 16px; gap: 22px; }
+  .ll-pagehead { padding-left: 16px; padding-right: 16px; }
+  .ll-page-title { font-size: 26px; line-height: 30px; }
+  .ll-report-hero { padding: 16px 14px 10px; }
+  .ll-report-rail { columns: 1; }
+  .ll-days { gap: 18px; }
+  .ll-days > :first-child { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+  .ll-days-sum { padding-left: 0; border-left: 0; margin-top: 0; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .ll-age li { grid-template-columns: minmax(0, 1fr) 72px auto; }
+  .ll-board { padding: 20px 16px; }
+  .ll-board-cover h1 { font-size: 32px; line-height: 36px; }
+  .ll-bc-risks li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .ll-invite { grid-template-columns: minmax(0, 1fr); }
+  .ll-plan-card { flex-direction: column; gap: 8px; }
+  .ll-members li { grid-template-columns: 34px minmax(0, 1fr) auto; }
+  .ll-import-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ll-hero-value { font-size: 44px; line-height: 48px; }
+  .ll-comm-body { font-size: 18px; line-height: 28px; padding: var(--space-4); }
+  .ll-scn-row { padding: 12px 12px 12px 14px; gap: 10px; }
+}
+@container main (max-width: 380px) {
+  .ll-page-title { font-size: 24px; line-height: 28px; }
+  .ll-age li { grid-template-columns: minmax(0, 1fr) auto; }
+  .ll-age li i { display: none; }
+  .ll-members li { grid-template-columns: minmax(0, 1fr) auto; }
+  .ll-members li > .ll-avatar { display: none; }
+  .ll-import-summary { grid-template-columns: minmax(0, 1fr); }
+  .ll-import-summary div + div { border-left: 0; border-top: 1px solid var(--rule); }
+}
+
+/* Very wide screens: keep reading measure; let charts and tables use the room. */
+@container main (min-width: 1680px) {
+  .ll-page { padding-left: 48px; padding-right: 48px; }
+  .ll-pagehead { padding-left: 48px; padding-right: 48px; }
+}
+
+/* Room for the Ask pill under the last thing on the page, and the phone's home indicator. */
+.ll-page { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.ll-ask-pill { bottom: calc(20px + env(safe-area-inset-bottom)); }
+
+/* Notches, rounded corners and camera cut-outs (the page asks for the whole screen with viewport-fit=cover). */
+@media (max-width: 900px) {
+  .ll-topbar { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .ll-shell > .ll-sidebar { padding-top: max(var(--space-4), env(safe-area-inset-top)); padding-bottom: max(var(--space-3), env(safe-area-inset-bottom)); padding-left: max(var(--space-3), env(safe-area-inset-left)); }
+  .ll-onb-top { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-top: max(16px, env(safe-area-inset-top)); }
+}
+
+/* Ask Ledgerline: a bottom sheet on phones and folded foldables (this must come after the wide panel rule). */
+@media (max-width: 640px) {
+  .ll-ask-panel { width: 100vw; height: calc(100dvh - max(12px, env(safe-area-inset-top))); bottom: 0; border-bottom: 0; border-radius: 20px 20px 0 0; }
+  .ll-ask-composer { margin-bottom: env(safe-area-inset-bottom); }
+  .ll-ask-pill { max-width: calc(100vw - 32px); }
+}
+/* Short landscape phones: the panel uses the full height. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .ll-ask-panel { height: calc(100dvh - 12px); bottom: 6px; }
+  .ll-ask-welcome h2 { font-size: 24px; line-height: 30px; margin-top: 0; }
+}
+
+/* Dialogs and drawers fill a phone screen instead of floating with a sliver of page around them. */
+@media (max-width: 640px) {
+  .ll-drawer-layer:not(.is-inline) { padding: 0; }
+  .ll-drawer-layer:not(.is-inline) .ll-drawer { width: 100%; border-radius: 0; border: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .ll-dialog { max-height: calc(100dvh - 24px); }
+  .ll-export-error { width: min(320px, calc(100vw - 32px)); }
+  .ll-export-menu > .ll-menu { width: min(240px, calc(100vw - 32px)); }
+}
+
+/* Touch screens: comfortable targets, controls that don't hide behind hover, no zoom on focus. */
+@media (pointer: coarse) {
+  .ll-btn, .ll-picker, .ll-iconbtn { min-height: 40px; }
+  .ll-btn-sm { min-height: 36px; }
+  .ll-iconbtn { min-width: 40px; }
+  .ll-seg-opt { min-height: 34px; }
+  .ll-nav-item { min-height: 42px; }
+  .ll-topbar-r .ll-btn, .ll-topbar-r .ll-picker { height: 38px; }
+  .ll-nav-kbd, .ll-sidebar-ask kbd, .ll-ask-pill kbd { display: none; }
+  input, select, textarea, .ll-input input, .ll-textarea { font-size: max(16px, 1em); }
+}
+
+/* Two screens with a hinge (dual-screen phones, a foldable held open as a book): the Ask panel and dialogs
+   sit on one screen rather than across the fold. */
+@media (horizontal-viewport-segments: 2) {
+  .ll-ask-panel { left: env(viewport-segment-left 1 0); right: auto; width: env(viewport-segment-width 1 0); margin: 0; border-radius: 0; height: 100dvh; bottom: 0; }
+  .ll-ask-pill { left: env(viewport-segment-left 1 0); right: auto; width: max-content; margin: 0 0 0 16px; }
+  .ll-scrim:not(.is-inline) { padding-left: env(viewport-segment-left 1 0); }
+}
+@media (vertical-viewport-segments: 2) {
+  .ll-ask-panel { top: env(viewport-segment-top 0 1); bottom: 0; height: env(viewport-segment-height 0 1); width: 100vw; border-radius: 0; }
 }
