@@ -141,6 +141,7 @@ export default function BoardPackPage() {
                 drillable={false}
               />
             </div>
+                <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
               </div>
               <aside className="ll-inspector no-print" aria-label="Board pack">
                 <div className="ll-inspector-inner">
@@ -163,7 +164,6 @@ export default function BoardPackPage() {
                     </Button>
                   ) : null}
                   <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
-                  <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
                 </div>
               </aside>
             </div>
