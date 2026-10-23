@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Button, CalendarHeatmap, formatMoney, LineChart, SankeyChart, WaterfallChart } from "@ledgerline/ui";
+import { Button, CalendarHeatmap, formatMoney, LineChart, SankeyChart, Sparkline, WaterfallChart } from "@ledgerline/ui";
 import type { ComponentProps } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -30,9 +30,9 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
     owedTotal && overdue / owedTotal > 0.25 ? { tone: "warn", text: `${Math.round((overdue / owedTotal) * 100)}% of what you're owed is overdue.` } : null,
     m.grossMargin !== null && m.grossMargin < 0.2 ? { tone: "warn", text: `Gross margin is ${(m.grossMargin * 100).toFixed(1)}%.` } : null,
   ].filter((x): x is { tone: string; text: string } => Boolean(x));
-  const months = snapshot.series.periods.slice(-9);
-  const revenue = snapshot.series.revenue.slice(-9).map((c) => c / 100);
   const forecastRevenue = forecast?.months.slice(0, 3).map((x) => x.revenue / 100) ?? [];
+  const yearRevenue = snapshot.series.revenue.slice(-12).map((c) => c / 100);
+  const ytd = snapshot.series.periods.reduce((n, p, i) => (p >= snapshot.fyStart && p <= snapshot.asOf ? n + snapshot.series.revenue[i] / 100 : n), 0);
   return (
     <>
       <SummaryLine
@@ -109,15 +109,28 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
                 <p className="ll-rail-note">Nobody owes you money right now.</p>
               )}
             </RailBlock>
-            <RailBlock title="Revenue by month" aside={<b className="ll-rail-figure">{formatMoney(m.revenue / 100, { compact: true })}</b>}>
-              <BarChart
-                labels={[...months.map((p) => periodLabel(p, false)), ...(forecast?.months.slice(0, 3).map((x) => x.label.slice(0, 3)) ?? [])]}
-                values={[...revenue, ...forecastRevenue]}
-                forecastFrom={forecastRevenue.length ? revenue.length : undefined}
-                highlight={revenue.length - 1}
-                seriesName="Revenue"
-                height={170}
-              />
+            <RailBlock title="Revenue" aside={<small className="ll-muted">last 12 months, then forecast</small>}>
+              <div className="ll-rev">
+                <div className="ll-rev-top">
+                  <b>{formatMoney(m.revenue / 100)}</b>
+                  {m.revenueDelta !== null ? <span className={m.revenueDelta >= 0 ? "is-up" : "is-down"}>{pctChange(m.revenueDelta)}</span> : null}
+                </div>
+                <small>{month}, on the month before</small>
+                <div className="ll-rev-spark">
+                  <Sparkline data={[...yearRevenue, ...forecastRevenue]} forecastFrom={forecastRevenue.length ? yearRevenue.length : undefined} width={300} height={64} label="Revenue by month" />
+                </div>
+                <div className="ll-rev-range">
+                  <span>
+                    Low <b>{formatMoney(Math.min(...yearRevenue), { compact: true })}</b>
+                  </span>
+                  <span>
+                    High <b>{formatMoney(Math.max(...yearRevenue), { compact: true })}</b>
+                  </span>
+                  <span>
+                    Year to date <b>{ytd >= 1_000_000 ? `€${(ytd / 1_000_000).toFixed(2)}m` : formatMoney(ytd, { compact: true })}</b>
+                  </span>
+                </div>
+              </div>
             </RailBlock>
           </>
         }

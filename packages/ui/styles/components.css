@@ -1966,3 +1966,22 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-sidebar.is-collapsed .ll-orgswitch-trigger { width: 44px !important; padding: 0 !important; justify-content: center !important; margin: 0 auto !important; }
 .ll-sidebar.is-collapsed .ll-orgswitch-trigger > :first-child { flex: none; }
 .ll-sidebar.is-collapsed .ll-orgswitch-name, .ll-sidebar.is-collapsed .ll-orgswitch-chev { display: none !important; }
+
+/* ---------- overview rail: compact reminders and a revenue card ---------- */
+.ll-report-rail .ll-owed li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0; padding: 9px 0; }
+.ll-report-rail .ll-owed li > :last-child { grid-column: auto; justify-self: end; }
+.ll-owed-who { display: flex; flex-direction: column; min-width: 0; }
+.ll-owed-who .ll-owed-name { font-size: 13.5px; }
+.ll-owed-who .ll-amount { font-size: 12.5px; color: var(--ink-muted); }
+.ll-owed-done { all: unset; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--positive-tint); color: var(--positive); font: 500 12.5px/1 var(--font-sans); cursor: pointer; white-space: nowrap; transition: filter .15s, box-shadow .15s; }
+.ll-owed-done:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--positive) 35%, transparent); }
+.ll-owed-done:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-rev-top { display: flex; align-items: baseline; gap: 10px; }
+.ll-rev-top b { font: 400 30px/1 var(--font-display); letter-spacing: -0.015em; }
+.ll-rev-top span { font: 500 12.5px var(--font-mono); }
+.ll-rev-top .is-up { color: var(--positive); } .ll-rev-top .is-down { color: var(--negative); }
+.ll-rev > small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-subtle); }
+.ll-rev-spark { margin: 14px 0 8px; }
+.ll-rev-spark svg { width: 100%; }
+.ll-rev-range { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-subtle); }
+.ll-rev-range b { display: block; margin-top: 2px; font: 500 12.5px var(--font-mono); color: var(--ink); }

@@ -73,8 +73,8 @@ export const cacheSet = internalMutation({
 });
 
 /** Run an action once per version of the figures: cached answers come back without a model call. */
-async function once<T>(ctx: ActionCtx, c: Context, name: string, key: string | null, version: number, fn: () => Promise<T>): Promise<T> {
-  if (key) {
+async function once<T>(ctx: ActionCtx, c: Context, name: string, key: string | null, version: number, fn: () => Promise<T>, fresh = false): Promise<T> {
+  if (key && !fresh) {
     const hit = await ctx.runQuery(internal.aiActions.cacheGet, { orgId: c.orgId, key, version });
     if (hit) return hit as T;
   }
@@ -347,8 +347,8 @@ export const reminderInput = internalQuery({
 });
 
 export const reminder = action({
-  args: { contact: v.string() },
-  handler: async (ctx, { contact }): Promise<{ subject: Prose; body: Prose[] }> => {
+  args: { contact: v.string(), fresh: v.optional(v.boolean()) },
+  handler: async (ctx, { contact, fresh }): Promise<{ subject: Prose; body: Prose[] }> => {
     const c = await ctx.runQuery(internal.aiActions.context, {});
     const asOf = c.imported ? monthEnd(c.asOf ?? "2026-01") : new Date().toISOString().slice(0, 10);
     return once(ctx, c, "reminder", `reminder:${contact}`, c.version, async () => {
@@ -363,7 +363,7 @@ export const reminder = action({
       }
       if (!items.length) throw new ConvexError(`${contact} has no unpaid invoices.`);
       return engine("/actions/reminder", { company: c.orgName, contact, sender: c.who, as_of: asOf, items });
-    });
+    }, fresh ?? false);
   },
 });
 
