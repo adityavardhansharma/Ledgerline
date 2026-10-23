@@ -73,7 +73,7 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const headers = corsHeaders(request);
     if (!(await ctx.auth.getUserIdentity())) return new Response(JSON.stringify({ error: "Sign in again." }), { status: 401, headers });
-    let body: { text?: unknown; threadId?: unknown; page?: unknown; pageTitle?: unknown };
+    let body: { text?: unknown; threadId?: unknown; page?: unknown; pageTitle?: unknown; sources?: unknown };
     try {
       body = await request.json();
     } catch {
@@ -101,6 +101,7 @@ http.route({
           threadId: typeof body.threadId === "string" && body.threadId ? (body.threadId as never) : undefined,
           page: typeof body.page === "string" ? body.page.slice(0, 80) : undefined,
           pageTitle: typeof body.pageTitle === "string" ? body.pageTitle.slice(0, 80) : undefined,
+          sources: Array.isArray(body.sources) ? body.sources.filter((s): s is string => typeof s === "string").slice(0, 12) : undefined,
         }, emit);
       } catch (err) {
         await emit({ type: "error", message: err instanceof Error && /not found/i.test(err.message) ? "That conversation is gone. Start a new one." : "Couldn't start the answer. Try again." });

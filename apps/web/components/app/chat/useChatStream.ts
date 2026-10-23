@@ -27,7 +27,7 @@ export function useChatStream(onThread: (id: Id<"chatThreads">) => void) {
   const abort = useRef<AbortController | null>(null);
 
   const send = useCallback(
-    async (question: string, threadId: Id<"chatThreads"> | null, page: { path: string; title: string }) => {
+    async (question: string, threadId: Id<"chatThreads"> | null, page: { path: string; title: string }, sources: string[] = []) => {
       abort.current?.abort();
       const controller = new AbortController();
       abort.current = controller;
@@ -42,7 +42,7 @@ export function useChatStream(onThread: (id: Id<"chatThreads">) => void) {
         const response = await fetch(`${siteUrl()}/chat`, {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-          body: JSON.stringify({ text: question, threadId, page: page.path, pageTitle: page.title }),
+          body: JSON.stringify({ text: question, threadId, page: page.path, pageTitle: page.title, sources }),
           signal: controller.signal,
         });
         if (!response.ok || !response.body) {

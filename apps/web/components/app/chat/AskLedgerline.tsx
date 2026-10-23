@@ -5,8 +5,10 @@ import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { CHAT_SOURCES } from "@/convex/lib/chatSpec";
 import { NAV_ITEMS, ROUTES } from "@/lib/nav";
 import { ChatActions } from "./library";
 import { AnswerBody, Reading } from "./Message";
@@ -129,6 +131,7 @@ function Panel({ onClose }: { onClose: () => void }) {
   const removeThread = useMutation(api.chat.removeThread);
   const { live, send, stop, reset } = useChatStream(useCallback((id: Id<"chatThreads">) => setThreadId(id), []));
   const [text, setText] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
   const box = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -146,9 +149,9 @@ function Panel({ onClose }: { onClose: () => void }) {
       setText("");
       setHistory(false);
       pinned.current = true;
-      void send(question, threadId, { path: page.path, title: page.title });
+      void send(question, threadId, { path: page.path, title: page.title }, sources);
     },
-    [busy, send, threadId, page.path, page.title],
+    [busy, send, threadId, page.path, page.title, sources],
   );
   const openPage = useCallback(
     (key: string) => {
@@ -217,9 +220,7 @@ function Panel({ onClose }: { onClose: () => void }) {
         }}
       />
       <div className="ll-ask-composer-bar">
-        <span className="ll-ask-context" title="The assistant knows which page you're on">
-          <Icon name="eye" size={13} /> {page.title === "app" ? "All your figures" : page.title}
-        </span>
+        <SourcePicker value={sources} onChange={setSources} />
         <AnimatePresence mode="wait" initial={false}>
           {busy ? (
             <motion.button key="stop" type="button" className="ll-ask-send is-stop" aria-label="Stop" onClick={stop} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
@@ -425,6 +426,99 @@ function Welcome({ onAsk, suggestions, composer }: { onAsk: (q: string) => void;
         ))}
       </div>
       <p className="ll-ask-foot">Opinions are the assistant&apos;s own; check before you act.</p>
+    </div>
+  );
+}
+
+/**
+ * Where the answer may look. Nothing chosen means everything; choosing sources limits the assistant to their
+ * tools, and it says so when a question needs one that isn't chosen.
+ */
+function SourcePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [spot, setSpot] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  // Float the list above everything, opening upward unless there isn't room.
+  useLayoutEffect(() => {
+    if (!open || !box.current) return;
+    const r = box.current.getBoundingClientRect();
+    const height = 400;
+    const left = Math.min(window.innerWidth - 336, Math.max(16, r.left - 6));
+    setSpot(r.top > height + 16 ? { left, bottom: window.innerHeight - r.top + 10 } : { left, top: r.bottom + 10 });
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc, true);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc, true);
+    };
+  }, [open]);
+  const chosen = CHAT_SOURCES.filter((s) => value.includes(s.id));
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  return (
+    <div className="ll-src" ref={box}>
+      <button type="button" className={`ll-src-btn${chosen.length ? " is-set" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Icon name="database" size={13} />
+        {chosen.length ? (chosen.length === 1 ? chosen[0].label : `${chosen.length} sources`) : "All sources"}
+        <Icon name="chevron-down" size={12} />
+      </button>
+      {chosen.length ? (
+        <button type="button" className="ll-src-clear" aria-label="Search all sources again" title="Search everything again" onClick={() => onChange([])}>
+          <Icon name="close" size={12} />
+        </button>
+      ) : null}
+      {typeof document !== "undefined"
+        ? createPortal(
+      <AnimatePresence>
+        {open && spot ? (
+          <motion.div ref={pop} className="ll-src-pop" style={spot} role="group" aria-label="Sources to look in" initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.98, transition: { duration: 0.12 } }} transition={{ duration: 0.2, ease: EASE }}>
+            <header>
+              <b>Look only in</b>
+              <button type="button" className={chosen.length ? undefined : "is-on"} onClick={() => onChange([])}>
+                Everything
+              </button>
+            </header>
+            <ul>
+              {CHAT_SOURCES.map((s) => {
+                const on = value.includes(s.id);
+                return (
+                  <li key={s.id}>
+                    <button type="button" role="checkbox" aria-checked={on} className={on ? "is-on" : undefined} onClick={() => toggle(s.id)}>
+                      <span className="ll-src-ico">
+                        <Icon name={s.icon} size={15} />
+                      </span>
+                      <span className="ll-src-text">
+                        <b>{s.label}</b>
+                        <small>{s.hint}</small>
+                      </span>
+                      <span className="ll-src-check" aria-hidden>
+                        {on ? <Icon name="check" size={13} /> : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <footer>{chosen.length ? "Answers use only what's ticked." : "Nothing ticked, so answers can use everything."}</footer>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

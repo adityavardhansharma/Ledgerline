@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, action, internalMutation, mutation, query } from "./_generated/server";
 import { currentOrg, requireOrg } from "./lib/auth";
 import { CHAT_PROMPT } from "./lib/chatPrompt";
-import { CHAT_TOOLS, functionTools, toolNamed } from "./lib/chatSpec";
+import { allowedTools, CHAT_SOURCES, CHAT_TOOLS, functionTools, toolNamed } from "./lib/chatSpec";
 import { EngineError, engineStream } from "./lib/engine";
 
 /**
@@ -196,14 +196,19 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
  * One chat turn, streamed as server-sent events: thread, status (a tool is running), round (earlier words were
  * the model thinking aloud; start the answer again), delta (more words), done or error.
  */
-export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThreads">; text: string; page?: string; pageTitle?: string }, emit: (event: ChatEvent) => Promise<void>): Promise<{ threadId: Id<"chatThreads">; answer: string; tools: string[] }> {
+export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThreads">; text: string; page?: string; pageTitle?: string; sources?: string[] }, emit: (event: ChatEvent) => Promise<void>): Promise<{ threadId: Id<"chatThreads">; answer: string; tools: string[] }> {
   const turn = await ctx.runMutation(internal.chat.begin, { threadId: input.threadId, text: input.text, page: input.page });
   await emit({ type: "thread", threadId: turn.threadId, answerId: turn.answerId });
   const today = new Date();
+  const chosen = CHAT_SOURCES.filter((s) => input.sources?.includes(s.id));
+  const allowed = allowedTools(input.sources);
   const context = [
     `Company: ${turn.company}. You're talking with ${turn.who}.`,
     `Today is ${today.getUTCDate()} ${MONTHS[today.getUTCMonth()]} ${today.getUTCFullYear()}.${turn.asOf ? ` The latest month in the books is ${MONTHS[Number(turn.asOf.slice(5, 7)) - 1]} ${turn.asOf.slice(0, 4)}.` : " There are no figures yet."}`,
     input.page ? `They are looking at the ${input.pageTitle ?? input.page} page (${input.page}).` : "",
+    chosen.length
+      ? `They have limited you to these sources: ${chosen.map((s) => s.label).join(", ")}. Use only those tools, in calls and in ui blocks. If the question needs anything else, answer what you can from these and name the source they could add, using one of: ${CHAT_SOURCES.filter((s) => !chosen.includes(s)).map((s) => `"${s.label}"`).join(", ")}.`
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -218,7 +223,7 @@ export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThrea
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const last = round === MAX_ROUNDS - 1;
-      const response = await engineStream("/chat/complete", { messages, tools: last ? [] : functionTools(), max_tokens: 3000 });
+      const response = await engineStream("/chat/complete", { messages, tools: last ? [] : functionTools(allowed), max_tokens: 3000 });
       if (round > 0) await emit({ type: "round" });
       answer = "";
       const { content, calls } = await readTurn(response, async (text) => {
@@ -231,7 +236,8 @@ export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThrea
         const tool = CHAT_TOOLS.find((t) => t.name === call.function.name);
         await emit({ type: "status", tool: call.function.name, label: tool?.status ?? "Reading the books" });
         used.push(call.function.name);
-        messages.push({ role: "tool", tool_call_id: call.id || `call_${round}_${i}`, content: await runTool(ctx, call.function.name, call.function.arguments) });
+        const content = allowed.includes(call.function.name) ? await runTool(ctx, call.function.name, call.function.arguments) : JSON.stringify({ error: "That source isn't selected for this question." });
+        messages.push({ role: "tool", tool_call_id: call.id || `call_${round}_${i}`, content });
       }
     }
     if (!answer.trim()) answer = "I couldn't put an answer together that time. Try asking again, perhaps more specifically.";
@@ -249,7 +255,7 @@ export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThrea
 
 /** A whole turn without streaming (the command line, and a fallback where streaming is blocked). */
 export const turn = action({
-  args: { text: v.string(), page: v.optional(v.string()), threadId: v.optional(v.id("chatThreads")) },
+  args: { text: v.string(), page: v.optional(v.string()), threadId: v.optional(v.id("chatThreads")), sources: v.optional(v.array(v.string())) },
   handler: async (ctx, args): Promise<{ threadId: Id<"chatThreads">; answer: string; tools: string[]; statuses: string[] }> => {
     const statuses: string[] = [];
     const out = await chatTurn(ctx, args, async (e) => {

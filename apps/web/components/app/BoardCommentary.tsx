@@ -494,14 +494,17 @@ export function VersionHistory({ currentId, onClose }: { currentId: string | nul
           {versions.map((row) => (
             <li key={row.id}>
               <button type="button" onClick={() => setViewing(row)}>
-                <span>
+                <span className="ll-ver-text">
                   <strong>{when(row.createdAt)}</strong>
                   <small>
                     {row.editedBy ? `Edited by ${row.editedBy}` : row.createdBy ? `Drafted by ${row.createdBy}` : "Drafted"} · {TONES.find((t) => t.value === row.tone)?.label ?? "Board"}, {row.length}
                   </small>
                 </span>
-                {row.id === currentId ? <Badge tone="brand">Current</Badge> : null}
-                {row.status === "accepted" ? <Badge tone="positive" icon="check">Accepted</Badge> : null}
+                <span className="ll-ver-tags">
+                  {row.id === currentId ? <Badge tone="brand">Current</Badge> : null}
+                  {row.status === "accepted" ? <Badge tone="positive" icon="check">Accepted</Badge> : null}
+                </span>
+                <Icon name="chevron-right" size={15} />
               </button>
             </li>
           ))}

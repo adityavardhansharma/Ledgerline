@@ -119,9 +119,25 @@ export const CHAT_TOOLS: ChatTool[] = [
 export const toolNamed = (name: string) => CHAT_TOOLS.find((t) => t.name === name);
 
 /** The same tools in the OpenAI function-calling shape OpenRouter expects. */
-export const functionTools = () =>
-  CHAT_TOOLS.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input } }));
+export const functionTools = (only?: readonly string[]) =>
+  CHAT_TOOLS.filter((t) => !only || only.includes(t.name)).map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input } }));
 
 /** The same tools in the shape OpenUI's prompt generator expects. */
 export const openUiTools = () =>
   CHAT_TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.input, outputSchema: t.output, defaults: t.defaults }));
+
+/** What people can point the chat at, each a group of tools. Nothing chosen means everything. */
+export const CHAT_SOURCES = [
+  { id: "headline", label: "Headline figures", hint: "Cash, revenue, profit, margins, debtor days", icon: "overview", tools: ["company_overview"] },
+  { id: "trends", label: "Trends", hint: "Any figure month by month", icon: "trend-up", tools: ["monthly_trend"] },
+  { id: "pnl", label: "Profit and loss", hint: "The statement and where costs go", icon: "statement", tools: ["profit_and_loss", "cost_breakdown"] },
+  { id: "ledger", label: "Ledger", hint: "One account, line by line", icon: "ledger", tools: ["account_detail"] },
+  { id: "forecast", label: "Forecast and scenarios", hint: "Cash ahead, runway, your plans", icon: "forecast", tools: ["forecast", "scenarios"] },
+  { id: "customers", label: "Customers", hint: "Who owes you and who buys most", icon: "team", tools: ["owed_to_you", "top_customers"] },
+] as const;
+
+/** The tool names a set of chosen sources allows; every tool when none are chosen. */
+export function allowedTools(sources: readonly string[] | undefined): string[] {
+  const chosen = CHAT_SOURCES.filter((s) => sources?.includes(s.id));
+  return chosen.length ? chosen.flatMap((s) => [...s.tools]) : CHAT_TOOLS.map((t) => t.name);
+}

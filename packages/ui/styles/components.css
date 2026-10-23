@@ -1887,3 +1887,57 @@ input[type=range].ll-drv-range:focus-visible::-webkit-slider-thumb { box-shadow:
 .ll-tooltip.is-below { animation-name: ll-tip-in-below; }
 @keyframes ll-tip-in-below { from { opacity: 0; margin-top: -3px; } to { opacity: 1; margin-top: 0; } }
 @media (prefers-reduced-motion: reduce) { .ll-tooltip { animation: none; } }
+
+/* ---------- dialogs sit above the Ask pill, and the pill steps away while one is open ---------- */
+.ll-scrim:not(.is-inline) { z-index: calc(var(--z-overlay) + 10); }
+body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(.is-inline)) .ll-ask-pill { opacity: 0 !important; pointer-events: none; transform: translateY(12px) !important; transition: opacity .15s, transform .2s; }
+
+/* ---------- versions: when, who, then tags on one line ---------- */
+.ll-versions button { gap: 12px; padding: 12px 12px 12px 14px; }
+.ll-versions button > .ll-ver-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ll-ver-tags { display: inline-flex; gap: 6px; flex: none; }
+.ll-ver-tags .ll-badge { white-space: nowrap; }
+.ll-versions button > .ll-icon { color: var(--ink-subtle); flex: none; transition: transform .15s, color .15s; }
+.ll-versions button:hover > .ll-icon { color: var(--ink); transform: translateX(2px); }
+.ll-versions li + li { border-top: 1px solid var(--rule); }
+
+/* ---------- AI action button: a gradient ring that turns, an orb mark, a soft glow ---------- */
+@property --ll-ai-turn { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.ll-ai-btn { position: relative; gap: 8px; height: 32px; padding: 0 13px 0 5px; border: 1px solid transparent; border-radius: 999px; background: linear-gradient(var(--surface), var(--surface)) padding-box, conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)) border-box; color: var(--ink); font: 500 13px/1 var(--font-sans); box-shadow: 0 1px 2px rgba(14, 22, 19, .06); transition: box-shadow .25s, transform .2s cubic-bezier(.22, 1, .36, 1), --ll-ai-turn .9s cubic-bezier(.22, 1, .36, 1); }
+.ll-ai-btn.is-sm { height: 28px; padding: 0 11px 0 4px; font-size: 12.5px; }
+.ll-ai-btn .ll-ai-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none; background: conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)); }
+.ll-ai-btn.is-sm .ll-ai-mark { width: 20px; height: 20px; }
+.ll-ai-btn .ll-ai-mark svg { color: #fff; }
+.ll-ai-btn:hover:not(:disabled) { --ll-ai-turn: 180deg; transform: translateY(-1px); background: linear-gradient(var(--surface), var(--surface)) padding-box, conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)) border-box; box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--forecast) 55%, transparent), 0 0 0 3px color-mix(in srgb, var(--forecast) 9%, transparent); }
+.ll-ai-btn:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.ll-ai-btn.is-busy { animation: ll-ai-spin 1.6s linear infinite; color: var(--ink-muted); cursor: progress; }
+.ll-ai-btn.is-busy .ll-ai-mark { animation: ll-ai-spin 1.6s linear infinite, ll-breathe 1.4s ease-in-out infinite; }
+@keyframes ll-ai-spin { to { --ll-ai-turn: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .ll-ai-btn, .ll-ai-btn.is-busy, .ll-ai-btn.is-busy .ll-ai-mark { animation: none; transition: box-shadow .2s; } }
+
+/* ---------- Ask: choose where answers may look ---------- */
+.ll-src { position: relative; display: inline-flex; align-items: center; gap: 2px; }
+.ll-src-btn { all: unset; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--surface-sunken); font: 500 12.5px/1 var(--font-sans); color: var(--ink-muted); cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; }
+.ll-src-btn:hover { color: var(--ink); background: var(--surface-hover); }
+.ll-src-btn.is-set { background: var(--brand-tint); color: var(--brand); }
+.ll-src-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-src-clear { all: unset; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--ink-subtle); cursor: pointer; }
+.ll-src-clear:hover { background: var(--surface-hover); color: var(--ink); }
+.ll-src-pop { position: absolute; left: -6px; bottom: calc(100% + 10px); z-index: 10; width: 320px; padding: 8px; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface-raised); box-shadow: var(--shadow-modal); transform-origin: 20% 100%; }
+.ll-src-pop header { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 8px; }
+.ll-src-pop header b { font: 600 13px/1 var(--font-sans); }
+.ll-src-pop header button { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 999px; font: 500 12px/1 var(--font-sans); color: var(--ink-muted); border: 1px solid var(--rule); }
+.ll-src-pop header button.is-on { background: var(--brand-tint); color: var(--brand); border-color: transparent; }
+.ll-src-pop ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ll-src-pop li button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr) 20px; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 10px; cursor: pointer; transition: background-color .12s; }
+.ll-src-pop li button:hover { background: var(--surface-hover); }
+.ll-src-pop li button:focus-visible { outline: 2px solid var(--focus); }
+.ll-src-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--surface-sunken); color: var(--ink-muted); }
+.ll-src-pop li button.is-on .ll-src-ico { background: var(--brand-tint); color: var(--brand); }
+.ll-src-text b { display: block; font: 500 13px/1.3 var(--font-sans); color: var(--ink); }
+.ll-src-text small { display: block; font-size: 11.5px; line-height: 1.35; color: var(--ink-subtle); }
+.ll-src-check { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--rule-strong); color: var(--on-brand); }
+.ll-src-pop li button.is-on .ll-src-check { background: var(--brand); border-color: var(--brand); }
+.ll-src-pop footer { padding: 8px 8px 4px; margin-top: 4px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-subtle); }
+.ll-src-pop { position: fixed; left: auto; bottom: auto; z-index: 1000; }
+.ll-versions button > .ll-ver-tags { flex: none; display: inline-flex; flex-direction: row; gap: 6px; }
