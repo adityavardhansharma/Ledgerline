@@ -2203,7 +2203,8 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
    sit on one screen rather than across the fold. */
 @media (horizontal-viewport-segments: 2) {
   .ll-ask-panel { left: env(viewport-segment-left 1 0); right: auto; width: env(viewport-segment-width 1 0); margin: 0; border-radius: 0; height: 100dvh; bottom: 0; }
-  .ll-ask-pill { left: env(viewport-segment-left 1 0); right: auto; width: max-content; margin: 0 0 0 16px; }
+  /* Centred on the second screen, clear of the hinge. */
+  .ll-ask-pill { left: env(viewport-segment-left 1 0); right: 0; width: max-content; margin: 0 auto; }
   .ll-scrim:not(.is-inline) { padding-left: env(viewport-segment-left 1 0); }
 }
 @media (vertical-viewport-segments: 2) {
@@ -2214,3 +2215,19 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-heatmap { max-width: 100%; }
 .ll-heatmap svg { max-width: 100%; height: auto; }
 .ll-days > :first-child { flex: 0 1 auto; min-width: 0; }
+
+/* Revenue flow as a list on narrow screens */
+.ll-skl { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.ll-skl li { display: grid; align-items: center; gap: 10px; min-height: 30px; }
+.ll-skl-stage { grid-template-columns: 10px minmax(0, 1fr) 8.5em; padding: 10px 0 4px; margin-top: 6px; border-top: 1px solid var(--rule); font-size: 14px; }
+.ll-skl-stage.is-first { margin-top: 0; border-top: 0; padding-top: 0; }
+.ll-skl-stage b { font-weight: 600; color: var(--ink); }
+.ll-skl-stage.is-end { padding-bottom: 0; }
+.ll-skl-stage.is-end b, .ll-skl-stage.is-end .ll-skl-v { color: var(--positive); }
+.ll-skl-dot { width: 10px; height: 10px; border-radius: 3px; }
+.ll-skl-row { grid-template-columns: minmax(0, 1fr) minmax(40px, 24%) 8.5em; padding-left: 20px; font-size: 13px; color: var(--ink-muted); }
+.ll-skl-name { line-height: 1.35; overflow-wrap: anywhere; }
+.ll-skl-bar { height: 6px; border-radius: 3px; background: var(--surface-hover); overflow: hidden; }
+.ll-skl-bar i { display: block; height: 100%; border-radius: 3px; }
+.ll-skl-v { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; white-space: nowrap; }
+.ll-skl-v small { margin-left: 6px; font-size: 11.5px; color: var(--ink-subtle); }

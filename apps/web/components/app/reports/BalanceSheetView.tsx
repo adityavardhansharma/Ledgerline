@@ -88,9 +88,7 @@ export function BalanceSheetView({ snapshot, check }: { snapshot: Snapshot; chec
                 <RailBlock title="Working capital against target">
                   <BulletChart rows={bullets as never} />
                 </RailBlock>
-                <RailBlock title="Checked against Xero">
-                  {check}
-                </RailBlock>
+                {check}
               </>
             }
           />

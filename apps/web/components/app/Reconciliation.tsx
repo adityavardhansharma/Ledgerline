@@ -4,8 +4,20 @@ import { Button, ReconcileCheck } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { MismatchExplainer } from "./ai/Explainers";
+import { RailBlock } from "./report/Report";
 
 /** The proof under every statement: Ledgerline's figures against Xero's own reports. */
+/** The rail block, only when there is a check against Xero to show (sample and CSV companies have none). */
+export function XeroCheck({ report }: { report?: string }) {
+  const result = useQuery(api.reports.reconciliation);
+  if (!result) return null;
+  return (
+    <RailBlock title="Checked against Xero">
+      <Reconciliation report={report} />
+    </RailBlock>
+  );
+}
+
 export function Reconciliation({ report = "P&L" }: { report?: string }) {
   const result = useQuery(api.reports.reconciliation);
   const sync = useMutation(api.sync.request);
