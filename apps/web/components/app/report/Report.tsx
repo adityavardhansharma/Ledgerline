@@ -18,23 +18,25 @@ export const pctChange = (ratio: number) => `${sign(ratio)}${formatPct(Math.abs(
 
 export function SummaryLine({ figures }: { figures: Figure[] }) {
   return (
-    <dl className="ll-summary">
-      {figures.map((f) => {
-        const tone = f.change == null || f.change === 0 || !f.good ? "" : (f.change > 0) === (f.good === "up") ? " is-good" : " is-bad";
-        return (
-          <div key={f.label}>
-            <dt>{f.label}</dt>
-            <dd>{f.value}</dd>
-            {f.changeText || f.note ? (
-              <dd className="ll-summary-foot">
-                {f.changeText ? <span className={`ll-summary-change${tone}`}>{f.changeText}</span> : null}
-                {f.note ? <span>{f.note}</span> : null}
-              </dd>
-            ) : null}
-          </div>
-        );
-      })}
-    </dl>
+    <div className="ll-summary-wrap">
+      <dl className="ll-summary">
+        {figures.map((f) => {
+          const tone = f.change == null || f.change === 0 || !f.good ? "" : (f.change > 0) === (f.good === "up") ? " is-good" : " is-bad";
+          return (
+            <div key={f.label}>
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+              {f.changeText || f.note ? (
+                <dd className="ll-summary-foot">
+                  {f.changeText ? <span className={`ll-summary-change${tone}`}>{f.changeText}</span> : null}
+                  {f.note ? <span>{f.note}</span> : null}
+                </dd>
+              ) : null}
+            </div>
+          );
+        })}
+      </dl>
+    </div>
   );
 }
 
