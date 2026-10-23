@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
+import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
@@ -79,19 +79,13 @@ export default function BoardPackPage() {
         const monthIndex = snapshot.pnl.columns.findIndex((c) => c.period === snapshot.asOf);
         return (
           <>
-            <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
             {error ? (
               <div className="no-print">
                 <Banner tone="negative" title="Commentary wasn't drafted.">{error}</Banner>
               </div>
             ) : null}
-            {commentary && commentary.status !== "accepted" ? (
-              <div className="no-print">
-                <Banner tone="info" title="Accept the commentary to export.">
-                  Board packs only go out with commentary a person has read and accepted. Edit or redraft any section first.
-                </Banner>
-              </div>
-            ) : null}
+            <div className="ll-workspace is-doc">
+              <div className="ll-workspace-main">
             <div className="ll-board">
               <div className="ll-board-cover">
                 <div>
@@ -116,15 +110,6 @@ export default function BoardPackPage() {
               {commentary?.sections ? (
                 <>
                   <BoardCommentary commentary={commentary} busy={busy} onRedraft={(section) => void write({ section })} />
-                  <div className="ll-row no-print">
-                    {commentary.status === "draft" ? (
-                      <Button variant="primary" icon="check" loading={accepting} disabled={Boolean(busy)} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
-                        Accept for the board
-                      </Button>
-                    ) : (
-                      <Badge tone="positive" icon="check">Accepted by {commentary.acceptedBy}</Badge>
-                    )}
-                  </div>
                 </>
               ) : commentary?.paragraphs ? (
                 <CommentaryCard
@@ -156,7 +141,32 @@ export default function BoardPackPage() {
                 drillable={false}
               />
             </div>
-            <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
+              </div>
+              <aside className="ll-inspector no-print" aria-label="Board pack">
+                <div className="ll-inspector-inner">
+                  <section className={`ll-pack-status${commentary?.status === "accepted" ? " is-done" : ""}`}>
+                    <span className="ll-pack-status-dot" aria-hidden />
+                    <div>
+                      <b>{commentary?.status === "accepted" ? "Ready to send" : commentary ? "Draft" : "No commentary yet"}</b>
+                      <small>
+                        {commentary?.status === "accepted"
+                          ? `Accepted by ${commentary.acceptedBy}. Export the PDF from the top bar.`
+                          : commentary
+                            ? "Read it, edit or redraft any section, then accept it to export."
+                            : "Draft the commentary, then accept it to export."}
+                      </small>
+                    </div>
+                  </section>
+                  {commentary?.sections && commentary.status === "draft" ? (
+                    <Button variant="primary" icon="check" block loading={accepting} disabled={Boolean(busy)} onClick={async () => { setAccepting(true); try { await accept({ id: commentary.id }); } finally { setAccepting(false); } }}>
+                      Accept for the board
+                    </Button>
+                  ) : null}
+                  <CommentaryToolbar commentary={commentary} busy={busy === "all"} onDraft={(opts) => void write(opts)} onHistory={() => setHistory(true)} />
+                  <BoardNotes canRedraft={Boolean(commentary)} busy={busy === "all"} onRedraft={() => void write({})} />
+                </div>
+              </aside>
+            </div>
           </>
         );
       }}

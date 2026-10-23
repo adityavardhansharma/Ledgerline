@@ -333,8 +333,14 @@ export function CommentaryToolbar({
         </div>
       </div>
       <div className="ll-studio-options">
-        <SegmentedControl label="Written for" size="sm" value={tone} onChange={setTone} options={TONES} />
-        <SegmentedControl label="Length" size="sm" value={length} onChange={setLength} options={LENGTHS} />
+        <div className="ll-studio-field">
+          <span>Written for</span>
+          <SegmentedControl label="Written for" size="sm" value={tone} onChange={setTone} options={TONES} />
+        </div>
+        <div className="ll-studio-field">
+          <span>Length</span>
+          <SegmentedControl label="Length" size="sm" value={length} onChange={setLength} options={LENGTHS} />
+        </div>
         {commentary ? (
           <Button variant="ghost" size="sm" icon="clock" onClick={onHistory}>
             Versions

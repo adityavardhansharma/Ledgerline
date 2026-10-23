@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AssumptionField,
   Badge,
   Banner,
   FinancialStatement,
@@ -23,6 +22,7 @@ import { BranchDialog } from "@/components/app/BranchDialog";
 import { CashDipExplainer } from "@/components/app/ai/Explainers";
 import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/ai/Planners";
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
+import { DriverField } from "@/components/app/DriverField";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
@@ -32,14 +32,24 @@ import { ROUTES } from "@/lib/nav";
 import type { ForecastRun, Snapshot } from "@/lib/types";
 import { cashChart } from "@/lib/views";
 
-// Drivers shown as sliders: key, label, unit, scale (stored value × scale = shown value), min, max, step, help.
-const DRIVERS: [string, string, string, number, number, number, number, string][] = [
-  ["growth", "Revenue growth a month", "%", 100, -5, 10, 0.1, "Compound growth from last month's revenue."],
-  ["grossMargin", "Gross margin", "%", 100, 0, 90, 0.5, "Gross profit as a share of revenue."],
-  ["overheadGrowth", "Overheads growth a year", "%", 100, -20, 30, 0.5, "Applied to today's monthly overheads."],
-  ["debtorDays", "Debtor days", "days", 1, 0, 120, 1, "How long customers take to pay, on average."],
-  ["creditorDays", "Creditor days", "days", 1, 0, 120, 1, "How long you take to pay suppliers."],
-  ["stockDays", "Stock days", "days", 1, 0, 120, 1, "Stock held, in days of cost of sales."],
+// Drivers in groups: key, label, unit, scale (stored value × scale = shown value), min, max, step, help.
+const DRIVER_GROUPS: { title: string; drivers: [string, string, string, number, number, number, number, string][] }[] = [
+  {
+    title: "Revenue",
+    drivers: [
+      ["growth", "Growth a month", "%", 100, -5, 10, 0.1, "Compound, from last month's revenue."],
+      ["grossMargin", "Gross margin", "%", 100, 0, 90, 0.5, "Gross profit as a share of revenue."],
+    ],
+  },
+  { title: "Costs", drivers: [["overheadGrowth", "Overheads growth a year", "%", 100, -20, 30, 0.5, "Applied to today's monthly overheads."]] },
+  {
+    title: "Working capital",
+    drivers: [
+      ["debtorDays", "Debtor days", "days", 1, 0, 120, 1, "How long customers take to pay."],
+      ["creditorDays", "Creditor days", "days", 1, 0, 120, 1, "How long you take to pay suppliers."],
+      ["stockDays", "Stock days", "days", 1, 0, 120, 1, "Stock held, in days of cost of sales."],
+    ],
+  },
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -204,21 +214,27 @@ function ForecastScreen() {
               />
               <div className="ll-drv-body">
                 {tab === "assumptions" &&
-                  DRIVERS.map(([key, label, unit, scale, min, max, step, help]) => (
-                    <fieldset key={`${scenarioId}-${key}`} disabled={readOnly} style={{ border: 0, padding: 0, margin: 0 }}>
-                      <AssumptionField
-                        id={`driver-${key}`}
-                        label={label}
-                        unit={unit}
-                        min={min}
-                        max={max}
-                        step={step}
-                        defaultValue={round(value(key) * scale)}
-                        base={scenario.isBase ? undefined : round(parentValue(key) * scale)}
-                        help={help}
-                        onChange={(v) => commit(key, v, scale)}
-                      />
-                    </fieldset>
+                  DRIVER_GROUPS.map((group) => (
+                    <section key={group.title} className="ll-drv-group">
+                      <h3>{group.title}</h3>
+                      {group.drivers.map(([key, label, unit, scale, min, max, step, help]) => (
+                        <DriverField
+                          key={`${scenarioId}-${key}`}
+                          id={`driver-${key}`}
+                          label={label}
+                          unit={unit}
+                          min={min}
+                          max={max}
+                          step={step}
+                          value={round(value(key) * scale)}
+                          parent={scenario.isBase ? undefined : round(parentValue(key) * scale)}
+                          help={help}
+                          readOnly={readOnly}
+                          onChange={(v) => commit(key, v, scale)}
+                          onReset={key in scenario.own.overrides && scenarioId ? () => void setOverride({ id: scenarioId, key, value: null }) : undefined}
+                        />
+                      ))}
+                    </section>
                   ))}
                 {tab === "hires" && (
                   <PlanList

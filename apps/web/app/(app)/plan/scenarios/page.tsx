@@ -1,6 +1,6 @@
 "use client";
 
-import { BulletChart, Button, EmptyState, IconButton, LineChart, Menu, Panel, ScenarioCard, ScenarioCompare } from "@ledgerline/ui";
+import { Badge, BulletChart, Button, EmptyState, formatMoney, IconButton, LineChart, Menu, Panel, ScenarioCompare, Sparkline } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -93,38 +93,30 @@ export default function ScenariosPage() {
         const b = side(other);
         return (
           <>
-            <div className="ll-grid-kpi" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
-              {scenarios.map((s) => (
-                <div key={s.id} style={{ position: "relative" }}>
-                  <ScenarioCard
-                    name={s.name}
-                    base={s.isBase}
-                    parent={s.parentName ?? undefined}
-                    changes={s.changes}
-                    runway={s.summary?.runwayMonths ?? null}
-                    cash={s.summary?.endCash != null ? s.summary.endCash / 100 : null}
-                    ebitda={s.summary?.ebitdaFirst12 != null ? s.summary.ebitdaFirst12 / 100 : null}
-                    horizon={24}
-                    cashLabel="Cash in 2 years"
-                    active={s.isBase}
-                    compare={!s.isBase && s.id === other?.id}
-                    onSelect={s.isBase ? undefined : () => setCompareId(s.id)}
-                    menu={<IconButton icon="more" label={`Actions for ${s.name}`} size="sm" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === s.id ? null : s.id); }} />}
-                  />
-                  {menuFor === s.id ? (
-                    <div style={{ position: "absolute", right: 12, top: 48, zIndex: 30 }}>
-                      <Menu
-                        label={`Actions for ${s.name}`}
-                        items={[
-                          { label: "Open in forecast", icon: "forecast", onClick: () => router.push(`${ROUTES.forecast}?scenario=${s.id}`) },
-                          ...(s.isBase ? [] : [{ divider: true }, { label: "Delete scenario", icon: "trash" as const, danger: true, onClick: () => { setMenuFor(null); void remove({ id: s.id }); } }]),
-                        ]}
-                      />
-                    </div>
-                  ) : null}
+            <section className="ll-report-hero is-flush">
+              <div className="ll-scn-list" role="list">
+                <div className="ll-scn-row is-head" aria-hidden>
+                  <span>Scenario</span>
+                  <span>Cash over two years</span>
+                  <span>Lowest cash</span>
+                  <span>Cash in two years</span>
+                  <span>Runway</span>
+                  <span />
                 </div>
-              ))}
-            </div>
+                {scenarios.map((s) => (
+                  <ScenarioRow
+                    key={s.id}
+                    scenario={s}
+                    comparing={!s.isBase && s.id === other?.id}
+                    onCompare={s.isBase ? undefined : () => setCompareId(s.id)}
+                    menuOpen={menuFor === s.id}
+                    onMenu={() => setMenuFor(menuFor === s.id ? null : s.id)}
+                    onOpen={() => router.push(`${ROUTES.forecast}?scenario=${s.id}`)}
+                    onDelete={s.isBase ? undefined : () => { setMenuFor(null); void remove({ id: s.id }); }}
+                  />
+                ))}
+              </div>
+            </section>
             {other && b ? (
               <>
                 <ReportGrid
@@ -173,5 +165,45 @@ export default function ScenariosPage() {
         );
       }}
     </AppPage>
+  );
+}
+
+type ScenarioSummary = NonNullable<ReturnType<typeof useScenarios>["scenarios"]>[number];
+
+/** One scenario as a row: what it is, its cash line, the figures that matter, and its actions. */
+function ScenarioRow({ scenario, comparing, onCompare, menuOpen, onMenu, onOpen, onDelete }: { scenario: ScenarioSummary; comparing: boolean; onCompare?: () => void; menuOpen: boolean; onMenu: () => void; onOpen: () => void; onDelete?: () => void }) {
+  const run = useQuery(api.forecast.latest, { scenarioId: scenario.id }) as ForecastRun | null | undefined;
+  const sum = scenario.summary;
+  const cash = run?.months.map((m) => m.cash / 100) ?? [];
+  const money = (cents: number | null | undefined) => (cents == null ? "–" : formatMoney(cents / 100));
+  const runsOut = sum?.runwayMonths != null && run?.cashOutPeriod;
+  return (
+    <div className={`ll-scn-row${comparing ? " is-on" : ""}${onCompare ? " is-pickable" : ""}`} role="listitem" onClick={onCompare}>
+      <span className="ll-scn-name">
+        <b>
+          {scenario.name}
+          {scenario.isBase ? <Badge tone="brand">Base</Badge> : comparing ? <Badge tone="forecast">Comparing</Badge> : null}
+        </b>
+        <small>{scenario.isBase ? "Drivers from your actuals" : `From ${scenario.parentName ?? "the base case"} · ${scenario.changes} change${scenario.changes === 1 ? "" : "s"}`}</small>
+      </span>
+      <span className="ll-scn-spark">{cash.length > 1 ? <Sparkline data={cash} width={150} height={34} tone={cash.some((v) => v < 0) ? "negative" : undefined} label={`${scenario.name} cash`} /> : <i className="ll-muted">Running…</i>}</span>
+      <span className={`ll-scn-num${(sum?.lowestCash ?? 0) < 0 ? " is-bad" : ""}`}>{money(sum?.lowestCash)}</span>
+      <span className="ll-scn-num">{money(sum?.endCash)}</span>
+      <span className={`ll-scn-num${runsOut ? " is-bad" : ""}`}>{runsOut ? `${sum!.runwayMonths!.toFixed(1)} mo` : "24+ mo"}</span>
+      <span className="ll-scn-actions" onClick={(e) => e.stopPropagation()}>
+        <IconButton icon="more" label={`Actions for ${scenario.name}`} size="sm" onClick={onMenu} />
+        {menuOpen ? (
+          <span className="ll-scn-menu">
+            <Menu
+              label={`Actions for ${scenario.name}`}
+              items={[
+                { label: "Open in forecast", icon: "forecast", onClick: onOpen },
+                ...(onDelete ? [{ divider: true }, { label: "Delete scenario", icon: "trash" as const, danger: true, onClick: onDelete }] : []),
+              ]}
+            />
+          </span>
+        ) : null}
+      </span>
+    </div>
   );
 }
