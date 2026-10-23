@@ -4,7 +4,7 @@ import { Icon } from "@ledgerline/ui";
 import { Renderer } from "@openuidev/react-lang";
 import { useConvex } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
-import { createContext, memo, useContext, useMemo, useRef } from "react";
+import { createContext, memo, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { CHAT_TOOLS } from "@/convex/lib/chatSpec";
 import { chatLibrary, Prose } from "./library";
@@ -112,31 +112,66 @@ const ICON: Record<string, Parameters<typeof Icon>[0]["name"]> = {
   top_customers: "team",
 };
 
-/** While the assistant reads the books: each source it opens appears in turn, the current one shimmering. */
-export function Reading({ steps, phase }: { steps: { tool: string; label: string }[]; phase: string }) {
-  const current = phase === "writing" || phase === "done" ? -1 : steps.length - 1;
+type Step = { tool: string; label: string; detail?: string };
+
+/**
+ * While the assistant reads the books: a timeline of the sources it opens, each with what it's looking at, the
+ * current one turning, and a running clock. Once the answer starts, it folds into one line you can open again.
+ */
+export function Reading({ steps, phase, startedAt, tookMs }: { steps: Step[]; phase: string; startedAt?: number; tookMs?: number }) {
+  const working = phase !== "writing" && phase !== "done" && phase !== "error";
+  const [open, setOpen] = useState(working);
+  const started = useRef(startedAt ?? Date.now());
+  const [elapsed, setElapsed] = useState(tookMs ?? 0);
+  useEffect(() => {
+    if (!working) {
+      setOpen(false);
+      if (tookMs) setElapsed(tookMs);
+      return;
+    }
+    const t = setInterval(() => setElapsed(Date.now() - started.current), 100);
+    return () => clearInterval(t);
+  }, [working, tookMs]);
+  const seconds = elapsed ? `${(elapsed / 1000).toFixed(1)}s` : "";
+  const current = working ? steps.at(-1) : undefined;
+  const sources = new Set(steps.map((s) => s.tool)).size;
+  const head = working ? (current ? (current.detail ? `${current.label} · ${current.detail}` : current.label) : "Thinking") : `Read ${sources} source${sources === 1 ? "" : "s"}`;
   return (
-    <div className="ll-chat-reading">
+    <div className={`ll-think${working ? " is-working" : ""}`}>
+      <button type="button" className="ll-think-head" onClick={() => setOpen((o) => !o)} aria-expanded={open} disabled={!steps.length}>
+        <span className="ll-think-mark" aria-hidden>
+          {working ? <span className="ll-think-spin" /> : <Icon name="check" size={12} />}
+        </span>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={head} className={`ll-think-title${working ? " ll-shimmer" : ""}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
+            {head}
+          </motion.span>
+        </AnimatePresence>
+        {seconds ? <span className="ll-think-time">{seconds}</span> : null}
+        {steps.length ? <Icon name="chevron-down" size={14} className={`ll-think-chev${open ? " is-open" : ""}`} /> : null}
+      </button>
       <AnimatePresence initial={false}>
-        {steps.length === 0 ? (
-          <motion.div key="thinking" className="ll-chat-step is-current" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
-            <span className="ll-chat-step-icon"><Icon name="sparkle" size={13} /></span>
-            <span className="ll-shimmer">Thinking</span>
-          </motion.div>
-        ) : (
-          steps.map((s, i) => (
-            <motion.div
-              key={`${s.tool}-${i}`}
-              className={`ll-chat-step${i === current ? " is-current" : " is-done"}`}
-              initial={{ opacity: 0, y: 6, filter: "blur(2px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className="ll-chat-step-icon">{i === current ? <Icon name={ICON[s.tool] ?? "sparkle"} size={13} /> : <Icon name="check" size={13} />}</span>
-              <span className={i === current ? "ll-shimmer" : undefined}>{s.label}</span>
-            </motion.div>
-          ))
-        )}
+        {open && steps.length ? (
+          <motion.ol key="steps" className="ll-think-steps" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+            {steps.map((s, i) => {
+              const live = working && i === steps.length - 1;
+              return (
+                <motion.li key={`${s.tool}-${i}`} className={live ? "is-live" : undefined} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
+                  <span className="ll-think-ico" aria-hidden>
+                    <Icon name={ICON[s.tool] ?? "sparkle"} size={13} />
+                  </span>
+                  <span className="ll-think-text">
+                    <span>{s.label}</span>
+                    {s.detail ? <small>{s.detail}</small> : null}
+                  </span>
+                  <span className="ll-think-state" aria-hidden>
+                    {live ? <span className="ll-think-spin" /> : <Icon name="check" size={12} />}
+                  </span>
+                </motion.li>
+              );
+            })}
+          </motion.ol>
+        ) : null}
       </AnimatePresence>
     </div>
   );

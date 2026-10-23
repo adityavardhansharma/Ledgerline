@@ -1696,7 +1696,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-ask-title span { font: 500 13.5px/18px var(--font-sans); color: var(--ink-muted); }
 .ll-ask-menu { display: none; }
 .ll-ask-thread { padding: 8px 32px 16px; max-width: 760px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.ll-ask-a { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; }
+.ll-ask-a:has(> .ll-ask-a-mark) { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; }
 .ll-ask-a-mark { padding-top: 2px; }
 .ll-ask-a-mark .ll-ask-orb { width: 22px; height: 22px; }
 .ll-ask-a-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -1985,3 +1985,34 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-rev-spark svg { width: 100%; }
 .ll-rev-range { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-subtle); }
 .ll-rev-range b { display: block; margin-top: 2px; font: 500 12.5px var(--font-mono); color: var(--ink); }
+
+/* ---------- thinking: a timeline of what it's reading, folding to one line once it writes ---------- */
+.ll-think { display: flex; flex-direction: column; align-self: flex-start; min-width: 0; max-width: 100%; }
+.ll-think-head { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 9px; max-width: 100%; height: 30px; padding: 0 10px 0 4px; margin-left: -4px; border-radius: 999px; cursor: pointer; font: 500 13px/1 var(--font-sans); color: var(--ink-muted); transition: background-color .15s, color .15s; }
+.ll-think-head:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
+.ll-think-head:disabled { cursor: default; }
+.ll-think-head:focus-visible { outline: 2px solid var(--focus); }
+.ll-think-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none; background: var(--positive-tint); color: var(--positive); }
+.ll-think.is-working .ll-think-mark { background: var(--forecast-tint); }
+.ll-think-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ll-think-time { font: 500 11.5px var(--font-mono); color: var(--ink-subtle); font-variant-numeric: tabular-nums; }
+.ll-think-chev { color: var(--ink-subtle); transition: transform .2s; flex: none; }
+.ll-think-chev.is-open { transform: rotate(180deg); }
+.ll-think-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--forecast) 25%, transparent); border-top-color: var(--forecast); animation: ll-spin .8s linear infinite; }
+@keyframes ll-spin { to { transform: rotate(360deg); } }
+.ll-think-steps { list-style: none; margin: 6px 0 2px 6px; padding: 0 0 0 14px; border-left: 1.5px solid var(--rule); overflow: hidden; }
+.ll-think-steps li { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr) 16px; gap: 10px; align-items: center; padding: 5px 0; }
+.ll-think-steps li::before { content: ''; position: absolute; left: -18px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--rule-strong); }
+.ll-think-steps li.is-live::before { border-color: var(--forecast); background: var(--forecast); box-shadow: 0 0 0 3px var(--forecast-tint); }
+.ll-think-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--surface-sunken); color: var(--ink-muted); }
+.ll-think-steps li.is-live .ll-think-ico { background: var(--forecast-tint); color: var(--forecast); }
+.ll-think-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: var(--ink-muted); }
+.ll-think-text > span { white-space: nowrap; }
+.ll-think-text small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 7px; border-radius: 6px; background: var(--surface-sunken); font: 500 11.5px/1.5 var(--font-mono); color: var(--ink); }
+.ll-think-steps li.is-live .ll-think-text > span { color: var(--ink); }
+.ll-think-state { display: grid; place-items: center; color: var(--positive); }
+@media (prefers-reduced-motion: reduce) { .ll-think-spin { animation-duration: 2.4s; } }
+.ll-think-title { flex: 0 1 auto; overflow: visible; }
+.ll-think-head { max-width: none; }
+.ll-think-steps { margin-left: 15px; padding-left: 16px; }
+.ll-think-steps li::before { display: none; }

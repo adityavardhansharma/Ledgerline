@@ -12,8 +12,10 @@ export type Live = {
   threadId: Id<"chatThreads"> | null;
   answerId: Id<"chatMessages"> | null;
   content: string;
-  steps: { tool: string; label: string }[];
+  steps: { tool: string; label: string; detail?: string }[];
   phase: "thinking" | "reading" | "writing" | "done" | "error";
+  /** How long it read before it started writing. */
+  thoughtMs?: number;
   error?: string;
 };
 
@@ -82,14 +84,14 @@ export function useChatStream(onThread: (id: Id<"chatThreads">) => void) {
               update({ threadId: event.threadId as Id<"chatThreads">, answerId: event.answerId as Id<"chatMessages"> });
               onThread(event.threadId as Id<"chatThreads">);
             } else if (event.type === "status") {
-              state.steps.push({ tool: String(event.tool), label: String(event.label) });
+              state.steps.push({ tool: String(event.tool), label: String(event.label), detail: typeof event.detail === "string" ? event.detail : undefined });
               update({ phase: "reading" });
             } else if (event.type === "round") {
               pending = "";
               update({ content: "", phase: "reading" });
             } else if (event.type === "delta") {
               pending += String(event.text);
-              if (state.phase !== "writing") update({ phase: "writing" });
+              if (state.phase !== "writing") update({ phase: "writing", thoughtMs: state.thoughtMs ?? Date.now() - state.startedAt });
               if (!raf) raf = requestAnimationFrame(flush);
             } else if (event.type === "error") {
               update({ phase: "error", error: String(event.message) });

@@ -344,10 +344,10 @@ function Panel({ onClose }: { onClose: () => void }) {
                         </span>
                         <div className="ll-ask-a-body">
                           {m.status === "live" && live && i === rows.length - 1 && live.phase !== "writing" && !m.content ? (
-                            <Reading steps={live.steps} phase={live.phase} />
+                            <Reading steps={live.steps} phase={live.phase} startedAt={live.startedAt} tookMs={live.thoughtMs} />
                           ) : (
                             <>
-                              {m.status === "live" && live?.steps.length ? <Reading steps={live.steps} phase={live.phase} /> : null}
+                              {m.status === "live" && live?.steps.length ? <Reading steps={live.steps} phase={live.phase} startedAt={live.startedAt} tookMs={live.thoughtMs} /> : null}
                               <AnswerBody content={m.content} live={m.status === "live"} />
                             </>
                           )}

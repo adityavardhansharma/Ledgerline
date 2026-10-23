@@ -113,11 +113,35 @@ type ToolCall = { id: string; type: "function"; function: { name: string; argume
 type ModelMessage = { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string };
 export type ChatEvent =
   | { type: "thread"; threadId: Id<"chatThreads">; answerId: Id<"chatMessages"> }
-  | { type: "status"; tool: string; label: string }
+  | { type: "status"; tool: string; label: string; detail?: string }
   | { type: "round" }
   | { type: "delta"; text: string }
   | { type: "done" }
   | { type: "error"; message: string };
+
+/** What a step is looking at, in a few words: "revenue, 12 months", "Hire two", "September 2026". */
+function stepDetail(name: string, raw: string): string | undefined {
+  let args: Record<string, unknown> = {};
+  try {
+    args = JSON.parse(raw || "{}");
+  } catch {
+    return undefined;
+  }
+  const month = (p: unknown) => (typeof p === "string" && /^\d{4}-\d{2}$/.test(p) ? `${MONTHS[Number(p.slice(5, 7)) - 1]} ${p.slice(0, 4)}` : undefined);
+  const words = (v: unknown) => (typeof v === "string" && v ? v.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase() : undefined);
+  switch (name) {
+    case "monthly_trend":
+      return [words(args.metric), typeof args.months === "number" ? `${args.months} months` : undefined].filter(Boolean).join(", ") || undefined;
+    case "forecast":
+      return typeof args.scenario === "string" && args.scenario ? args.scenario : "base case";
+    case "profit_and_loss":
+      return month(args.month);
+    case "account_detail":
+      return [typeof args.account === "string" ? args.account : undefined, month(args.month)].filter(Boolean).join(", ") || undefined;
+    default:
+      return undefined;
+  }
+}
 
 /** Run one tool as the signed-in person, returning compact JSON for the model. */
 async function runTool(ctx: ActionCtx, name: string, rawArgs: string) {
@@ -234,7 +258,7 @@ export async function chatTurn(ctx: ActionCtx, input: { threadId?: Id<"chatThrea
       messages.push({ role: "assistant", content: content || null, tool_calls: calls.map((c, i) => ({ ...c, id: c.id || `call_${round}_${i}` })) });
       for (const [i, call] of calls.entries()) {
         const tool = CHAT_TOOLS.find((t) => t.name === call.function.name);
-        await emit({ type: "status", tool: call.function.name, label: tool?.status ?? "Reading the books" });
+        await emit({ type: "status", tool: call.function.name, label: tool?.status ?? "Reading the books", detail: stepDetail(call.function.name, call.function.arguments) });
         used.push(call.function.name);
         const content = allowed.includes(call.function.name) ? await runTool(ctx, call.function.name, call.function.arguments) : JSON.stringify({ error: "That source isn't selected for this question." });
         messages.push({ role: "tool", tool_call_id: call.id || `call_${round}_${i}`, content });
