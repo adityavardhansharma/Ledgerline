@@ -2207,3 +2207,8 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 @media (vertical-viewport-segments: 2) {
   .ll-ask-panel { top: env(viewport-segment-top 0 1); bottom: 0; height: env(viewport-segment-height 0 1); width: 100vw; border-radius: 0; }
 }
+
+/* The bank calendar and other fixed-geometry charts scale down to fit instead of clipping. */
+.ll-heatmap { max-width: 100%; }
+.ll-heatmap svg { max-width: 100%; height: auto; }
+.ll-days > :first-child { flex: 0 1 auto; min-width: 0; }
