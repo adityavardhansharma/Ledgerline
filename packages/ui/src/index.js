@@ -1195,7 +1195,7 @@ function Sidebar(p) {
       p.onCollapse ? h('button', { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
         h(Icon, { name: collapsed ? 'chevron-right' : 'chevron-left', size: 15 })) : null),
     h('div', { className: 'll-sidebar-org' },
-      collapsed ? h('span', { className: 'll-org-avatar', title: p.org || '' }, initials(p.org || '?')) : (p.orgSwitcher || h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }))),
+      p.orgSwitcher || (collapsed ? h('span', { className: 'll-org-avatar', title: p.org || '' }, initials(p.org || '?')) : h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }))),
     p.onAsk ? h('button', { type: 'button', className: 'll-sidebar-ask', onClick: p.onAsk, 'aria-label': 'Ask Ledgerline', 'data-label': 'Ask Ledgerline' }, h('span', { className: 'll-ask-orb', 'aria-hidden': true }), h('span', { className: 'll-sidebar-ask-text' }, 'Ask Ledgerline'), h('kbd', null, p.askShortcut || 'Ctrl J')) : null,
     p.onSearch ? h('button', { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
     h('div', { className: 'll-sidebar-nav' }, items.map(function (it, i) {

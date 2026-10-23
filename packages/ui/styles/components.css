@@ -1951,3 +1951,18 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-days-sum dd.is-out { color: var(--negative); }
 .ll-days-sum dd.is-in { color: var(--positive); }
 .ll-days-sum small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-muted); }
+
+/* ---------- company switcher: a full-width row like the rest of the sidebar ---------- */
+.ll-sidebar-org > div { padding: 0 !important; border: 0 !important; background: none !important; }
+.ll-sidebar .ll-orgswitch { display: flex; width: 100%; }
+.ll-sidebar .ll-orgswitch-trigger { width: 100% !important; display: flex !important; align-items: center !important; gap: 10px !important; height: 44px; padding: 0 8px 0 6px !important; margin: 0 !important; border: 1px solid transparent !important; border-radius: 11px !important; background: transparent !important; box-shadow: none !important; color: var(--ink) !important; outline: none; transition: background-color .15s, border-color .15s; }
+.ll-sidebar .ll-orgswitch-trigger:hover { background: var(--surface-hover) !important; }
+.ll-sidebar .ll-orgswitch-trigger:focus-visible { border-color: var(--focus) !important; box-shadow: 0 0 0 3px var(--forecast-tint) !important; }
+.ll-sidebar .ll-orgswitch-trigger[aria-expanded="true"] { background: var(--surface) !important; border-color: var(--rule) !important; }
+.ll-sidebar .ll-orgswitch-trigger > :first-child { flex: 1; min-width: 0; display: flex !important; align-items: center !important; gap: 10px !important; }
+.ll-sidebar .ll-orgswitch-avatar { width: 30px !important; height: 30px !important; border-radius: 8px !important; flex: none; overflow: hidden; }
+.ll-sidebar .ll-orgswitch-name { font: 600 13.5px/1.3 var(--font-sans) !important; color: var(--ink) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ll-sidebar .ll-orgswitch-chev { margin-left: auto !important; width: 14px !important; height: 14px !important; color: var(--ink-subtle) !important; opacity: 1 !important; flex: none; }
+.ll-sidebar.is-collapsed .ll-orgswitch-trigger { width: 44px !important; padding: 0 !important; justify-content: center !important; margin: 0 auto !important; }
+.ll-sidebar.is-collapsed .ll-orgswitch-trigger > :first-child { flex: none; }
+.ll-sidebar.is-collapsed .ll-orgswitch-name, .ll-sidebar.is-collapsed .ll-orgswitch-chev { display: none !important; }

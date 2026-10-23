@@ -102,9 +102,20 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
           ? `Synced ${ago(workspace.connection.lastSyncAt)}`
           : "No figures yet",
     orgSwitcher: (
-      <div className="ll-org" style={{ padding: 4 }}>
-        <OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/overview" afterCreateOrganizationUrl="/onboarding" />
-      </div>
+      <OrganizationSwitcher
+        hidePersonal
+        afterSelectOrganizationUrl="/overview"
+        afterCreateOrganizationUrl="/onboarding"
+        appearance={{
+          elements: {
+            rootBox: "ll-orgswitch",
+            organizationSwitcherTrigger: "ll-orgswitch-trigger",
+            organizationPreviewAvatarBox: "ll-orgswitch-avatar",
+            organizationPreviewMainIdentifier: "ll-orgswitch-name",
+            organizationSwitcherTriggerIcon: "ll-orgswitch-chev",
+          },
+        }}
+      />
     ),
     userAvatar: <UserButton />,
     userMenu: <ThemeToggle />,
