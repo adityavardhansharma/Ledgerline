@@ -54,8 +54,13 @@ export function AskLedgerline() {
       }
       if (e.key === "Escape") setOpen(false);
     };
+    const onAsk = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("ll-ask-open", onAsk);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("ll-ask-open", onAsk);
+    };
   }, []);
 
   return (
@@ -176,209 +181,195 @@ function Panel({ onClose }: { onClose: () => void }) {
 
   const empty = rows.length === 0;
   const current = threads?.find((t) => t.id === threadId);
+  const newChat = () => {
+    reset();
+    setThreadId(null);
+    setHistory(false);
+    box.current?.focus();
+  };
+
+  const composer = (
+    <form
+      className={`ll-ask-composer${busy ? " is-busy" : ""}${empty ? " is-hero" : ""}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        ask(text);
+      }}
+    >
+      <textarea
+        ref={box}
+        rows={empty ? 2 : 1}
+        value={text}
+        maxLength={2000}
+        placeholder={empty ? "Ask anything about your figures…" : "Ask a follow-up…"}
+        aria-label="Ask a question"
+        onChange={(e) => {
+          setText(e.target.value);
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = `${Math.min(160, el.scrollHeight)}px`;
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            ask(text);
+          }
+        }}
+      />
+      <div className="ll-ask-composer-bar">
+        <span className="ll-ask-context" title="The assistant knows which page you're on">
+          <Icon name="eye" size={13} /> {page.title === "app" ? "All your figures" : page.title}
+        </span>
+        <AnimatePresence mode="wait" initial={false}>
+          {busy ? (
+            <motion.button key="stop" type="button" className="ll-ask-send is-stop" aria-label="Stop" onClick={stop} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
+              <span />
+            </motion.button>
+          ) : (
+            <motion.button key="send" type="submit" className="ll-ask-send" aria-label="Send" disabled={!text.trim()} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
+              <Icon name="arrow-up" size={16} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+    </form>
+  );
 
   return (
     <ChatActions.Provider value={actions}>
-      <motion.div className="ll-ask-inner" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}>
-        <header className="ll-ask-head">
-          <button type="button" className={`ll-ask-icon${history ? " is-on" : ""}`} aria-label="Conversations" onClick={() => setHistory((x) => !x)}>
-            <Icon name="clock" size={17} />
-          </button>
-          <div className="ll-ask-title">
+      <motion.div className={`ll-ask-inner${history ? " is-history" : ""}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}>
+        <aside className="ll-ask-side" aria-label="Your conversations">
+          <div className="ll-ask-brand">
+            <span className="ll-ask-orb" aria-hidden />
             <strong>Ask Ledgerline</strong>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span key={current?.title ?? "new"} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
-                {current?.title ?? "New conversation"}
-              </motion.span>
-            </AnimatePresence>
           </div>
-          <button
-            type="button"
-            className="ll-ask-icon"
-            aria-label="New conversation"
-            onClick={() => {
-              reset();
-              setThreadId(null);
-              setHistory(false);
-              box.current?.focus();
-            }}
-          >
-            <Icon name="plus" size={17} />
+          <button type="button" className="ll-ask-newchat" onClick={newChat}>
+            <Icon name="plus" size={15} /> New conversation
           </button>
-          <button type="button" className="ll-ask-icon" aria-label="Close" onClick={onClose}>
-            <Icon name="close" size={17} />
-          </button>
-        </header>
+          <div className="ll-ask-side-list">
+            {threads?.length ? (
+              groupThreads(threads).map((group) => (
+                <section key={group.label} className="ll-ask-history-group">
+                  <h4>{group.label}</h4>
+                  <ul>
+                    {group.items.map((t) => (
+                      <li key={t.id} className={t.id === threadId ? "is-on" : undefined}>
+                        <button
+                          type="button"
+                          className="ll-ask-history-item"
+                          onClick={() => {
+                            reset();
+                            setThreadId(t.id);
+                            setHistory(false);
+                          }}
+                        >
+                          <span className="ll-ask-history-text">
+                            <span>{t.title}</span>
+                            <small>{when(t.updatedAt)}</small>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ll-ask-history-del"
+                          aria-label={`Delete ${t.title}`}
+                          onClick={() => {
+                            if (t.id === threadId) {
+                              reset();
+                              setThreadId(null);
+                            }
+                            void removeThread({ threadId: t.id });
+                          }}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))
+            ) : (
+              <p className="ll-ask-side-empty">Questions you ask are kept here, just for you.</p>
+            )}
+          </div>
+        </aside>
+        <AnimatePresence>
+          {history ? <motion.div key="side-scrim" className="ll-ask-side-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={() => setHistory(false)} /> : null}
+        </AnimatePresence>
 
-        <div className="ll-ask-body">
-          <AnimatePresence>
-            {history ? (
-              <motion.div key="history-scrim" className="ll-ask-history-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={() => setHistory(false)} />
+        <div className="ll-ask-main">
+          <header className="ll-ask-head">
+            <button type="button" className={`ll-ask-icon ll-ask-menu${history ? " is-on" : ""}`} aria-label="Conversations" onClick={() => setHistory((x) => !x)}>
+              <Icon name="menu" size={17} />
+            </button>
+            <div className="ll-ask-title">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={current?.title ?? "new"} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
+                  {current?.title ?? (empty ? "" : "New conversation")}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            {!empty ? (
+              <button type="button" className="ll-ask-icon" aria-label="New conversation" title="New conversation" onClick={newChat}>
+                <Icon name="plus" size={17} />
+              </button>
             ) : null}
-            {history ? (
-              <motion.nav
-                key="history"
-                className="ll-ask-history"
-                aria-label="Your conversations"
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
-                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="ll-ask-history-top">
-                  <p>Conversations</p>
-                  <button
-                    type="button"
-                    className="ll-ask-history-new"
-                    onClick={() => {
-                      reset();
-                      setThreadId(null);
-                      setHistory(false);
-                      box.current?.focus();
-                    }}
-                  >
-                    <Icon name="plus" size={14} /> New
-                  </button>
+            <button type="button" className="ll-ask-icon" aria-label="Close" title="Close  Esc" onClick={onClose}>
+              <Icon name="close" size={17} />
+            </button>
+          </header>
+
+          <div className="ll-ask-body">
+            <div
+              className="ll-ask-scroll"
+              ref={scroller}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+              }}
+            >
+              {empty ? (
+                <Welcome onAsk={ask} suggestions={SUGGESTIONS[page.key]} composer={composer} />
+              ) : (
+                <div className="ll-ask-thread">
+                  {rows.map((m, i) =>
+                    m.role === "user" ? (
+                      <motion.div key={m.id} className="ll-ask-q" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: EASE }}>
+                        {m.content}
+                      </motion.div>
+                    ) : (
+                      <motion.div key={m.id === "a-live" && live?.answerId ? live.answerId : m.id} className="ll-ask-a" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+                        <span className="ll-ask-a-mark" aria-hidden>
+                          <span className="ll-ask-orb" />
+                        </span>
+                        <div className="ll-ask-a-body">
+                          {m.status === "live" && live && i === rows.length - 1 && live.phase !== "writing" && !m.content ? (
+                            <Reading steps={live.steps} phase={live.phase} />
+                          ) : (
+                            <>
+                              {m.status === "live" && live?.steps.length ? <Reading steps={live.steps} phase={live.phase} /> : null}
+                              <AnswerBody content={m.content} live={m.status === "live"} />
+                            </>
+                          )}
+                          {m.status === "error" ? (
+                            <p className="ll-ask-error">
+                              <Icon name="warning" size={14} /> {live?.error ?? "That answer didn't finish."}
+                            </p>
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    ),
+                  )}
                 </div>
-                {threads?.length ? (
-                  groupThreads(threads).map((group) => (
-                    <section key={group.label} className="ll-ask-history-group">
-                      <h4>{group.label}</h4>
-                      <ul>
-                        {group.items.map((t, i) => (
-                          <motion.li
-                            key={t.id}
-                            className={t.id === threadId ? "is-on" : undefined}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.05 + i * 0.03, duration: 0.25, ease: EASE }}
-                          >
-                            <button
-                              type="button"
-                              className="ll-ask-history-item"
-                              onClick={() => {
-                                reset();
-                                setThreadId(t.id);
-                                setHistory(false);
-                              }}
-                            >
-                              <span className="ll-ask-history-icon" aria-hidden>
-                                <Icon name={t.id === threadId ? "sparkle" : "statement"} size={14} />
-                              </span>
-                              <span className="ll-ask-history-text">
-                                <span>{t.title}</span>
-                                <small>{when(t.updatedAt)}</small>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              className="ll-ask-history-del"
-                              aria-label={`Delete ${t.title}`}
-                              onClick={() => {
-                                if (t.id === threadId) {
-                                  reset();
-                                  setThreadId(null);
-                                }
-                                void removeThread({ threadId: t.id });
-                              }}
-                            >
-                              <Icon name="trash" size={14} />
-                            </button>
-                          </motion.li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))
-                ) : (
-                  <div className="ll-ask-history-empty">
-                    <span className="ll-ask-history-icon" aria-hidden><Icon name="statement" size={16} /></span>
-                    <p>No conversations yet. Questions you ask are kept here, just for you.</p>
-                  </div>
-                )}
-              </motion.nav>
-            ) : null}
-          </AnimatePresence>
-
-          <div
-            className="ll-ask-scroll"
-            ref={scroller}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-            }}
-          >
-            {empty ? (
-              <Welcome onAsk={ask} suggestions={SUGGESTIONS[page.key]} />
-            ) : (
-              <div className="ll-ask-thread">
-                {rows.map((m, i) =>
-                  m.role === "user" ? (
-                    <motion.div key={m.id} className="ll-ask-q" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: EASE }}>
-                      {m.content}
-                    </motion.div>
-                  ) : (
-                    <motion.div key={m.id === "a-live" && live?.answerId ? live.answerId : m.id} className="ll-ask-a" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-                      {m.status === "live" && live && i === rows.length - 1 && live.phase !== "writing" && !m.content ? (
-                        <Reading steps={live.steps} phase={live.phase} />
-                      ) : (
-                        <>
-                          {m.status === "live" && live?.steps.length ? <Reading steps={live.steps} phase={live.phase} /> : null}
-                          <AnswerBody content={m.content} live={m.status === "live"} />
-                        </>
-                      )}
-                      {m.status === "error" ? (
-                        <p className="ll-ask-error">
-                          <Icon name="warning" size={14} /> {live?.error ?? "That answer didn't finish."}
-                        </p>
-                      ) : null}
-                    </motion.div>
-                  ),
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
+          {empty ? null : (
+            <>
+              {composer}
+              <p className="ll-ask-foot">Answers come from your books. Opinions are the assistant&apos;s own; check before you act.</p>
+            </>
+          )}
         </div>
-
-        <form
-          className={`ll-ask-composer${busy ? " is-busy" : ""}`}
-          onSubmit={(e) => {
-            e.preventDefault();
-            ask(text);
-          }}
-        >
-          <textarea
-            ref={box}
-            rows={1}
-            value={text}
-            maxLength={2000}
-            placeholder={empty ? "Ask anything about your figures…" : "Ask a follow-up…"}
-            aria-label="Ask a question"
-            onChange={(e) => {
-              setText(e.target.value);
-              const el = e.currentTarget;
-              el.style.height = "auto";
-              el.style.height = `${Math.min(140, el.scrollHeight)}px`;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                ask(text);
-              }
-            }}
-          />
-          <AnimatePresence mode="wait" initial={false}>
-            {busy ? (
-              <motion.button key="stop" type="button" className="ll-ask-send is-stop" aria-label="Stop" onClick={stop} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
-                <span />
-              </motion.button>
-            ) : (
-              <motion.button key="send" type="submit" className="ll-ask-send" aria-label="Send" disabled={!text.trim()} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
-                <Icon name="arrow-up" size={16} />
-              </motion.button>
-            )}
-          </AnimatePresence>
-        </form>
-        <p className="ll-ask-foot">Answers come from your books. Opinions are the assistant&apos;s own; check before you act.</p>
       </motion.div>
     </ChatActions.Provider>
   );
@@ -412,7 +403,7 @@ const when = (ms: number) => {
   return new Date(ms).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" });
 };
 
-function Welcome({ onAsk, suggestions }: { onAsk: (q: string) => void; suggestions: Suggestion[] }) {
+function Welcome({ onAsk, suggestions, composer }: { onAsk: (q: string) => void; suggestions: Suggestion[]; composer: React.ReactNode }) {
   return (
     <div className="ll-ask-welcome">
       <motion.div className="ll-ask-orb is-big" aria-hidden initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: EASE, delay: 0.1 }} />
@@ -420,27 +411,20 @@ function Welcome({ onAsk, suggestions }: { onAsk: (q: string) => void; suggestio
         What would you like to know?
       </motion.h2>
       <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.22 }}>
-        Ask about your cash, costs, customers or plans. Answers use your own books and forecast.
+        Answers come from your own books and forecast, with the charts to show it.
       </motion.p>
-      <div className="ll-ask-suggest">
+      <motion.div className="ll-ask-welcome-box" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.28 }}>
+        {composer}
+      </motion.div>
+      <div className="ll-ask-try">
         {suggestions.map((s, i) => (
-          <motion.button
-            key={s.text}
-            type="button"
-            onClick={() => onAsk(s.text)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: EASE, delay: 0.28 + i * 0.05 }}
-          >
-            <span className="ll-ask-suggest-icon"><Icon name={s.icon} size={16} /></span>
-            <span className="ll-ask-suggest-text">
-              <small>{s.topic}</small>
-              {s.text}
-            </span>
-            <span className="ll-ask-suggest-go" aria-hidden><Icon name="arrow-right" size={14} /></span>
+          <motion.button key={s.text} type="button" onClick={() => onAsk(s.text)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE, delay: 0.34 + i * 0.05 }}>
+            <Icon name={s.icon} size={14} />
+            {s.text}
           </motion.button>
         ))}
       </div>
+      <p className="ll-ask-foot">Opinions are the assistant&apos;s own; check before you act.</p>
     </div>
   );
 }

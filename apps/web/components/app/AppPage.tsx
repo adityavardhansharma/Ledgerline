@@ -76,6 +76,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
   const router = useRouter();
   const [collapsed, toggleCollapsed] = useCollapsed();
   const [navOpen, setNavOpen] = useState(false);
+  const [mac, setMac] = useState(false);
+  useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform)), []);
   useEffect(() => {
     if (isLoaded && !orgId) router.replace("/onboarding");
   }, [isLoaded, orgId, router]);
@@ -86,6 +88,11 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
     linkAs: NextLink,
     items: NAV_ITEMS,
     homeHref: ROUTES.overview,
+    onAsk: () => {
+      setNavOpen(false);
+      window.dispatchEvent(new Event("ll-ask-open"));
+    },
+    askShortcut: mac ? "⌘J" : "Ctrl J",
     collapsed: collapsed && !navOpen,
     onCollapse: navOpen ? () => setNavOpen(false) : toggleCollapsed,
     org: workspace?.org.name,

@@ -10,7 +10,6 @@ import {
   Icon,
   Select,
   LineChart,
-  Panel,
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
@@ -130,8 +129,68 @@ function ForecastScreen() {
               ]}
             />
           ) : null}
-          <div className="ll-grid-plan">
-            <Panel title="Drivers" icon="settings" subtitle={readOnly ? "The base case follows your actuals. Branch it to change drivers." : "Changes from the parent scenario are marked"}>
+          <div className="ll-workspace">
+            <div className="ll-workspace-main">
+              {forecast?.cashOutPeriod ? (
+                <Banner tone="negative" title={`Cash runs out in ${periodLabel(forecast.cashOutPeriod)}.`}>
+                  {(forecast.lowestCash ?? 0) < 0
+                    ? `At its lowest, in ${forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}, the account would be overdrawn by ${money(Math.abs(forecast.lowestCash ?? 0))}. `
+                    : ""}
+                  Add a loan or equity under Financing, or move costs later.
+                </Banner>
+              ) : null}
+              <section className="ll-report-hero">
+                <header className="ll-hero-head">
+                  <div>
+                    <h2>Cash at bank</h2>
+                    <p className="ll-report-hero-sub">{scenario.isBase ? "The base case, with its likely range" : `${scenario.name} against the base case, with its likely range`}</p>
+                  </div>
+                  {forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}
+                </header>
+                {forecast ? (
+                  <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" height={320} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
+                ) : (
+                  <p className="ll-muted">Running the forecast…</p>
+                )}
+              </section>
+              {forecast && scenarioId ? <CashDipExplainer scenarioId={scenarioId} onOpenArea={(area) => { setTab(area); document.querySelector(".ll-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} /> : null}
+              <section className="ll-report-hero">
+                <header className="ll-hero-head">
+                  <div>
+                    <h2>What moves runway most</h2>
+                    <p className="ll-report-hero-sub">Each driver from its downside to its upside</p>
+                  </div>
+                </header>
+                  {forecast?.sensitivity?.rows.length && forecast.sensitivity.rows.some((r) => Math.abs(r.low) >= 0.05 || Math.abs(r.high) >= 0.05) ? (
+                    <TornadoChart base={forecast.sensitivity.base} rows={forecast.sensitivity.rows.slice(0, 5)} baseLabel="Base" />
+                  ) : forecast?.sensitivity?.rows.length ? (
+                    <div className="ll-plan-empty">
+                      <Icon name="success" size={20} />
+                      <p>Cash lasts the whole forecast even at each driver&apos;s downside, so no single driver moves runway. Branch a tougher scenario to stress-test it.</p>
+                    </div>
+                  ) : (
+                    <p className="ll-muted">Appears once the forecast has run.</p>
+                  )}
+              </section>
+              {forecast ? (
+                <section className="ll-report-hero is-flush">
+                  <header className="ll-section-head">
+                    <div>
+                      <h2>Three statements</h2>
+                      <span>Every month balances: assets less liabilities equal equity</span>
+                    </div>
+                    <Tabs label="Statement" value={statementTab} onChange={setStatementTab} tabs={[{ id: "pnl", label: "Profit and loss" }, { id: "bs", label: "Balance sheet" }, { id: "cf", label: "Cash flow" }]} />
+                  </header>
+                  <ForecastStatement run={forecast} kind={statementTab} />
+                </section>
+              ) : null}
+            </div>
+            <aside className="ll-inspector" aria-label="Drivers">
+              <div className="ll-inspector-inner">
+              <header className="ll-inspector-head">
+                <h2>Drivers</h2>
+                <p>{readOnly ? "The base case follows your actuals. Branch it to change anything." : "Changes from the parent scenario are marked."}</p>
+              </header>
               {!readOnly && scenarioId ? <ScenarioComposer scenarioId={scenarioId} startPeriod={snapshot.drivers.startPeriod} own={scenario.own} /> : null}
               <Sections
                 value={tab}
@@ -217,44 +276,9 @@ function ForecastScreen() {
                   />
                 )}
               </div>
-            </Panel>
-
-            <div className="ll-stack">
-              {forecast?.cashOutPeriod ? (
-                <Banner tone="negative" title={`Cash runs out in ${periodLabel(forecast.cashOutPeriod)}.`}>
-                  {(forecast.lowestCash ?? 0) < 0
-                    ? `At its lowest, in ${forecast.lowestCashPeriod ? periodLabel(forecast.lowestCashPeriod) : "the forecast"}, the account would be overdrawn by ${money(Math.abs(forecast.lowestCash ?? 0))}. `
-                    : ""}
-                  Add a loan or equity under Financing, or move costs later.
-                </Banner>
-              ) : null}
-              {forecast && scenarioId ? <CashDipExplainer scenarioId={scenarioId} onOpenArea={(area) => { setTab(area); document.querySelector(".ll-grid-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} /> : null}
-              <Panel title="Cash at bank" icon="bank" subtitle={scenario.isBase ? "Base case with its likely range" : "This scenario against the base case and its likely range"} actions={forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}>
-                {forecast ? (
-                  <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
-                ) : (
-                  <p className="ll-muted">Running the forecast…</p>
-                )}
-              </Panel>
-                <Panel title="What moves runway most" icon="compare" subtitle="Each driver from its downside to its upside">
-                  {forecast?.sensitivity?.rows.length && forecast.sensitivity.rows.some((r) => Math.abs(r.low) >= 0.05 || Math.abs(r.high) >= 0.05) ? (
-                    <TornadoChart base={forecast.sensitivity.base} rows={forecast.sensitivity.rows.slice(0, 5)} baseLabel="Base" />
-                  ) : forecast?.sensitivity?.rows.length ? (
-                    <div className="ll-plan-empty">
-                      <Icon name="success" size={20} />
-                      <p>Cash lasts the whole forecast even at each driver&apos;s downside, so no single driver moves runway. Branch a tougher scenario to stress-test it.</p>
-                    </div>
-                  ) : (
-                    <p className="ll-muted">Appears once the forecast has run.</p>
-                  )}
-                </Panel>
-            </div>
+              </div>
+            </aside>
           </div>
-          {forecast ? (
-            <Panel title="Three statements" icon="statement" subtitle="Every month balances: assets less liabilities equal equity" actions={<Tabs label="Statement" value={statementTab} onChange={setStatementTab} tabs={[{ id: "pnl", label: "Profit and loss" }, { id: "bs", label: "Balance sheet" }, { id: "cf", label: "Cash flow" }]} />} flush>
-              <ForecastStatement run={forecast} kind={statementTab} />
-            </Panel>
-          ) : null}
           </>
         );
       }}
@@ -295,7 +319,7 @@ function ForecastStatement({ run, kind }: { run: ForecastRun; kind: string }) {
             line("Closing cash", (m) => m.cash, "total"),
           ];
   return (
-    <div style={{ padding: "0 20px 20px" }}>
+    <div className="ll-pad">
       <FinancialStatement title="Forecast" columns={columns} rows={rows as never} forecastFrom={0} drillable={false} dense />
     </div>
   );
