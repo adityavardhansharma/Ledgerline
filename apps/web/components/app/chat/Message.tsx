@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@ledgerline/ui";
+import { AiOrb, Icon } from "@ledgerline/ui";
 import { Renderer } from "@openuidev/react-lang";
 import { useConvex } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
@@ -105,37 +105,25 @@ const DOING: Record<Piece["kind"], string> = {
  * than a line; the visual itself opens up beneath it once it's ready.
  */
 function Working({ pieces, live }: { pieces: Piece[]; live: boolean }) {
-  const doing = useSteady(live ? DOING[pieces[pieces.length - 1].kind] : "Fetching the figures", 1100);
-  const done = live ? pieces.length - 1 : pieces.length;
+  const doing = useSteady(live ? DOING[pieces[pieces.length - 1].kind] : "Fetching the figures", 2000);
   const [started] = useState(() => Date.now());
   const [now, setNow] = useState(started);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 500);
+    const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
   const secs = Math.floor((now - started) / 1000);
   return (
     <div className="ll-chat-work" role="status" aria-live="polite">
-      <span className="ll-chat-work-art" aria-hidden>
-        {[0.55, 0.9, 0.4, 1, 0.7].map((h, i) => (
-          <i key={i} style={{ "--h": h, animationDelay: `${i * 0.11}s` } as React.CSSProperties} />
-        ))}
-      </span>
+      <AiOrb size={18} busy />
       <span className="ll-chat-work-copy">
         <span className="ll-chat-work-who">Ledgerline is making the visual</span>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.b key={doing} className="ll-shimmer" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }}>
+          <motion.b key={doing} className="ll-shimmer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: "easeInOut" }}>
             {doing}…
           </motion.b>
         </AnimatePresence>
       </span>
-      {pieces.length > 1 ? (
-        <span className="ll-chat-work-pips" aria-hidden>
-          {pieces.map((_, i) => (
-            <i key={i} className={i < done ? "is-done" : i === done ? "is-now" : undefined} />
-          ))}
-        </span>
-      ) : null}
       <span className="ll-chat-work-time">{secs}s</span>
     </div>
   );
@@ -155,20 +143,6 @@ function useSteady<T>(value: T, ms: number): T {
     return () => clearTimeout(t);
   }, [value, shown, ms]);
   return shown;
-}
-
-/** The height of an element, kept current as it changes. */
-function useHeight(el: React.RefObject<HTMLElement | null>, mounted: boolean) {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const node = el.current;
-    if (!node) return;
-    const watch = new ResizeObserver(() => setHeight(node.offsetHeight));
-    watch.observe(node);
-    setHeight(node.offsetHeight);
-    return () => watch.disconnect();
-  }, [el, mounted]);
-  return height;
 }
 
 /**
@@ -205,27 +179,14 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
       clearTimeout(fallback);
     };
   }, [live]);
-  // The block grows from the one-line placeholder to the visual's full height in one eased move: the stage's height
-  // is animated to whichever is showing, and the placeholder fades out over the visual as it fades in.
-  const skel = useRef<HTMLDivElement>(null);
-  const skelHeight = useHeight(skel, !ready);
-  const realHeight = useHeight(host, !live);
-  const target = ready ? realHeight : skelHeight;
-  const [settled, setSettled] = useState(false);
-  useEffect(() => setSettled(false), [ready]);
+  // Only opacity moves, so it stays smooth while the chart is being built: the placeholder fades out, the visual takes
+  // its place unseen, then fades in slowly where it sits.
   return (
     <div className="ll-chat-ui">
-      <motion.div
-        className={`ll-chat-ui-stage${ready ? " is-ready" : ""}`}
-        initial={false}
-        animate={{ height: target || "auto" }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        onAnimationComplete={() => ready && setSettled(true)}
-        style={{ overflow: settled ? "visible" : "hidden" }}
-      >
+      <div className={`ll-chat-ui-stage${ready ? " is-ready" : ""}`}>
         <AnimatePresence>
           {ready ? null : (
-            <motion.div key="working" ref={skel} className="ll-chat-ui-skel" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeOut" } }}>
+            <motion.div key="working" className="ll-chat-ui-skel" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.35, ease: "easeOut" } }}>
               <Working pieces={pieces} live={live} />
             </motion.div>
           )}
@@ -235,7 +196,7 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
             <Renderer key={last.current.generation} response={program} library={chatLibrary} isStreaming={false} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 });

@@ -2089,20 +2089,15 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-chat-ui { margin: 8px 0; }
 .ll-chat-ui-stage { position: relative; }
 .ll-chat-ui-stage.is-ready .ll-chat-ui-skel { position: absolute; inset: 0 0 auto 0; pointer-events: none; }
-.ll-chat-ui-real { opacity: 0; transition: opacity .5s ease .1s; }
+.ll-chat-ui-real { opacity: 0; transition: opacity .9s cubic-bezier(.4, 0, .2, 1) .35s; }
 .ll-chat-ui-real:not(.is-ready) { position: absolute; inset: 0 0 auto 0; visibility: hidden; pointer-events: none; }
-.ll-chat-ui-real:not(.is-ready) * { animation-play-state: paused !important; }
+.ll-chat-ui-real :is(.ll-chat-table tbody tr) { animation: none; }
 .ll-chat-ui-real.is-ready { opacity: 1; }
-.ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > * { animation: ll-chat-rise .5s cubic-bezier(.22, 1, .36, 1) both; }
-.ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > :nth-child(2) { animation-delay: .07s; }
-.ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > :nth-child(3) { animation-delay: .14s; }
-.ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > :nth-child(4) { animation-delay: .21s; }
-.ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > :nth-child(n + 5) { animation-delay: .28s; }
 @keyframes ll-chat-rise { from { opacity: 0; transform: translateY(8px); } }
 
-.ll-chat-work { position: relative; display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 8px 14px 8px 10px; border-radius: 12px; isolation: isolate;
+.ll-chat-work { position: relative; display: inline-flex; align-items: center; gap: 11px; max-width: 100%; padding: 8px 14px 8px 10px; border-radius: 12px; isolation: isolate;
   background: linear-gradient(100deg, color-mix(in srgb, var(--forecast) 8%, var(--surface)), color-mix(in srgb, var(--brand) 6%, var(--surface))); }
-.ll-chat-work::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: conic-gradient(from var(--ll-ai-turn), color-mix(in srgb, var(--ink) 8%, transparent) 0 50%, var(--forecast), var(--brand), color-mix(in srgb, var(--ink) 8%, transparent) 95%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: ll-ai-spin 2.4s linear infinite; }
+.ll-chat-work::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: conic-gradient(from var(--ll-ai-turn), color-mix(in srgb, var(--ink) 8%, transparent) 0 50%, var(--forecast), var(--brand), color-mix(in srgb, var(--ink) 8%, transparent) 95%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 .ll-chat-work-art { flex: none; display: flex; align-items: flex-end; gap: 2px; width: 30px; height: 30px; padding: 6px 5px; border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent); }
 .ll-chat-work-art i { flex: 1; height: calc(var(--h) * 100%); border-radius: 1.5px; background: linear-gradient(var(--forecast), var(--brand)); transform-origin: 50% 100%; animation: ll-work-bar 1.1s cubic-bezier(.45, 0, .2, 1) infinite alternate; }
 @keyframes ll-work-bar { from { transform: scaleY(.3); opacity: .55; } to { transform: scaleY(1); opacity: 1; } }
@@ -2117,8 +2112,7 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 @media (max-width: 520px) { .ll-chat-work-pips { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .ll-chat-work::before, .ll-chat-work-art i, .ll-chat-work-pips i.is-now { animation: none; }
-  .ll-chat-ui-real.is-ready :is(.ll-chat-stack, .ll-chat-row) > * { animation: none; }
-}
+  }
 
 /* ================================================================================================
    Every size: phones, folded and unfolded foldables, half-screen windows, laptops and wide screens.
