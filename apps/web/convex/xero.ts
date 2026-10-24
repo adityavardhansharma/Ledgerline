@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import { action, internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireOrg } from "./lib/auth";
@@ -50,31 +51,43 @@ export const beginConnect = action({
   },
 });
 
+/**
+ * Use up a state, but only for the person who started the flow, in the same organisation. Binding the state
+ * to them stops a consent link made in one organisation being completed by someone else's Xero sign-in.
+ */
 export const takeState = internalMutation({
   args: { state: v.string() },
-  handler: async (ctx, { state }) => {
+  handler: async (ctx, { state }): Promise<{ row: Doc<"oauthStates"> | null; reason?: string }> => {
+    const { org, who } = await requireOrg(ctx, { owner: true });
     const row = await ctx.db
       .query("oauthStates")
       .withIndex("by_state", (q) => q.eq("state", state))
       .unique();
-    if (!row) return null;
+    if (!row) return { row: null, reason: "expired" };
     await ctx.db.delete(row._id);
-    if (Date.now() - row.createdAt > 15 * 60 * 1000) return null;
-    return row;
+    if (row.userId !== who.userId || row.orgId !== org._id) return { row: null, reason: "wrong-account" };
+    if (Date.now() - row.createdAt > 15 * 60 * 1000) return { row: null, reason: "expired" };
+    return { row };
   },
 });
 
-/** Called by the HTTP callback: swap the code for tokens and store the connection. */
-export const finishConnect = internalAction({
+/**
+ * Called from the app once Xero sends the browser back: swap the code for tokens and store the connection.
+ * The code only ever reaches the browser that signed in to Xero, and the state only works for the person who
+ * asked for it, so both have to be the same person.
+ */
+export const completeConnect = action({
   args: { code: v.string(), state: v.string() },
   handler: async (ctx, { code, state }): Promise<{ ok: boolean; reason?: string }> => {
-    const row = await ctx.runMutation(internal.xero.takeState, { state });
-    if (!row) return { ok: false, reason: "expired" };
-    const result = await engine<{ tokens: Tokens; scopes: string[]; connections: { tenant_id: string; tenant_name: string }[] }>("/xero/token", {
-      code,
-      redirect_uri: row.redirectUri,
-      code_verifier: row.verifier,
-    });
+    const { row, reason } = await ctx.runMutation(internal.xero.takeState, { state });
+    if (!row) return { ok: false, reason };
+    let result: { tokens: Tokens; scopes: string[]; connections: { tenant_id: string; tenant_name: string }[] };
+    try {
+      result = await engine("/xero/token", { code, redirect_uri: row.redirectUri, code_verifier: row.verifier });
+    } catch (err) {
+      console.error("Xero token exchange failed", err);
+      return { ok: false, reason: "failed" };
+    }
     const tenant = result.connections[0];
     if (!tenant) return { ok: false, reason: "no-organisation" };
     await ctx.runMutation(internal.xero.saveConnection, {

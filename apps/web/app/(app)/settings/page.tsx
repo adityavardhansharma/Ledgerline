@@ -302,7 +302,7 @@ function Voucher() {
           if (code.trim()) void apply();
         }}
       >
-        <Input id="voucher-code" label="Voucher code" placeholder="LEDGERTEST" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <Input id="voucher-code" label="Voucher code" placeholder="Your code" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <Button type="submit" variant="primary" loading={busy} disabled={!code.trim()}>
           Apply
         </Button>

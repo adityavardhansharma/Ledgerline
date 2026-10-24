@@ -11,7 +11,7 @@ const site = () => process.env.SITE_URL ?? "http://localhost:3000";
 http.route({
   path: "/xero/callback",
   method: "GET",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, request) => {
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
@@ -19,13 +19,12 @@ http.route({
     if (error || !code || !state) {
       return Response.redirect(`${site()}/onboarding?xero=${encodeURIComponent(error ?? "cancelled")}`, 302);
     }
-    try {
-      const result = await ctx.runAction(internal.xero.finishConnect, { code, state });
-      return Response.redirect(result.ok ? `${site()}/data/sync?connected=1` : `${site()}/onboarding?xero=${result.reason}`, 302);
-    } catch (err) {
-      console.error("Xero callback failed", err);
-      return Response.redirect(`${site()}/onboarding?xero=failed`, 302);
-    }
+    // The signed-in app finishes the connection (xero.completeConnect), so it can check that the person who
+    // signed in to Xero is the person who asked to connect.
+    const next = new URL("/connect/xero", site());
+    next.searchParams.set("code", code);
+    next.searchParams.set("state", state);
+    return new Response(null, { status: 302, headers: { Location: next.toString(), "Referrer-Policy": "no-referrer", "Cache-Control": "no-store" } });
   }),
 });
 
@@ -54,7 +53,9 @@ http.route({
 
 function corsHeaders(request: Request) {
   const origin = request.headers.get("origin") ?? "";
-  const allowed = [site(), "https://ledgerline-amber.vercel.app", "http://localhost:3000", "http://localhost:3123", ...(process.env.CHAT_ORIGINS ?? "").split(",").filter(Boolean)];
+  // SITE_URL plus any other origins the app is served from (CHAT_ORIGINS, comma separated); local ports in development.
+  const local = site().startsWith("http://localhost") ? ["http://localhost:3000", "http://localhost:3123"] : [];
+  const allowed = [site(), ...local, ...(process.env.CHAT_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean)];
   return {
     "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : site(),
     "Access-Control-Allow-Methods": "POST, OPTIONS",

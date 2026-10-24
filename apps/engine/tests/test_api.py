@@ -34,6 +34,14 @@ def test_unsigned_requests_are_rejected(monkeypatch):
     assert response.status_code == 401
 
 
+def test_api_docs_are_not_public(monkeypatch):
+    monkeypatch.setenv("LL_ENGINE_SECRET", "s")
+    monkeypatch.setenv("LL_ALLOW_UNSIGNED", "false")
+    get_settings.cache_clear()
+    assert TestClient(app).get("/docs").status_code == 401
+    assert TestClient(app).get("/openapi.json").status_code == 401
+
+
 def test_signed_requests_are_accepted(monkeypatch):
     monkeypatch.setenv("LL_ENGINE_SECRET", "s")
     monkeypatch.setenv("LL_ALLOW_UNSIGNED", "false")
