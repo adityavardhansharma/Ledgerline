@@ -7,7 +7,7 @@ import { Suspense, useState } from "react";
 import { AppPage, ConnectButton } from "@/components/app/AppPage";
 import { ImportPanel } from "@/components/app/ImportPanel";
 import { Reconciliation } from "@/components/app/Reconciliation";
-import { useWorkspace, type Workspace } from "@/components/app/useWorkspace";
+import { useWorkspace } from "@/components/app/useWorkspace";
 import { errorText } from "@/components/app/BoardCommentary";
 import { RailBlock, ReportGrid, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";

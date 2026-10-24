@@ -14,6 +14,7 @@ __pycache__/
 .hypothesis/
 .ruff_cache/
 .mypy_cache/
+*.egg-info/
 # env and secrets
 .env
 .env.*
