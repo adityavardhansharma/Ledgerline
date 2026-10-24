@@ -3,10 +3,12 @@
 import { AiOrb, Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Citation, Commentary, Prose, Question, Risk, Section, Sections } from "@/convex/commentary";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Thinking } from "./ai/AiAction";
 
 const TITLES: Record<Section, string> = {
   headline: "At a glance",
@@ -273,7 +275,7 @@ export function BoardCommentary({ commentary, busy, onRedraft }: { commentary: C
               ) : null}
             </div>
             {redrafting ? (
-              <Skeleton lines={3} />
+              <Thinking steps={[`Re-reading the figures behind ${TITLES[name].toLowerCase()}`, "Writing it again", "Linking every number to its source"]} />
             ) : (
               <SectionBody name={name} value={isEditing ? value : sections[name]} editing={isEditing} onChange={setValue} />
             )}
@@ -307,6 +309,66 @@ export function BoardCommentary({ commentary, busy, onRedraft }: { commentary: C
 }
 
 /** Who the draft is written for, how long it runs, and the draft button. Sits above the pack and never prints. */
+// What drafting goes through, and the section each step is writing. A draft is one call, so the steps are paced to
+// its usual length rather than reported by it; the last one holds until the draft lands.
+const DRAFT_STEPS: { text: string; section?: Section }[] = [
+  { text: "Reading this month's figures" },
+  { text: "Comparing it with last month and last year" },
+  { text: "Writing the headline", section: "headline" },
+  { text: "Explaining revenue, margin and costs", section: "performance" },
+  { text: "Following the cash and who owes what", section: "cash" },
+  { text: "Reading the forecast for what comes next", section: "outlook" },
+  { text: "Weighing the risks worth watching", section: "risks" },
+  { text: "Framing the decisions for the board", section: "decisions" },
+  { text: "Anticipating the board's questions", section: "questions" },
+  { text: "Linking every number to its source" },
+];
+
+/** While the whole commentary is drafted: the orb at work, what it's doing now, and the outline filling in. */
+export function DraftingCommentary() {
+  const [step, setStep] = useState(0);
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const pace = setInterval(() => setStep((s) => Math.min(s + 1, DRAFT_STEPS.length - 1)), 2200);
+    const clock = setInterval(() => setSecs(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => {
+      clearInterval(pace);
+      clearInterval(clock);
+    };
+  }, []);
+  const current = DRAFT_STEPS[step];
+  const written = DRAFT_STEPS.slice(0, step).filter((s) => s.section).length;
+  return (
+    <div className="ll-panel ll-drafting" role="status" aria-live="polite">
+      <div className="ll-drafting-head">
+        <AiOrb size={28} busy />
+        <div>
+          <div className="ll-drafting-who">Ledgerline is drafting your commentary</div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={step} className="ll-drafting-now ll-shimmer" initial={{ opacity: 0, y: 6, filter: "blur(2px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -6, filter: "blur(2px)" }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+              {current.text}…
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        <span className="ll-drafting-time">{secs}s</span>
+      </div>
+      <ol className="ll-drafting-outline">
+        {ORDER.map((name, i) => {
+          const state = current.section === name ? "is-now" : i < written ? "is-done" : "";
+          return (
+            <li key={name} className={state}>
+              <span className="ll-drafting-tick" aria-hidden>{state === "is-done" ? <Icon name="check" size={11} /> : null}</span>
+              <span className="ll-drafting-title">{TITLES[name]}</span>
+              <span className="ll-drafting-lines" aria-hidden><i /><i /></span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 export function CommentaryToolbar({
   commentary,
   busy,
