@@ -37,3 +37,22 @@ however long a screenshot takes. Frames are piped to ffmpeg as H.264.
 | 1:36 | Finale | The whole product as a landscape, then "Know your cash every morning." |
 
 Scene timings live in `src/Film.tsx`; the score in `render/score.mjs` is timed to the same marks.
+
+## Shorts
+
+Five vertical shorts for Reels and YouTube Shorts (1080×1920, 60 fps) live in `src/shorts`. Each makes one point: a
+hook in the first two seconds, the product doing it, the payoff, then the end card. Readable content stays clear of
+the top 220 px and bottom 380 px, which the apps cover with their own interface.
+
+| id | Length | Hook | Shows |
+| --- | --- | --- | --- |
+| `ask` | 19 s | Ask your books anything. | The Ask window streams a real answer and draws its chart |
+| `cash` | 17 s | What if I hire four fitters? | The what-if: cash runs out when customers pay late, then recovers |
+| `cent` | 14.5 s | Is your dashboard actually right? | The sync, then the P&L and balance sheet matching Xero to the cent |
+| `cite` | 15 s | Should AI write your board pack? | An uncited figure rejected; every other one traced to its source |
+| `actions` | 21.2 s | 5 things your accounts can now do for you. | Search, Explain, Flag, Plan, Draft |
+
+```bash
+node render/score.mjs --short ask
+node render/render.mjs --short ask --audio out/shorts/ask.wav     # → out/shorts/ask.mp4
+```

@@ -17,7 +17,7 @@ const DRAFT: Part[] = [
 ];
 
 /** The board pack's rule, shown: a cited figure stays, a number the model wrote itself is struck out. */
-function Validator() {
+export function Validator() {
   const t = useT();
   const scan = prog(t, 1.4, 3.0, (p) => p);
   const reject = prog(t, 3.0, 3.25, expoOut);

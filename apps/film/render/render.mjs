@@ -1,7 +1,7 @@
 // Renders the film frame by frame: a Vite server for the film, headless Chromium with time stopped (virtual-time.js),
 // one screenshot per frame piped into ffmpeg. Usage:
 //   node render/render.mjs [--fps 60] [--from 0] [--to <end>] [--out out/ledgerline.mp4] [--stills dir --every 30]
-//   [--audio out/score.wav]
+//   [--audio out/score.wav] [--short <id>]   (a vertical 1080×1920 short; output defaults to out/shorts/<id>.mp4)
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +19,9 @@ const fps = Number(arg("fps", 60));
 const from = Number(arg("from", 0));
 const stills = arg("stills", null);
 const every = Number(arg("every", 1));
-const out = resolve(root, arg("out", "out/ledgerline-launch.mp4"));
+const short = arg("short", null);
+const [W, H] = short ? [1080, 1920] : [1920, 1080];
+const out = resolve(root, arg("out", short ? `out/shorts/${short}.mp4` : "out/ledgerline-launch.mp4"));
 const audio = arg("audio", null);
 const browserBin = arg("chrome", process.env.CHROME ?? "chromium");
 const port = 9339;
@@ -28,14 +30,14 @@ const port = 9339;
 const config = join(root, "vite.config.ts");
 await build({ configFile: config, logLevel: "error", build: { outDir: join(root, "out/site"), emptyOutDir: true, target: "esnext" } });
 const server = await preview({ configFile: config, logLevel: "warn", build: { outDir: join(root, "out/site") }, preview: { port: 5198, strictPort: true } });
-const url = `http://localhost:5198/?capture=1&seek=${from}`;
+const url = `http://localhost:5198/?capture=1&seek=${from}${short ? `&short=${short}` : ""}`;
 
 const profile = mkdtempSync(join(tmpdir(), "ll-film-"));
 const chrome = spawn(browserBin, [
   "--headless=new",
   `--remote-debugging-port=${port}`,
   `--user-data-dir=${profile}`,
-  "--window-size=1920,1080",
+  `--window-size=${W},${H}`,
   "--hide-scrollbars",
   "--mute-audio",
   "--force-device-scale-factor=1",
@@ -92,7 +94,7 @@ const evaluate = async (expression) => {
 
 await send("Runtime.enable");
 await send("Page.enable");
-await send("Emulation.setDeviceMetricsOverride", { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }, { name: "prefers-reduced-motion", value: "no-preference" }] });
 await send("Page.addScriptToEvaluateOnNewDocument", { source: readFileSync(join(here, "virtual-time.js"), "utf8") });
 await send("Page.navigate", { url });

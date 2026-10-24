@@ -7,7 +7,18 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SR = 48000;
-const LENGTH = 110;
+// Vertical shorts (src/shorts/Shorts.tsx): length, the hook and beat hits, typing as [start, letters, letters a second],
+// and an optional stretch of tension. The end card is always the last 3.6 seconds.
+const SHORTS = {
+  ask: { length: 19, hits: [0.1, 2.2, 9.0], typing: [[2.0, 41, 22]], clicks: [4.2] },
+  cash: { length: 17, hits: [0.1, 2.6, 4.6, 8.6, 10.6], tense: [6.2, 8.5] },
+  cent: { length: 14.5, hits: [0.1, 1.8, 6.3, 6.7, 7.2] },
+  cite: { length: 15, hits: [0.1, 2.2, 4.6, 6.8] },
+  actions: { length: 21.2, hits: [0.1, 2.0, 5.8, 9.0, 11.2, 14.8], typing: [[2.55, 40, 30], [11.2, 64, 48]], clicks: [6.95] },
+};
+const shortId = process.argv.includes("--short") ? process.argv[process.argv.indexOf("--short") + 1] : null;
+if (shortId && !SHORTS[shortId]) throw new Error(`No short called ${shortId}`);
+const LENGTH = shortId ? SHORTS[shortId].length : 110;
 const N = SR * LENGTH;
 const L = new Float32Array(N);
 const R = new Float32Array(N);
@@ -134,92 +145,130 @@ const F = [45, 48, 53, 57];
 const C = [48, 52, 55, 60];
 const Fmaj9 = [41, 48, 52, 55, 57, 64];
 
-// Open: drone and wind, a tick per second like a clock.
-drone(0, 13.2, 26, 0.09);
-drone(0, 13.2, 33, 0.06);
-pad(1.0, 12.4, [62, 65, 69], { gain: 0.035, cutoff: 700, attack: 3, release: 1 });
-for (let s = 1.5; s < 7; s += 1) click(s, 0.05);
-// The question: hard cuts, then a heartbeat under "Are we okay?"
-for (const at of [7.5, 8.45, 9.4, 10.35]) impact(at, 0.32);
-for (const at of [11.2, 11.55, 12.2, 12.55]) kick(at, 0.45);
-riser(13, 1.8, 0.1);
-// Title.
-impact(13, 0.7);
-pad(13, 6.4, [46, 53, 58, 62, 65, 72], { gain: 0.06, cutoff: 2200, attack: 0.6, release: 2 });
-drone(13, 6.4, 34, 0.1);
 
-// The pulse under the product, 19–55s.
-const progression = [Dm, Bb, F, C];
-for (let bar = 0; 19 + bar * BEAT * 4 < 55; bar++) {
-  const at = 19 + bar * BEAT * 4;
-  const chord = progression[bar % 4];
-  pad(at, BEAT * 4 + 0.6, chord.map((m) => m + 12), { gain: 0.075, cutoff: 1300, attack: 0.8, release: 0.8 });
-  drone(at, BEAT * 4 + 0.3, chord[0] - 12, 0.1);
-  for (let i = 0; i < 8; i++) {
-    const note = chord[[0, 2, 3, 2, 1, 3, 2, 3][i]] + 24;
-    pluck(at + (i * BEAT) / 2, note, { gain: 0.075 + (i % 4 === 0 ? 0.025 : 0), decay: 0.22, pan: i % 2 ? 0.4 : -0.4 });
+/** A short: a hit on the hook, the pulse under the product, keystrokes and clicks, then a riser into the end card. */
+function short({ length, hits, typing = [], clicks = [], tense }) {
+  const end = length - 3.6;
+  const progression = [Dm, Bb, F, C];
+  for (let bar = 0; bar * BEAT * 4 < end - 0.1; bar++) {
+    const at = bar * BEAT * 4;
+    const len = Math.min(BEAT * 4, end - at);
+    const chord = progression[bar % 4];
+    pad(at, len + 0.5, chord.map((m) => m + 12), { gain: 0.07, cutoff: 1500, attack: 0.3, release: 0.6 });
+    drone(at, len + 0.3, chord[0] - 12, 0.1);
+    for (let i = 0; i < 8 && at + (i * BEAT) / 2 < end; i++) pluck(at + (i * BEAT) / 2, chord[[0, 2, 3, 2, 1, 3, 2, 3][i]] + 24, { gain: 0.07 + (i % 4 === 0 ? 0.02 : 0), decay: 0.2, pan: i % 2 ? 0.4 : -0.4 });
+    if (at >= 1.6)
+      for (let b = 0; b < 4 && at + b * BEAT < end; b++) {
+        kick(at + b * BEAT, 0.36);
+        hat(at + b * BEAT + BEAT / 2);
+      }
   }
-}
-impact(19, 0.45);
-impact(30, 0.45);
-riser(39, 2, 0.1);
-impact(39, 0.55);
-click(19 + 2.2);
-click(19 + 4.85);
-key(39 + 0.95);
-key(39 + 1.1);
-click(39 + 5.2, 0.18);
-
-// AI actions, 55–72.5: drums in, an impact on every verb.
-riser(55, 2.2, 0.12);
-for (const off of [0, 3.9, 7.4, 10.1, 14.0]) impact(55 + off, 0.5);
-for (let b = 0; 55 + b * BEAT < 72.4; b++) {
-  const at = 55 + b * BEAT;
-  kick(at, 0.38);
-  hat(at + BEAT / 2);
-  if (b % 2) hat(at + BEAT * 0.75, 0.035);
-  const chord = progression[Math.floor(b / 4) % 4];
-  pluck(at, chord[b % 4] + 24, { gain: 0.04, decay: 0.18, pan: b % 2 ? 0.5 : -0.5 });
-  if (b % 4 === 0) {
-    pad(at, BEAT * 4 + 0.4, chord.map((m) => m + 12), { gain: 0.04, cutoff: 1800, attack: 0.3, release: 0.6 });
-    drone(at, BEAT * 4 + 0.2, chord[0] - 12, 0.09);
+  for (const at of hits) impact(at, 0.5);
+  for (const [at, n, cps] of typing) for (let i = 0; i < n; i += cps > 30 ? 2 : 1) key(at + i / cps, 0.16);
+  for (const at of clicks) click(at, 0.3);
+  if (tense) {
+    pad(tense[0], tense[1] - tense[0], [49, 52, 56, 61], { gain: 0.08, cutoff: 2600, attack: 0.2, release: 0.4 });
+    for (let t = tense[0]; t < tense[1]; t += 0.27) kick(t, 0.25);
   }
+  riser(end, 1.4, 0.1);
+  impact(end, 0.8);
+  pad(end, length - end, Fmaj9.map((m) => m + 12), { gain: 0.09, cutoff: 2400, attack: 0.15, release: 2.5 });
+  drone(end, length - end, 29, 0.15);
+  for (let i = 0; i < 6; i++) pluck(end + 1.2 + i * 0.22, Fmaj9[i] + 24, { gain: 0.05, decay: 0.8, send: 0.7 });
 }
-click(55 + 3.9 + 1.15, 0.2);
 
-// Forecast: tension when the cash runs out, release when it's fixed.
-impact(72.5, 0.5);
-pad(72.5, 3.6, [50, 57, 62, 65], { gain: 0.05, cutoff: 1200, attack: 0.4, release: 0.6 });
-drone(72.5, 10.5, 26, 0.12);
-pad(75.8, 4.0, [49, 52, 56, 61], { gain: 0.07, cutoff: 2600, attack: 0.3, release: 0.4 });
-for (let i = 0; i < 14; i++) kick(75.9 + i * 0.27, 0.22 + i * 0.012);
-impact(80.0, 0.4);
-pad(80, 3.5, F.map((m) => m + 12), { gain: 0.06, cutoff: 2200, attack: 0.2, release: 1.2 });
+/** The 110-second film. */
+function film() {
+  // Open: drone and wind, a tick per second like a clock.
+  drone(0, 13.2, 26, 0.09);
+  drone(0, 13.2, 33, 0.06);
+  pad(1.0, 12.4, [62, 65, 69], { gain: 0.035, cutoff: 700, attack: 3, release: 1 });
+  for (let s = 1.5; s < 7; s += 1) click(s, 0.05);
+  // The question: hard cuts, then a heartbeat under "Are we okay?"
+  for (const at of [7.5, 8.45, 9.4, 10.35]) impact(at, 0.32);
+  for (const at of [11.2, 11.55, 12.2, 12.55]) kick(at, 0.45);
+  riser(13, 1.8, 0.1);
+  // Title.
+  impact(13, 0.7);
+  pad(13, 6.4, [46, 53, 58, 62, 65, 72], { gain: 0.06, cutoff: 2200, attack: 0.6, release: 2 });
+  drone(13, 6.4, 34, 0.1);
 
-// Trust: warm and still.
-impact(83, 0.45);
-for (let bar = 0; bar < 6; bar++) {
-  const at = 83 + bar * BEAT * 4;
-  const chord = [F, C, Dm, Bb, F, C][bar];
-  pad(at, BEAT * 4 + 0.8, chord.map((m) => m + 12), { gain: 0.085, cutoff: 1500, attack: 1, release: 1 });
-  for (let i = 0; i < 4; i++) pluck(at + i * BEAT, chord[(i + bar) % 4] + 24, { gain: 0.07, decay: 0.5, send: 0.6 });
+  // The pulse under the product, 19–55s.
+  const progression = [Dm, Bb, F, C];
+  for (let bar = 0; 19 + bar * BEAT * 4 < 55; bar++) {
+    const at = 19 + bar * BEAT * 4;
+    const chord = progression[bar % 4];
+    pad(at, BEAT * 4 + 0.6, chord.map((m) => m + 12), { gain: 0.075, cutoff: 1300, attack: 0.8, release: 0.8 });
+    drone(at, BEAT * 4 + 0.3, chord[0] - 12, 0.1);
+    for (let i = 0; i < 8; i++) {
+      const note = chord[[0, 2, 3, 2, 1, 3, 2, 3][i]] + 24;
+      pluck(at + (i * BEAT) / 2, note, { gain: 0.075 + (i % 4 === 0 ? 0.025 : 0), decay: 0.22, pan: i % 2 ? 0.4 : -0.4 });
+    }
+  }
+  impact(19, 0.45);
+  impact(30, 0.45);
+  riser(39, 2, 0.1);
+  impact(39, 0.55);
+  click(19 + 2.2);
+  click(19 + 4.85);
+  key(39 + 0.95);
+  key(39 + 1.1);
+  click(39 + 5.2, 0.18);
+
+  // AI actions, 55–72.5: drums in, an impact on every verb.
+  riser(55, 2.2, 0.12);
+  for (const off of [0, 3.9, 7.4, 10.1, 14.0]) impact(55 + off, 0.5);
+  for (let b = 0; 55 + b * BEAT < 72.4; b++) {
+    const at = 55 + b * BEAT;
+    kick(at, 0.38);
+    hat(at + BEAT / 2);
+    if (b % 2) hat(at + BEAT * 0.75, 0.035);
+    const chord = progression[Math.floor(b / 4) % 4];
+    pluck(at, chord[b % 4] + 24, { gain: 0.04, decay: 0.18, pan: b % 2 ? 0.5 : -0.5 });
+    if (b % 4 === 0) {
+      pad(at, BEAT * 4 + 0.4, chord.map((m) => m + 12), { gain: 0.04, cutoff: 1800, attack: 0.3, release: 0.6 });
+      drone(at, BEAT * 4 + 0.2, chord[0] - 12, 0.09);
+    }
+  }
+  click(55 + 3.9 + 1.15, 0.2);
+
+  // Forecast: tension when the cash runs out, release when it's fixed.
+  impact(72.5, 0.5);
+  pad(72.5, 3.6, [50, 57, 62, 65], { gain: 0.05, cutoff: 1200, attack: 0.4, release: 0.6 });
+  drone(72.5, 10.5, 26, 0.12);
+  pad(75.8, 4.0, [49, 52, 56, 61], { gain: 0.07, cutoff: 2600, attack: 0.3, release: 0.4 });
+  for (let i = 0; i < 14; i++) kick(75.9 + i * 0.27, 0.22 + i * 0.012);
+  impact(80.0, 0.4);
+  pad(80, 3.5, F.map((m) => m + 12), { gain: 0.06, cutoff: 2200, attack: 0.2, release: 1.2 });
+
+  // Trust: warm and still.
+  impact(83, 0.45);
+  for (let bar = 0; bar < 6; bar++) {
+    const at = 83 + bar * BEAT * 4;
+    const chord = [F, C, Dm, Bb, F, C][bar];
+    pad(at, BEAT * 4 + 0.8, chord.map((m) => m + 12), { gain: 0.085, cutoff: 1500, attack: 1, release: 1 });
+    for (let i = 0; i < 4; i++) pluck(at + i * BEAT, chord[(i + bar) % 4] + 24, { gain: 0.07, decay: 0.5, send: 0.6 });
+  }
+  click(83 + 3.0, 0.15);
+
+  // Finale: the wall with the full pulse, then the promise on one big chord.
+  riser(96, 2.4, 0.1);
+  impact(96, 0.6);
+  for (let b = 0; 96 + b * BEAT < 101.6; b++) {
+    kick(96 + b * BEAT, 0.34);
+    hat(96 + b * BEAT + BEAT / 2);
+    pluck(96 + b * BEAT, [65, 69, 72, 76][b % 4], { gain: 0.04, decay: 0.2 });
+  }
+  pad(96, 5.8, Bb.map((m) => m + 12), { gain: 0.05, cutoff: 1800 });
+  riser(102, 1.4, 0.08);
+  impact(102, 0.8);
+  pad(102, 8, Fmaj9.map((m) => m + 12), { gain: 0.08, cutoff: 2400, attack: 0.2, release: 4 });
+  drone(102, 8, 29, 0.16);
+  for (let i = 0; i < 6; i++) pluck(104.6 + i * 0.3, Fmaj9[i] + 24, { gain: 0.035, decay: 0.8, send: 0.7 });
 }
-click(83 + 3.0, 0.15);
 
-// Finale: the wall with the full pulse, then the promise on one big chord.
-riser(96, 2.4, 0.1);
-impact(96, 0.6);
-for (let b = 0; 96 + b * BEAT < 101.6; b++) {
-  kick(96 + b * BEAT, 0.34);
-  hat(96 + b * BEAT + BEAT / 2);
-  pluck(96 + b * BEAT, [65, 69, 72, 76][b % 4], { gain: 0.04, decay: 0.2 });
-}
-pad(96, 5.8, Bb.map((m) => m + 12), { gain: 0.05, cutoff: 1800 });
-riser(102, 1.4, 0.08);
-impact(102, 0.8);
-pad(102, 8, Fmaj9.map((m) => m + 12), { gain: 0.08, cutoff: 2400, attack: 0.2, release: 4 });
-drone(102, 8, 29, 0.16);
-for (let i = 0; i < 6; i++) pluck(104.6 + i * 0.3, Fmaj9[i] + 24, { gain: 0.035, decay: 0.8, send: 0.7 });
+if (shortId) short(SHORTS[shortId]);
+else film();
 
 // ---- reverb: four combs and two all-passes per side ----
 function reverb(input, delays) {
@@ -279,7 +328,7 @@ header.writeUInt16LE(4, 32);
 header.writeUInt16LE(16, 34);
 header.write("data", 36);
 header.writeUInt32LE(pcm.length, 40);
-const out = resolve(root, "out/score.wav");
+const out = resolve(root, shortId ? `out/shorts/${shortId}.wav` : "out/score.wav");
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, Buffer.concat([header, pcm]));
 console.log(`Wrote ${out}`);
