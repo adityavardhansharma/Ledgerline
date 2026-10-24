@@ -9,6 +9,7 @@ import { Forecast } from "./scenes/Forecast";
 import { ColdOpen, TheQuestion, TitleCard } from "./scenes/Opening";
 import { Overview } from "./scenes/Overview";
 import { Trust } from "./scenes/Trust";
+import { SHORTS } from "./shorts/Shorts";
 
 /** The cut: each scene's start and length in seconds. The score (render/score.mjs) is timed to the same marks. */
 export const CUT = {
@@ -38,14 +39,14 @@ const SCENES = [
   ["finale", Finale],
 ] as const;
 
-function useFit() {
+function useFit(w = 1920, h = 1080) {
   const [scale, setScale] = useState(1);
   useEffect(() => {
-    const fit = () => setScale(Math.min(window.innerWidth / 1920, window.innerHeight / 1080));
+    const fit = () => setScale(Math.min(window.innerWidth / w, window.innerHeight / h));
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, []);
+  }, [w, h]);
   return scale;
 }
 
@@ -60,6 +61,24 @@ export function Film({ seek, onReady }: { seek: number; onReady: () => void }) {
               <Scene />
             </Seq>
           ))}
+          <Grain />
+        </Clock>
+      </div>
+    </div>
+  );
+}
+
+/** One vertical short, 1080×1920, on the same clock, grain and renderer as the film. */
+export function ShortFilm({ id, seek, onReady }: { id: string; seek: number; onReady: () => void }) {
+  const scale = useFit(1080, 1920);
+  const { length, Short } = SHORTS[id];
+  return (
+    <div className="film-viewport">
+      <div className="film is-short" style={{ transform: `scale(${scale})` }}>
+        <Clock seek={seek} length={length} onReady={onReady}>
+          <Seq at={0} dur={length}>
+            <Short />
+          </Seq>
           <Grain />
         </Clock>
       </div>

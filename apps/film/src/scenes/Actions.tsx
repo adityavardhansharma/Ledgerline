@@ -42,7 +42,7 @@ const RECENT = [
   { date: "2026-08-29", account: "Timber and materials", debitCents: 1830411, creditCents: 0 },
 ];
 
-function SearchBeat() {
+export function SearchBeat() {
   const t = useT();
   const typeAt = 0.55;
   const typedEnd = typeAt + SEARCH.query.length / 30;
@@ -100,7 +100,7 @@ const PNL = [
   ["Wages and salaries", "(48,065)"],
 ] as const;
 
-function ExplainBeat() {
+export function ExplainBeat() {
   const t = useT();
   const a = useAnchors();
   const hover = t > 0.7;
@@ -135,7 +135,7 @@ function ExplainBeat() {
   );
 }
 
-function FlagBeat() {
+export function FlagBeat() {
   const t = useT();
   const pulse = (t * 1.2) % 1;
   return (
@@ -152,7 +152,7 @@ const PLAN_ROWS: Array<[string, string]> = [
   ["Equipment: Van, June 2027", "€38,000"],
 ];
 
-function PlanBeat() {
+export function PlanBeat() {
   const t = useT();
   const typeAt = 0.4;
   const typed = typeAt + PLAN_TEXT.length / 48;
@@ -194,7 +194,7 @@ function PlanBeat() {
   );
 }
 
-function DraftBeat() {
+export function DraftBeat() {
   const t = useT();
   return (
     <div className="ac-draft" style={{ ["--glow" as string]: clamp((t - 0.6) * 2) }}>
