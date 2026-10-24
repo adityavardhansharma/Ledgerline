@@ -167,7 +167,7 @@ function Alerts({ workspace }: { workspace: { role: string; org: { alerts: { run
   const set = (key: keyof typeof alerts) => (on: boolean) => void update({ alerts: { ...alerts, [key]: on } });
   return (
     <Group title="Alerts">
-      <p className="ll-setting-note">Saved now. Emails to owners start with the board-pack release.</p>
+      <p className="ll-setting-note">Saved now. Alert emails to owners are coming soon.</p>
       <fieldset disabled={workspace.role !== "owner"} className="ll-setting-fields">
         <Row title="Runway falls under 6 months" hint="On the base case, after any sync.">
           <Switch id="al-runway" label="Runway falls under 6 months" checked={alerts.runwayUnder6} onChange={set("runwayUnder6")} />
