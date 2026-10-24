@@ -99,6 +99,13 @@ function Replay({ onClick, shown }: { onClick: () => void; shown: boolean }) {
 
 const CHIPS = ["Liffey Timber Supplies", "Apr – Jun 2026", "Over €5,000"];
 const ROWS = SEARCH.rows.slice(0, 4);
+// The unfiltered ledger before the search: the sample company's latest lines, so the scene never opens empty.
+const RECENT = [
+  { date: "2026-09-28", account: "Sales: doors and joinery", debitCents: 0, creditCents: 4814548 },
+  { date: "2026-09-26", account: "Wages and salaries", debitCents: 4806500, creditCents: 0 },
+  { date: "2026-09-15", account: "Sales: doors and joinery", debitCents: 0, creditCents: 3461982 },
+  { date: "2026-09-01", account: "Rent and rates", debitCents: 620000, creditCents: 0 },
+];
 
 /** Search in your own words: a sentence typed, read, turned into filters, and the matching lines. */
 export function SearchScene() {
@@ -140,6 +147,7 @@ export function SearchScene() {
   const text = final ? SEARCH.query : typed;
   const shownChips = final ? CHIPS.length : chips;
   const shownRows = final ? ROWS.length : rows;
+  const filtered = final || chips > 0;
   return (
     <div className="lp-scene lp-scene-search" ref={scene.box}>
       <div className={`lp-search${phase === "typing" ? " is-focus" : ""}`} ref={input}>
@@ -166,8 +174,13 @@ export function SearchScene() {
       </div>
       <table className="lp-mini-ledger">
         <tbody>
-          {ROWS.map((r, i) => (
-            <motion.tr key={i} initial={false} animate={{ opacity: i < shownRows ? 1 : 0, y: i < shownRows ? 0 : 6 }} transition={{ duration: 0.3, ease: EASE }}>
+          {(filtered ? ROWS : RECENT).map((r, i) => (
+            <motion.tr
+              key={`${filtered}-${i}`}
+              initial={filtered ? { opacity: 0, y: 6 } : false}
+              animate={filtered ? { opacity: i < shownRows ? 1 : 0, y: i < shownRows ? 0 : 6 } : { opacity: phase === "reading" ? 0.35 : 1, y: 0 }}
+              transition={{ duration: 0.3, ease: EASE }}
+            >
               <td>{new Date(`${r.date}T00:00:00Z`).toLocaleDateString("en-IE", { day: "numeric", month: "short", timeZone: "UTC" })}</td>
               <td>{r.account}</td>
               <td>{((r.debitCents || r.creditCents) / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 })}</td>
