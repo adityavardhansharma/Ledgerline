@@ -185,8 +185,12 @@ export default defineSchema({
     startedAt: v.number(),
     finishedAt: v.optional(v.number()),
     retryAt: v.optional(v.number()),
+    // The last sign of life: a step starting or storing a page. The watchdog fails runs that go quiet.
+    touchedAt: v.optional(v.number()),
     error: v.optional(v.string()),
-  }).index("by_org", ["orgId", "startedAt"]),
+  })
+    .index("by_org", ["orgId", "startedAt"])
+    .index("by_status", ["status"]),
 
   reportSnapshots: defineTable({
     orgId: v.id("organizations"),

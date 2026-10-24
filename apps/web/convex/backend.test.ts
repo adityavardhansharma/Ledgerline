@@ -246,6 +246,46 @@ describe("Xero webhooks", () => {
   });
 });
 
+describe("stuck syncs", () => {
+  it("fails a run that has gone quiet, so the next sync can start", async () => {
+    const { t, orgId } = await setup();
+    const long = Date.now() - 20 * 60 * 1000;
+    const [stuck, fresh] = await t.run(async (ctx) => [
+      await ctx.db.insert("syncRuns", { orgId, trigger: "Nightly", phase: "journals", status: "running", pagesDone: 3, journalsStored: 300, attempts: 0, startedAt: long, touchedAt: long }),
+      await ctx.db.insert("syncRuns", { orgId, trigger: "Manual", phase: "journals", status: "running", pagesDone: 1, journalsStored: 100, attempts: 0, startedAt: long, touchedAt: Date.now() }),
+    ]);
+    await t.mutation(internal.sync.recoverStuck, {});
+    const [a, b] = await t.run(async (ctx) => [await ctx.db.get(stuck), await ctx.db.get(fresh)]);
+    expect(a).toMatchObject({ status: "failed" });
+    expect(a?.error).toMatch(/stopped responding/);
+    expect(b).toMatchObject({ status: "running" });
+  });
+
+  it("finishes the run when reading the tokens throws, instead of leaving it running", async () => {
+    vi.useFakeTimers();
+    const { t, orgId } = await setup();
+    const runId = await t.run(async (ctx) => {
+      await ctx.db.insert("xeroConnections", {
+        orgId,
+        tenantId: "tenant-1",
+        tenantName: "Kestrel",
+        accessTokenEnc: new Uint8Array([1, 2, 3]).buffer,
+        refreshTokenEnc: new Uint8Array([1, 2, 3]).buffer,
+        expiresAt: Date.now(),
+        scopes: [],
+        status: "connected",
+        lastJournalNumber: 0,
+        journalsStored: 0,
+        connectedAt: Date.now(),
+      });
+      return ctx.db.insert("syncRuns", { orgId, trigger: "Manual", phase: "accounts", status: "queued", pagesDone: 0, journalsStored: 0, attempts: 0, startedAt: Date.now() });
+    });
+    await t.action(internal.sync.runStep, { runId });
+    expect(await t.run((ctx) => ctx.db.get(runId))).toMatchObject({ status: "backingOff", attempts: 1 });
+    vi.useRealTimers();
+  });
+});
+
 describe("CSV imports", () => {
   const CHART = [
     { xeroAccountId: "csv:090", code: "090", name: "Bank", type: "BANK", accountClass: "ASSET", systemAccount: "", status: "ACTIVE" },
@@ -281,14 +321,20 @@ describe("CSV imports", () => {
     const first = await owner.action(api.imports.start, { source: "csv", label: "a.csv", accounts: CHART });
     await owner.mutation(api.imports.page, { runId: first, journals: [csvJournal(1, "2026-08-04", 10_000)] });
     await owner.action(api.imports.complete, { runId: first });
+    const orgId = (await owner.query(api.orgs.current, {}))!.org.id;
+    await t.run((ctx) => ctx.db.insert("boardNotes", { orgId, period: "2026-08", text: "Won the Seaview contract", updatedBy: "Aoife Byrne", updatedAt: Date.now() }));
 
     const second = await owner.action(api.imports.start, { source: "sample", label: "Kestrel Joinery Ltd", accounts: CHART.slice(0, 1) });
     expect(await t.run((ctx) => ctx.db.query("ledgerLines").collect())).toHaveLength(0);
+    // What people wrote stays when the same company's figures are replaced.
+    expect(await t.run((ctx) => ctx.db.query("boardNotes").collect())).toHaveLength(1);
     expect(await t.run((ctx) => ctx.db.query("accounts").collect())).toHaveLength(1);
     await expect(owner.mutation(api.imports.page, { runId: second, journals: [csvJournal(1, "2026-08-04", 10_000)] })).rejects.toThrow(/isn't in the chart/);
     await expect(owner.mutation(api.imports.page, { runId: second, journals: [{ ...csvJournal(2, "2026-08-04", 1), xero_journal_id: "x-2" }] })).rejects.toThrow(/from a file/);
     await expect(t.withIdentity(ACCOUNTANT as never).action(api.imports.start, { source: "csv", label: "x", accounts: CHART })).rejects.toThrow(/Accountants/);
     await expect(owner.action(api.imports.start, { source: "csv", label: "x", accounts: CHART })).rejects.toThrow(/already running/);
+    // Claiming is one transaction: a second import can't slip in while the first clears the old figures.
+    await expect(owner.mutation(internal.imports.claim, { source: "csv" })).rejects.toThrow(/already running/);
   });
 
   it("is refused while Xero is connected, and a Xero sync later claims the organisation", async () => {
