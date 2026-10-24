@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
+import { AiOrb, Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useEffect, useRef, useState } from "react";
@@ -330,7 +330,7 @@ export function CommentaryToolbar({
   return (
     <section className="ll-studio no-print">
       <div className="ll-studio-intro">
-        <span className="ll-studio-icon"><Icon name="sparkle" size={16} /></span>
+        <span className="ll-studio-icon"><AiOrb size={16} busy={busy} /></span>
         <div>
           <strong>Commentary</strong>
           <span>Drafted from every figure, the forecast and its scenarios. About half a minute.</span>
@@ -350,7 +350,7 @@ export function CommentaryToolbar({
             Versions
           </Button>
         ) : null}
-        <Button variant={commentary ? "secondary" : "primary"} size="sm" icon="sparkle" loading={busy} onClick={() => onDraft({ tone, length })}>
+        <Button variant={commentary ? "secondary" : "primary"} size="sm" icon="ai" loading={busy} onClick={() => onDraft({ tone, length })}>
           {commentary ? "Redraft all" : "Draft commentary"}
         </Button>
       </div>

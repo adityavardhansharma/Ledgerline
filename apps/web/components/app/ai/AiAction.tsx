@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon, IconButton } from "@ledgerline/ui";
+import { AiOrb, Icon, IconButton } from "@ledgerline/ui";
 import { ConvexError } from "convex/values";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -29,9 +29,7 @@ export function AiButton({ children, onClick, busy, size = "md", title }: { chil
       whileTap={busy ? undefined : { scale: 0.97 }}
       transition={{ layout: { duration: 0.25, ease: EASE } }}
     >
-      <span className="ll-ai-mark" aria-hidden>
-        <Icon name="sparkle" size={size === "sm" ? 13 : 14} />
-      </span>
+      <AiOrb size={size === "sm" ? 18 : 20} busy={busy} />
       <AnimatePresence mode="wait" initial={false}>
         <motion.span key={busy ? "busy" : "idle"} className={busy ? "ll-shimmer" : undefined} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16 }}>
           {busy ? "Working on it" : children}
@@ -51,7 +49,7 @@ export function Thinking({ steps = DEFAULT_STEPS }: { steps?: string[] }) {
   return (
     <div className="ll-ai-thinking" role="status">
       <span className="ll-ai-thinking-mark" aria-hidden>
-        <Icon name="sparkle" size={13} />
+        <AiOrb size={14} busy />
       </span>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span key={index} className="ll-shimmer" initial={{ opacity: 0, y: 6, filter: "blur(2px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -6, filter: "blur(2px)" }} transition={{ duration: 0.28, ease: EASE }}>
@@ -92,7 +90,7 @@ export function AiNote({ title, children, onClose, footer, busy, error, notice, 
       <div className="ll-ai-note-inner">
         <header>
           <span className="ll-ai-note-title">
-            <Icon name="sparkle" size={13} /> {title}
+            <AiOrb size={13} busy={busy} /> {title}
           </span>
           {onClose ? <IconButton icon="close" label="Close" size="sm" onClick={onClose} /> : null}
         </header>

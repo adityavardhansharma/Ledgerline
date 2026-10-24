@@ -110,7 +110,7 @@ export function OwedList({ top }: { top: { contact: string; value: number }[] })
           onClose={close}
           footer={
             <>
-              <Button icon="sparkle" disabled={ai.busy} onClick={() => void open(contact, true)}>
+              <Button icon="ai" loading={ai.busy} onClick={() => void open(contact, true)}>
                 New draft
               </Button>
               <span style={{ flex: 1 }} />

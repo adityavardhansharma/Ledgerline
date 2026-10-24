@@ -120,7 +120,7 @@
 .lp-search > span:first-of-type { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
 .lp-search .is-placeholder { color: var(--ink-subtle); }
 .lp-search kbd { display: grid; place-items: center; height: 26px; padding: 0 8px; border-radius: 7px; background: var(--surface-sunken); color: var(--ink-subtle); font: 500 12px/1 var(--font-mono); }
-.lp-search-reading { flex: none; font-size: 12.5px; padding-right: 6px; }
+.lp-search-reading { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding-right: 6px; }
 .lp-caret { display: inline-block; width: 1.5px; height: 17px; margin-left: 1px; vertical-align: -3px; background: var(--ink); animation: lp-blink 1s steps(1) infinite; }
 @keyframes lp-blink { 50% { opacity: 0; } }
 .lp-search-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 26px; }

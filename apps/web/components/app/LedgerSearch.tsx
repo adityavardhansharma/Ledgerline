@@ -1,6 +1,6 @@
 "use client";
 
-import { Amount, Button, Icon, Skeleton } from "@ledgerline/ui";
+import { AiOrb, Amount, Button, Icon, Skeleton } from "@ledgerline/ui";
 import { useAction, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -69,7 +69,7 @@ export function LedgerSearch({ filters, onFilters }: { filters: Filters | null; 
       >
         <Icon name="search" size={18} />
         <input value={text} maxLength={300} onChange={(e) => setText(e.target.value)} placeholder="Search in your own words: payments to Liffey Timber over 5k in Q2" aria-label="Search the ledger" />
-        {busy ? <span className="ll-lsearch-busy">Reading…</span> : null}
+        {busy ? <span className="ll-lsearch-busy"><AiOrb size={14} busy />Reading…</span> : null}
         <Button type="submit" size="sm" variant="primary" disabled={!text.trim() || busy}>
           Search
         </Button>
