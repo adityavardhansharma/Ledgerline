@@ -138,7 +138,7 @@ export default function BoardPackPage() {
                 <div className="ll-panel"><Skeleton lines={8} /></div>
               ) : (
                 <div className="ll-panel no-print">
-                  <EmptyState icon="sparkle" title="Draft this month's commentary" action={<Button variant="primary" icon="sparkle" onClick={() => void write({})}>Draft commentary</Button>}>
+                  <EmptyState icon="ai" title="Draft this month's commentary" action={<Button variant="primary" icon="sparkle" onClick={() => void write({})}>Draft commentary</Button>}>
                     A headline, performance, cash, outlook, risks, decisions and the questions a board may ask. Every number is a citation of a figure Ledgerline computed; the AI never writes one itself.
                   </EmptyState>
                 </div>

@@ -1137,8 +1137,6 @@ g.is-dim { opacity: .3; }
 .ll-ai-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--rule-strong); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font: 500 13px/18px var(--font-sans); cursor: pointer; white-space: nowrap; transition: border-color .15s, background .15s, color .15s; }
 .ll-ai-btn.is-sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
 .ll-ai-btn svg { color: var(--forecast); flex: none; }
-.ll-ai-mark { display: inline-grid; place-items: center; }
-.ll-ai-btn.is-busy .ll-ai-mark { animation: ll-breathe 1.4s ease-in-out infinite; }
 .ll-ai-btn > span:last-child { display: inline-block; }
 .ll-ai-btn:hover { border-color: var(--forecast); background: var(--forecast-tint); }
 .ll-ai-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -1225,7 +1223,7 @@ g.is-dim { opacity: .3; }
 .ll-lsearch-bar > svg { color: var(--ink-muted); flex: none; }
 .ll-lsearch-bar input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 400 14.5px var(--font-sans); }
 .ll-lsearch-bar input::placeholder { color: var(--ink-subtle); }
-.ll-lsearch-busy { font-size: 12.5px; color: var(--ink-muted); }
+.ll-lsearch-busy { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-muted); }
 .ll-lsearch-chips, .ll-lsearch-examples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .ll-lsearch-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 11px; border-radius: var(--radius-pill); background: var(--brand-tint); color: var(--ink); font-size: 13px; }
 .ll-lsearch-chip button { all: unset; cursor: pointer; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: var(--ink-muted); }
@@ -1249,6 +1247,11 @@ g.is-dim { opacity: .3; }
 .ll-ask-orb.is-big { width: 44px; height: 44px; }
 .ll-ask-orb.is-big::after { inset: 5px; }
 @keyframes ll-orb { to { transform: rotate(360deg); } }
+/* The same orb as the AI mark everywhere: a ring with a faint fill, so it sits on any surface. Fast while the AI works. */
+.ll-orb { display: inline-block; vertical-align: middle; border-radius: 50%; flex: none; background: conic-gradient(from 0deg, var(--brand), var(--forecast), var(--chart-3), var(--brand)); -webkit-mask: radial-gradient(farthest-side, rgba(0, 0, 0, .2) 56%, #000 60%); mask: radial-gradient(farthest-side, rgba(0, 0, 0, .2) 56%, #000 60%); animation: ll-orb 6s linear infinite; }
+.ll-orb.is-busy, .ll-ask-orb.is-busy { animation-duration: .9s; }
+.ll-btn-primary .ll-orb { background: currentColor; }
+@media (prefers-reduced-motion: reduce) { .ll-orb, .ll-ask-orb { animation: none; } .ll-orb.is-busy, .ll-ask-orb.is-busy { animation: ll-breathe 1.4s ease-in-out infinite; } }
 .ll-ask-scrim { position: fixed; inset: 0; z-index: calc(var(--z-overlay) + 1); background: color-mix(in srgb, var(--ink) 14%, transparent); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); }
 .ll-ask-panel { width: min(720px, calc(100vw - 24px)); height: min(780px, calc(100dvh - 40px)); border-radius: 20px; will-change: transform, opacity; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow-modal); overflow: hidden; }
 .ll-ask-inner { display: flex; flex-direction: column; height: 100%; }
@@ -1353,7 +1356,7 @@ g.is-dim { opacity: .3; }
 .ll-chat-followups button { all: unset; cursor: pointer; padding: 7px 12px; border-radius: var(--radius-pill); background: var(--surface-sunken); font-size: 13px; line-height: 18px; color: var(--ink); transition: background .15s, transform .15s; }
 .ll-chat-followups button:hover { background: var(--brand-tint); color: var(--brand); }
 .ll-chat-followups button:disabled { opacity: .5; cursor: default; }
-@media (prefers-reduced-motion: reduce) { .ll-ask-orb, .ll-shimmer, .ll-chat-word, .ll-chat-in, .ll-chat-caret, .ll-chat-step-icon, .ll-chat-table tbody tr { animation: none !important; } .ll-shimmer { color: var(--ink-muted); } }
+@media (prefers-reduced-motion: reduce) { .ll-shimmer, .ll-chat-word, .ll-chat-in, .ll-chat-caret, .ll-chat-step-icon, .ll-chat-table tbody tr { animation: none !important; } .ll-shimmer { color: var(--ink-muted); } }
 @media print { .ll-ask-pill, .ll-ask-panel, .ll-ask-scrim { display: none !important; } }
 
 /* AI actions while they work, and their answers writing themselves in. */
@@ -1367,7 +1370,7 @@ g.is-dim { opacity: .3; }
 li.ll-reveal { display: list-item; }
 .ll-ai-digest li.ll-reveal, .ll-composer-result li.ll-reveal { display: block; }
 @keyframes ll-reveal { from { opacity: 0; transform: translateY(4px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
-@media (prefers-reduced-motion: reduce) { .ll-reveal, .ll-ai-thinking-mark, .ll-ai-thinking-lines i, .ll-ai-btn.is-busy .ll-ai-mark { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .ll-reveal, .ll-ai-thinking-mark, .ll-ai-thinking-lines i { animation: none !important; } }
 
 /* Scrollbars: thin, rounded, quiet until hovered, no arrow buttons, in both themes. */
 html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent; }
@@ -1948,15 +1951,11 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 @property --ll-ai-turn { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 .ll-ai-btn { position: relative; gap: 8px; height: 32px; padding: 0 13px 0 5px; border: 1px solid transparent; border-radius: 999px; background: linear-gradient(var(--surface), var(--surface)) padding-box, conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)) border-box; color: var(--ink); font: 500 13px/1 var(--font-sans); box-shadow: 0 1px 2px rgba(14, 22, 19, .06); transition: box-shadow .25s, transform .2s cubic-bezier(.22, 1, .36, 1), --ll-ai-turn .9s cubic-bezier(.22, 1, .36, 1); }
 .ll-ai-btn.is-sm { height: 28px; padding: 0 11px 0 4px; font-size: 12.5px; }
-.ll-ai-btn .ll-ai-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none; background: conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)); }
-.ll-ai-btn.is-sm .ll-ai-mark { width: 20px; height: 20px; }
-.ll-ai-btn .ll-ai-mark svg { color: #fff; }
 .ll-ai-btn:hover:not(:disabled) { --ll-ai-turn: 180deg; transform: translateY(-1px); background: linear-gradient(var(--surface), var(--surface)) padding-box, conic-gradient(from var(--ll-ai-turn), var(--brand), var(--forecast), var(--chart-3), var(--brand)) border-box; box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--forecast) 55%, transparent), 0 0 0 3px color-mix(in srgb, var(--forecast) 9%, transparent); }
 .ll-ai-btn:active:not(:disabled) { transform: translateY(0) scale(.98); }
 .ll-ai-btn.is-busy { animation: ll-ai-spin 1.6s linear infinite; color: var(--ink-muted); cursor: progress; }
-.ll-ai-btn.is-busy .ll-ai-mark { animation: ll-ai-spin 1.6s linear infinite, ll-breathe 1.4s ease-in-out infinite; }
 @keyframes ll-ai-spin { to { --ll-ai-turn: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .ll-ai-btn, .ll-ai-btn.is-busy, .ll-ai-btn.is-busy .ll-ai-mark { animation: none; transition: box-shadow .2s; } }
+@media (prefers-reduced-motion: reduce) { .ll-ai-btn, .ll-ai-btn.is-busy { animation: none; transition: box-shadow .2s; } }
 
 /* ---------- Ask: choose where answers may look ---------- */
 .ll-src { position: relative; display: inline-flex; align-items: center; gap: 2px; }

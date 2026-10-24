@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@ledgerline/ui";
+import { AiOrb, Icon } from "@ledgerline/ui";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AiNote, AiProse } from "../app/ai/AiAction";
@@ -156,7 +156,7 @@ export function SearchScene() {
           {text || "Search the ledger in your own words"}
           {phase === "typing" ? <i className="lp-caret" /> : null}
         </span>
-        {phase === "reading" ? <span className="lp-search-reading ll-shimmer">Reading your search</span> : <kbd>↵</kbd>}
+        {phase === "reading" ? <span className="lp-search-reading"><AiOrb size={13} busy /><span className="ll-shimmer">Reading your search</span></span> : <kbd>↵</kbd>}
       </div>
       <div className="lp-search-chips">
         <AnimatePresence>
@@ -237,7 +237,7 @@ export function ExplainScene() {
               <td>
                 {i === 1 ? (
                   <span ref={button} className={`lp-explain-btn${hover || open || final ? " is-shown" : ""}`}>
-                    <Icon name="sparkle" size={12} /> Explain
+                    <AiOrb size={12} /> Explain
                   </span>
                 ) : null}
                 {value}

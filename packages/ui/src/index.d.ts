@@ -11,7 +11,10 @@ export interface IconProps { name: IconName; size?: 16 | 18 | 20 | 24 | number; 
 export interface LogoProps { size?: number; variant?: 'full' | 'mark' }
 export interface SpinnerProps { label?: string }
 /** Starts an action. Verb-first, sentence-case label. */
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { variant?: 'primary' | 'secondary' | 'ghost' | 'forecast' | 'danger'; size?: 'sm' | 'md' | 'lg'; icon?: IconName; iconRight?: IconName; loading?: boolean; block?: boolean }
+/** The AI mark: turns slowly at rest, fast while busy. */
+export interface AiOrbProps { size?: number; busy?: boolean; className?: string }
+/** icon="ai" shows the AI orb, which spins fast while loading instead of the spinner. */
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { variant?: 'primary' | 'secondary' | 'ghost' | 'forecast' | 'danger'; size?: 'sm' | 'md' | 'lg'; icon?: IconName | 'ai'; iconRight?: IconName; loading?: boolean; block?: boolean }
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { icon: IconName; label: string; variant?: 'ghost' | 'outline' | 'primary'; size?: 'sm' | 'md' }
 export interface KbdProps extends Children {}
 export interface FieldProps extends Children { id: string; label?: string; hint?: string; error?: string; optional?: boolean }
@@ -49,7 +52,7 @@ export interface DataTableProps<R = any> { columns: Array<{ key: string; label: 
 export interface ReconcileCheckProps { status: 'match' | 'mismatch'; report?: string; checkedAt?: string; lines?: number; diff?: number; detail?: string; action?: React.ReactNode }
 export interface BannerProps extends Children { tone?: 'info' | 'positive' | 'warning' | 'negative'; title?: string; action?: React.ReactNode; onClose?: () => void; icon?: IconName }
 export interface ToastProps extends Children { tone?: 'info' | 'positive' | 'warning' | 'negative'; title: string; action?: React.ReactNode; onClose?: () => void }
-export interface EmptyStateProps extends Children { icon?: IconName; title: string; action?: React.ReactNode; compact?: boolean }
+export interface EmptyStateProps extends Children { icon?: IconName | 'ai'; title: string; action?: React.ReactNode; compact?: boolean }
 export interface SyncProgressProps { org?: string; title?: string; pagesDone: number; pagesTotal?: number | null; journals?: number; eta?: string; phase: number; phases?: string[]; /** Replaces the page and journal count line. */ meta?: string }
 export interface StepperProps { steps: Array<{ title: string; hint?: string }>; current: number }
 export interface DialogProps extends Children { title: string; footer?: React.ReactNode; onClose?: () => void; size?: 'sm' | 'md'; inline?: boolean }
@@ -80,7 +83,7 @@ export interface IntegrationCardProps { name: string; org: string; status: Statu
 export interface CommentaryCardProps { paragraphs: Array<Array<string | { text: string; source: string }>>; meta?: string; tag?: string; /** Buttons for the card's footer; none are shown without them. */ actions?: React.ReactNode }
 
 type C<P> = (props: P) => React.ReactElement | null;
-export declare const Icon: C<IconProps>; export declare const Logo: C<LogoProps>; export declare const Spinner: C<SpinnerProps>;
+export declare const Icon: C<IconProps>; export declare const AiOrb: C<AiOrbProps>; export declare const Logo: C<LogoProps>; export declare const Spinner: C<SpinnerProps>;
 export declare const Button: C<ButtonProps>; export declare const IconButton: C<IconButtonProps>; export declare const Kbd: C<KbdProps>;
 export declare const Field: C<FieldProps>; export declare const Input: C<InputProps>; export declare const Select: C<SelectProps>;
 export declare const Checkbox: C<CheckboxProps>; export declare const RadioGroup: C<RadioGroupProps>; export declare const Switch: C<SwitchProps>;

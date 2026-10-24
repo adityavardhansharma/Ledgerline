@@ -144,6 +144,11 @@ function Logo(p) {
 }
 
 /* ---------- actions ---------- */
+/* The AI mark: the Ask Ledgerline orb. It turns slowly at rest and fast while the AI works. */
+function AiOrb(p) {
+  var size = (p && p.size) || 16;
+  return h('span', { className: cx('ll-orb', p && p.busy && 'is-busy', p && p.className), style: { width: size, height: size }, 'aria-hidden': true });
+}
 function Spinner(p) {
   return h('span', { className: cx('ll-spinner', p && p.className), role: 'status', 'aria-label': (p && p.label) || 'Loading' });
 }
@@ -154,7 +159,7 @@ function Button(p) {
     className: cx('ll-btn', 'll-btn-' + variant, 'll-btn-' + size, p.block && 'll-btn-block', p.loading && 'is-loading', p.className),
     disabled: p.disabled || p.loading, 'aria-busy': p.loading || undefined
   }),
-    p.loading ? h(Spinner, { label: 'Working' }) : (p.icon ? h(Icon, { name: p.icon, size: size === 'sm' ? 16 : 18 }) : null),
+    p.icon === 'ai' ? h(AiOrb, { size: size === 'sm' ? 15 : 17, busy: p.loading }) : p.loading ? h(Spinner, { label: 'Working' }) : (p.icon ? h(Icon, { name: p.icon, size: size === 'sm' ? 16 : 18 }) : null),
     p.children ? h('span', null, p.children) : null,
     p.iconRight ? h(Icon, { name: p.iconRight, size: size === 'sm' ? 16 : 18 }) : null);
 }
@@ -1052,7 +1057,7 @@ function Toast(p) {
 }
 function EmptyState(p) {
   return h('div', { className: cx('ll-empty', p.compact && 'll-empty-compact') },
-    h('span', { className: 'll-empty-icon' }, h(Icon, { name: p.icon || 'ledger', size: 24 })),
+    h('span', { className: 'll-empty-icon' }, p.icon === 'ai' ? h(AiOrb, { size: 24 }) : h(Icon, { name: p.icon || 'ledger', size: 24 })),
     h('div', { className: 'll-empty-title' }, p.title),
     p.children ? h('p', { className: 'll-empty-text' }, p.children) : null,
     p.action ? h('div', { className: 'll-empty-action' }, p.action) : null);
@@ -1396,7 +1401,7 @@ function IntegrationCard(p) {
 }
 function CommentaryCard(p) {
   return h('div', { className: 'll-comm' },
-    h('div', { className: 'll-comm-head' }, h('span', { className: 'll-comm-tag' }, h(Icon, { name: 'sparkle', size: 14 }), p.tag || 'Draft commentary'),
+    h('div', { className: 'll-comm-head' }, h('span', { className: 'll-comm-tag' }, h(AiOrb, { size: 14 }), p.tag || 'Draft commentary'),
       h('span', { className: 'll-comm-meta' }, p.meta || 'Written from computed figures · every number links to its source')),
     h('div', { className: 'll-comm-body' }, p.paragraphs.map(function (para, i) {
       return h('p', { key: i }, para.map(function (part, j) {
@@ -1612,7 +1617,7 @@ var demo = (function () {
 })();
 
 var api = {
-  Icon: Icon, Logo: Logo, Spinner: Spinner, Button: Button, IconButton: IconButton, Kbd: Kbd,
+  Icon: Icon, AiOrb: AiOrb, Logo: Logo, Spinner: Spinner, Button: Button, IconButton: IconButton, Kbd: Kbd,
   Field: Field, Input: Input, Select: Select, Checkbox: Checkbox, RadioGroup: RadioGroup, Switch: Switch, Slider: Slider,
   SegmentedControl: SegmentedControl, Tabs: Tabs, Badge: Badge, StatusPill: StatusPill, Avatar: Avatar, Tooltip: Tooltip,
   Skeleton: Skeleton, ProgressBar: ProgressBar, Amount: Amount, Delta: Delta, Sparkline: Sparkline, ChartLegend: ChartLegend,
@@ -1631,6 +1636,7 @@ var api = {
 
 export {
   Icon,
+  AiOrb,
   Logo,
   Spinner,
   Button,

@@ -241,7 +241,7 @@ function Panel({ onClose }: { onClose: () => void }) {
       <motion.div className={`ll-ask-inner${history ? " is-history" : ""}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}>
         <aside className="ll-ask-side" aria-label="Your conversations">
           <div className="ll-ask-brand">
-            <span className="ll-ask-orb" aria-hidden />
+            <span className={`ll-ask-orb${busy ? " is-busy" : ""}`} aria-hidden />
             <strong>Ask Ledgerline</strong>
           </div>
           <button type="button" className="ll-ask-newchat" onClick={newChat}>
@@ -340,7 +340,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                     ) : (
                       <motion.div key={m.id === "a-live" && live?.answerId ? live.answerId : m.id} className="ll-ask-a" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
                         <span className="ll-ask-a-mark" aria-hidden>
-                          <span className="ll-ask-orb" />
+                          <span className={`ll-ask-orb${m.status === "live" ? " is-busy" : ""}`} />
                         </span>
                         <div className="ll-ask-a-body">
                           {m.status === "live" && live && i === rows.length - 1 && live.phase !== "writing" && !m.content ? (
