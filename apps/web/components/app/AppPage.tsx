@@ -254,17 +254,17 @@ export function DataSources({ workspace }: { workspace: Workspace }) {
     <div className="ll-stack">
       <div className="ll-sources">
         <div className="ll-source">
-          <h3><Icon name="plug" size={18} />Connect Xero</h3>
+          <h3><span className="ll-source-icon"><Icon name="plug" size={16} /></span>Connect Xero</h3>
           <p>Read-only access to one Xero organisation. Synced nightly and checked against Xero to the cent.</p>
           <div><ConnectButton size="sm" /></div>
         </div>
         <div className="ll-source">
-          <h3><Icon name="upload" size={18} />Import from CSV</h3>
+          <h3><span className="ll-source-icon"><Icon name="upload" size={16} /></span>Import from CSV</h3>
           <p>A chart of accounts and a journal listing from any accounting system or spreadsheet.</p>
           <div><Link href={`${ROUTES.sync}#import`}><Button size="sm" icon="upload">Choose files</Button></Link></div>
         </div>
         <div className="ll-source">
-          <h3><Icon name="database" size={18} />Try the sample company</h3>
+          <h3><span className="ll-source-icon"><Icon name="database" size={16} /></span>Try the sample company</h3>
           <p>Two years of Kestrel Joinery Ltd, an Irish joinery: 940 journals, every statement tying out.</p>
           <div>
             <Button size="sm" disabled={!canWrite || busy} loading={busy} onClick={async () => { if (await sample()) router.push(ROUTES.overview); }}>
@@ -281,7 +281,7 @@ export function DataSources({ workspace }: { workspace: Workspace }) {
 
 function NoFigures({ workspace }: { workspace: Workspace }) {
   return (
-    <div className="ll-panel">
+    <div className="ll-panel ll-nofigures">
       <EmptyState icon="database" title="Add your figures to get started">
         Ledgerline builds management accounts and a three-statement forecast from your ledger. Choose where the figures come from.
       </EmptyState>
