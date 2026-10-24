@@ -1,0 +1,13 @@
+{
+  "name": "@ledgerline/film",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ledgerline's launch film, built from the product's own components and rendered frame by frame.",
+  "scripts": {
+    "dev": "vite",
+    "render": "node render/render.mjs",
+    "audio": "node render/score.mjs",
+    "typecheck": "tsc --noEmit"
+  }
+}
