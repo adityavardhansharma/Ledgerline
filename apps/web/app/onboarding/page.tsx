@@ -1,10 +1,10 @@
 "use client";
 
-import { CreateOrganization, OrganizationList, useAuth } from "@clerk/nextjs";
+import { CreateOrganization, OrganizationList, useAuth, useUser } from "@clerk/nextjs";
 import { Badge, Banner, Button, Icon, Logo, Stepper } from "@ledgerline/ui";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { CompanyLimit, DataSources } from "@/components/app/AppPage";
 import { BackendStatus } from "@/components/app/BackendStatus";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
@@ -28,6 +28,13 @@ function Onboarding() {
   const started = Boolean(workspace && (workspace.connection || workspace.lastSync || workspace.org.asOf));
   const step = !orgId ? 1 : started ? (workspace?.org.asOf ? 3 : 2) : 1;
   const fromXero = !workspace?.org.source || workspace.org.source === "xero";
+  const { user } = useUser();
+  // Onboarding is shown once: when someone reaches "Add your figures", later visits go straight to the app.
+  // Their CSV import and the Xero callback open app pages, so this must be set before they leave.
+  const reached = Boolean(orgId && workspace);
+  useEffect(() => {
+    if (reached && user && !user.unsafeMetadata.onboarded) void user.update({ unsafeMetadata: { ...user.unsafeMetadata, onboarded: true } }).catch(() => undefined);
+  }, [reached, user]);
 
   return (
     <div className="ll-onb">
