@@ -3,8 +3,8 @@
 import { CreateOrganization, OrganizationList, useAuth, useUser } from "@clerk/nextjs";
 import { Badge, Banner, Button, Icon, Logo, Stepper } from "@ledgerline/ui";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { CompanyLimit, DataSources } from "@/components/app/AppPage";
 import { BackendStatus } from "@/components/app/BackendStatus";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
@@ -35,6 +35,13 @@ function Onboarding() {
   useEffect(() => {
     if (reached && user && !user.unsafeMetadata.onboarded) void user.update({ unsafeMetadata: { ...user.unsafeMetadata, onboarded: true } }).catch(() => undefined);
   }, [reached, user]);
+  const router = useRouter();
+  const [skipping, setSkipping] = useState(false);
+  const skip = async () => {
+    setSkipping(true);
+    if (user && !user.unsafeMetadata.onboarded) await user.update({ unsafeMetadata: { ...user.unsafeMetadata, onboarded: true } }).catch(() => undefined);
+    router.push("/overview");
+  };
 
   return (
     <div className="ll-onb">
@@ -98,6 +105,14 @@ function Onboarding() {
                   sees your bank login.
                 </span>
               </p>
+              {workspace ? (
+                <div className="ll-row">
+                  <Button variant="ghost" loading={skipping} onClick={skip}>
+                    Skip for now
+                  </Button>
+                  <span style={{ fontSize: 13, color: "var(--ink-subtle)" }}>Add figures later from your overview or Sync and import.</span>
+                </div>
+              ) : null}
             </>
           )}
         </div>
