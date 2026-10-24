@@ -3,6 +3,7 @@
 import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { pctChange, SummaryLine } from "@/components/app/report/Report";
@@ -127,9 +128,10 @@ export default function BoardPackPage() {
               {busy === "all" ? (
                 <DraftingCommentary />
               ) : commentary?.sections ? (
-                <>
+                // A new draft fades in once, gently, in place of the drafting state.
+                <motion.div key={commentary.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, ease: "easeOut" }}>
                   <BoardCommentary commentary={commentary} busy={busy} onRedraft={(section) => void write({ section })} />
-                </>
+                </motion.div>
               ) : commentary?.paragraphs ? (
                 <CommentaryCard
                   paragraphs={commentary.paragraphs as never}

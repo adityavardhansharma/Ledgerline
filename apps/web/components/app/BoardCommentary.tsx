@@ -509,7 +509,7 @@ export function BoardNotes({ canRedraft, busy, onRedraft }: { canRedraft: boolea
         </span>
         <span className="ll-notes-count">{value.length.toLocaleString("en-IE")} / 4,000</span>
         {canRedraft ? (
-          <Button size="sm" icon="refresh" loading={busy} onClick={async () => { if (await persist()) onRedraft(); }}>
+          <Button size="sm" icon="ai" loading={busy} onClick={async () => { if (await persist()) onRedraft(); }}>
             Redraft with these notes
           </Button>
         ) : null}

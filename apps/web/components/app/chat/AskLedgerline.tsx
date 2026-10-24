@@ -176,10 +176,14 @@ function Panel({ onClose }: { onClose: () => void }) {
     return [...saved, { id: "q-live", role: "user" as const, content: live.question, status: "done" }, { id: "a-live", role: "assistant" as const, content: live.content, status: "live" }];
   }, [stored, live]);
 
-  // Stay at the bottom while words arrive, unless the person has scrolled up to read.
+  // Stay at the bottom while words arrive, unless the person has scrolled up to read. A big step, like a chart
+  // opening, glides there instead of jumping.
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
+    if (!el || !pinned.current) return;
+    const gap = el.scrollHeight - el.clientHeight - el.scrollTop;
+    if (gap > 120) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    else el.scrollTop = el.scrollHeight;
   });
 
   const empty = rows.length === 0;
