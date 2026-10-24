@@ -54,13 +54,23 @@ export function useChatStream(onThread: (id: Id<"chatThreads">) => void) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        // Words arrive in bursts; release them on animation frames so the text flows rather than jumps.
+        // Words arrive in bursts; release them at a steady pace, a word at a time, so the text flows rather than
+        // jumps. The pace rises with the backlog so it never falls far behind. A ui block isn't shown while it is
+        // written, so its code goes through at once.
         let pending = "";
         let raf = 0;
         const flush = () => {
           raf = 0;
           if (!pending) return;
-          const take = Math.max(1, Math.ceil(pending.length / 4));
+          let take: number;
+          if ((state.content.match(/```/g)?.length ?? 0) % 2 === 1) {
+            const close = pending.indexOf("```");
+            take = close >= 0 ? close + 3 : pending.length;
+          } else {
+            take = Math.max(2, Math.ceil(pending.length / 24));
+            const space = pending.slice(take).search(/\s/);
+            take = space < 0 ? pending.length : take + space;
+          }
           state.content += pending.slice(0, take);
           pending = pending.slice(take);
           update({});
