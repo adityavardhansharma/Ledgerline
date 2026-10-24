@@ -17,6 +17,7 @@ const XERO_ERRORS: Record<string, string> = {
   "no-organisation": "No Xero organisation was chosen. Pick one on Xero's screen.",
   failed: "Xero didn't accept the connection. Please try again.",
   cancelled: "The Xero connection was cancelled.",
+  "wrong-account": "That Xero sign-in was started by someone else, or in another company. Start the connection again from here.",
 };
 
 function Onboarding() {

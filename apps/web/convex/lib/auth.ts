@@ -12,11 +12,12 @@ export interface Caller {
   role: Role;
 }
 
+/** Clerk's admin is an owner and its member an editor. Any other role reads only, so a new role never grants writes. */
 function roleOf(claim: unknown): Role {
   const role = typeof claim === "string" ? claim.replace(/^org:/, "") : "";
   if (role === "admin") return "owner";
-  if (role === "accountant") return "accountant";
-  return "editor";
+  if (role === "member" || role === "editor") return "editor";
+  return "accountant";
 }
 
 /** Clerk's session token v2 carries the active organisation compactly: { o: { id, rol, slg } }. */

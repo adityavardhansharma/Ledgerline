@@ -70,7 +70,8 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 @app.middleware("http")
 async def require_signature(request: Request, call_next):
-    if request.url.path in ("/health", "/docs", "/openapi.json"):
+    # Only the health check is open. The API docs are signed like everything else (open with LL_ALLOW_UNSIGNED).
+    if request.url.path == "/health":
         return await call_next(request)
     settings = get_settings()
     if not settings.allow_unsigned:

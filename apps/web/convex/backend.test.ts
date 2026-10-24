@@ -73,6 +73,13 @@ describe("organisations", () => {
     expect((await owner.query(api.orgs.current, {}))?.org.fyStartMonth).toBe(4);
     await expect(t.withIdentity(ACCOUNTANT as never).mutation(api.orgs.updateSettings, { fyStartMonth: 1 })).rejects.toThrow(/owner/);
   });
+
+  it("makes members editors and any role it doesn't know read-only", async () => {
+    const { t } = await setup();
+    const as = (role: string) => t.withIdentity({ ...OWNER, subject: `user_${role}`, org_role: `org:${role}` } as never);
+    expect((await as("member").query(api.orgs.current, {}))?.role).toBe("editor");
+    expect((await as("billing_manager").query(api.orgs.current, {}))?.role).toBe("accountant");
+  });
 });
 
 describe("storing journals", () => {
@@ -181,6 +188,47 @@ describe("forecasts", () => {
     expect(await owner.action(api.forecast.run, { scenarioId: baseId })).toEqual({ cached: false });
     expect(calls).toHaveLength(2);
     expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(14);
+  });
+});
+
+describe("Connecting Xero", () => {
+  const begin = async (t: ReturnType<typeof convexTest>, orgId: unknown, state: string) =>
+    t.run((ctx) => ctx.db.insert("oauthStates", { orgId: orgId as never, userId: OWNER.subject, state, verifier: "v", redirectUri: "https://convex.test/xero/callback", createdAt: Date.now() }));
+
+  it("hands the code to the app instead of finishing the connection itself", async () => {
+    const t = convexTest(schema, modules);
+    const res = await t.fetch("/xero/callback?code=abc&state=xyz", { method: "GET", redirect: "manual" });
+    expect(res.status).toBe(302);
+    const to = new URL(res.headers.get("location") ?? "");
+    expect(to.pathname).toBe("/connect/xero");
+    expect(to.searchParams.get("code")).toBe("abc");
+    expect(to.searchParams.get("state")).toBe("xyz");
+  });
+
+  it("only lets the person who started the flow finish it, once", async () => {
+    // Connecting schedules the first sync; keep it from running into later tests.
+    vi.useFakeTimers();
+    const { t, owner, orgId } = await setup();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify({ tokens: { access_token: "a", refresh_token: "r", expires_at: 1 }, scopes: [], connections: [{ tenant_id: "tenant-1", tenant_name: "Kestrel" }] }), { status: 200 });
+    });
+    const stranger = t.withIdentity(STRANGER as never);
+    await stranger.mutation(api.orgs.ensure, {});
+    await begin(t, orgId, "s1");
+    // Someone in another company, landing on a link made in this one, can't finish it, and the state is spent.
+    expect(await stranger.action(api.xero.completeConnect, { code: "c", state: "s1" })).toEqual({ ok: false, reason: "wrong-account" });
+    expect(await owner.action(api.xero.completeConnect, { code: "c", state: "s1" })).toEqual({ ok: false, reason: "expired" });
+    // Nor can another owner of the same company.
+    await begin(t, orgId, "s2");
+    expect(await t.withIdentity({ ...OWNER, subject: "user_other_owner" } as never).action(api.xero.completeConnect, { code: "c", state: "s2" })).toEqual({ ok: false, reason: "wrong-account" });
+    expect(calls).toHaveLength(0);
+    await begin(t, orgId, "s3");
+    expect(await owner.action(api.xero.completeConnect, { code: "c", state: "s3" })).toEqual({ ok: true });
+    expect(await owner.action(api.xero.completeConnect, { code: "c", state: "s3" })).toEqual({ ok: false, reason: "expired" });
+    expect(calls.filter((c) => c.endsWith("/xero/token"))).toHaveLength(1);
+    vi.useRealTimers();
   });
 });
 
@@ -665,13 +713,13 @@ describe("AI actions and search", () => {
 
   it("raises a company's allowances with a voucher, once per company", async () => {
     const { t, owner, orgId, calls } = await books();
-    await t.mutation(internal.billing.setVoucher, { code: "ledgertest", limits: { actions: 40, chats: 80 } });
+    await t.mutation(internal.billing.setVoucher, { code: "examplecode", limits: { actions: 40, chats: 80 } });
     await expect(owner.mutation(api.billing.redeem, { code: "NOPE" })).rejects.toThrow(/isn't valid/);
-    await expect(t.withIdentity(ACCOUNTANT as never).mutation(api.billing.redeem, { code: "LEDGERTEST" })).rejects.toThrow(/Accountants/);
-    expect(await owner.mutation(api.billing.redeem, { code: " ledgertest " })).toMatchObject({ code: "LEDGERTEST", limits: { actions: 40, chats: 80 } });
-    await expect(owner.mutation(api.billing.redeem, { code: "LEDGERTEST" })).rejects.toThrow(/already applied/);
+    await expect(t.withIdentity(ACCOUNTANT as never).mutation(api.billing.redeem, { code: "EXAMPLECODE" })).rejects.toThrow(/Accountants/);
+    expect(await owner.mutation(api.billing.redeem, { code: " examplecode " })).toMatchObject({ code: "EXAMPLECODE", limits: { actions: 40, chats: 80 } });
+    await expect(owner.mutation(api.billing.redeem, { code: "EXAMPLECODE" })).rejects.toThrow(/already applied/);
     const billing = await owner.query(api.billing.overview, {});
-    expect(billing?.vouchers).toEqual(["LEDGERTEST"]);
+    expect(billing?.vouchers).toEqual(["EXAMPLECODE"]);
     expect(billing?.meters).toEqual([
       { meter: "actions", used: 0, limit: 40 },
       { meter: "searches", used: 0, limit: 100 },
@@ -686,7 +734,7 @@ describe("AI actions and search", () => {
     const paused = await owner.action(api.aiActions.explainFigure, { accountId: "csv:400", period: "2026-09" }).catch((err) => err);
     expect(paused.data.message).toMatch(/40 AI actions/);
     // Turning the voucher off returns the company to the Free plan.
-    await t.mutation(internal.billing.setVoucher, { code: "LEDGERTEST", limits: { actions: 40, chats: 80 }, active: false });
+    await t.mutation(internal.billing.setVoucher, { code: "EXAMPLECODE", limits: { actions: 40, chats: 80 }, active: false });
     expect((await owner.query(api.billing.overview, {}))?.meters[0]).toMatchObject({ limit: 20 });
   });
 
