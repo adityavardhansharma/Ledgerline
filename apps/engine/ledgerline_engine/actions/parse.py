@@ -9,6 +9,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from ..commentary.facts import month_name
+from ..money import to_cents, to_decimal
 from ..settings import Settings
 from .common import ActionInvalid, is_stated, run, stated_numbers
 
@@ -362,8 +363,8 @@ def search_parse(body: SearchParseRequest, settings: Settings, http: httpx.Clien
             "words": (p.get("words") or "").strip()[:80],
             "dateFrom": p.get("date_from") or "",
             "dateTo": p.get("date_to") or "",
-            "minCents": None if p.get("min_amount") is None else round(float(p["min_amount"]) * 100),
-            "maxCents": None if p.get("max_amount") is None else round(float(p["max_amount"]) * 100),
+            "minCents": None if p.get("min_amount") is None else to_cents(to_decimal(p["min_amount"])),
+            "maxCents": None if p.get("max_amount") is None else to_cents(to_decimal(p["max_amount"])),
             "side": p.get("side") or "any",
         }
 

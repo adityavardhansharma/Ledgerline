@@ -56,6 +56,9 @@ def granted_scopes(body: dict) -> str:
 
 REFRESH_MARGIN_SECONDS = 120
 
+# One pooled client for the process: a new client per request would open (and never close) its own pool.
+_HTTP = httpx.Client(timeout=30)
+
 
 class XeroError(Exception):
     def __init__(self, status: int, message: str):
@@ -87,7 +90,7 @@ class XeroClient:
 
     def __post_init__(self) -> None:
         if self.http is None:
-            self.http = httpx.Client(timeout=30)
+            self.http = _HTTP
 
     # ---------- identity ----------
     def authorize_url(self, redirect_uri: str, state: str, code_challenge: str) -> str:

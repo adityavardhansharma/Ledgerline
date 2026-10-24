@@ -44,6 +44,7 @@ from .actions.parse import (
 from .commentary.draft import CommentaryInvalid, answer, draft
 from .commentary.facts import BoardInput, build_facts
 from .forecast.model import ForecastImbalance, ForecastRequest, forecast
+from .money import to_cents, to_decimal
 from .reconcile.ageing import age
 from .reconcile.compare import compare
 from .settings import Settings, get_settings
@@ -65,6 +66,9 @@ from .xero.models import Tokens
 from .xero.normalise import UnbalancedJournal, normalise_account, normalise_journal, normalise_open_item, parse_xero_date
 
 app = FastAPI(title="Ledgerline engine", version=__version__)
+# Months and days arrive as text; a malformed one is a 422 here rather than a 500 deep in the maths.
+Period = Annotated[str, Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+Day = Annotated[str, Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
@@ -203,7 +207,7 @@ def journal_check(body: JournalCheckRequest, settings: SettingsDep):
 
 
 class OpenItemsRequest(TenantRequest):
-    as_of: str  # YYYY-MM-DD
+    as_of: Day
     contact: str | None = None  # also list this customer's unpaid invoices
 
 
@@ -229,10 +233,10 @@ def _month_end(period: str) -> str:
 
 
 class TrialBalancesRequest(TenantRequest):
-    periods: list[str] = Field(min_length=1, max_length=12)  # YYYY-MM
-    opening_period: str | None = None  # contributes its year-to-date position instead of its month
+    periods: list[Period] = Field(min_length=1, max_length=12)
+    opening_period: Period | None = None  # contributes its year-to-date position instead of its month
     retained_earnings_id: str | None = None
-    today: str  # YYYY-MM-DD; the current month is read up to today
+    today: Day  # the current month is read up to today
 
 
 @app.post("/xero/trial-balances")
@@ -248,8 +252,8 @@ class ChartRequest(TenantRequest):
 
 
 class DailyCashRequest(ChartRequest):
-    date_from: str
-    date_to: str
+    date_from: Day
+    date_to: Day
 
 
 @app.post("/xero/daily-cash")
@@ -267,7 +271,7 @@ def cash_by_day(body: DailyCashRequest, settings: SettingsDep):
 
 class ActivityRequest(ChartRequest):
     account_id: str
-    period: str  # YYYY-MM
+    period: Period
     movement_cents: int
 
 
@@ -299,7 +303,7 @@ class BuildRequest(BaseModel):
     accounts: list[dict]
     balances: list[dict]
     fy_start_month: int = Field(default=1, ge=1, le=12)
-    as_of: str
+    as_of: Period
 
 
 @app.post("/reports/build")
@@ -310,7 +314,7 @@ def reports_build(body: BuildRequest):
 class ReconcileRequest(TenantRequest):
     accounts: list[dict]
     balances: list[dict]
-    as_of: str
+    as_of: Period
     months: int = Field(default=12, ge=1, le=12)
     fy_start_month: int = Field(default=1, ge=1, le=12)
 
@@ -375,7 +379,7 @@ def ask(body: AskRequest, settings: SettingsDep):
 
 
 class CustomerRevenueRequest(TenantRequest):
-    period: str  # YYYY-MM
+    period: Period
 
 
 SALES_POSTED = {"AUTHORISED", "PAID"}
@@ -397,7 +401,7 @@ def customer_revenue(body: CustomerRevenueRequest, settings: SettingsDep):
             continue
         name = (doc.get("Contact") or {}).get("Name") or "Unnamed customer"
         period = parse_xero_date(doc.get("DateString") or doc.get("Date"))[:7]
-        cents = sign * int(round(float(doc.get("SubTotal") or 0) * 100))
+        cents = sign * to_cents(to_decimal(doc.get("SubTotal")))
         if period == body.period:
             month[name] = month.get(name, 0) + cents
         if quarter_from <= period <= body.period:

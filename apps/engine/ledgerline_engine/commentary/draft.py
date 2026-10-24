@@ -225,10 +225,14 @@ def _section_text(key: str, value: Any) -> str:
     return "\n".join(f"- {_as_text(p)}" for p in value)
 
 
+# One pooled client for the process, shared by every model call.
+_HTTP = httpx.Client(timeout=120)
+
+
 def _complete(settings: Settings, messages: list[dict], schema: dict, name: str, http: httpx.Client | None) -> dict:
     if not settings.openrouter_api_key:
         raise CommentaryInvalid("commentary is not configured")
-    client = http or httpx.Client(timeout=120)
+    client = http or _HTTP
     response = client.post(
         f"{settings.openrouter_base}/chat/completions",
         headers={"Authorization": f"Bearer {settings.openrouter_api_key}", "X-Title": "Ledgerline"},
