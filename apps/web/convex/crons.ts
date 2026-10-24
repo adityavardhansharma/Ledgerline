@@ -16,5 +16,6 @@ export const cleanupStates = internalMutation({
 
 const crons = cronJobs();
 crons.daily("nightly sync", { hourUTC: 2, minuteUTC: 0 }, internal.sync.nightly, {});
+crons.interval("recover stuck syncs", { minutes: 10 }, internal.sync.recoverStuck, {});
 crons.hourly("expire OAuth states", { minuteUTC: 17 }, internal.crons.cleanupStates, {});
 export default crons;

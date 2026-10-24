@@ -97,14 +97,16 @@ export const runStep = internalAction({
   handler: async (ctx, { runId }) => {
     const run = await ctx.runQuery(internal.sync.getRun, { runId });
     if (!run || ["done", "failed", "reauth", "needsReview"].includes(run.status)) return;
-    const auth = await ctx.runAction(internal.xero.tokensFor, { orgId: run.orgId });
-    if (!auth) {
-      await ctx.runMutation(internal.sync.finish, { runId, status: "reauth", error: "Xero is not connected." });
-      return;
-    }
-    await ctx.runMutation(internal.sync.patchRun, { runId, patch: { status: "running", retryAt: undefined } });
-    const tenant = { tokens: auth.tokens, tenant_id: auth.tenantId };
+    // Everything that can throw is inside the try, so a failure always retries or finishes the run
+    // instead of leaving it "running" with nothing scheduled.
     try {
+      const auth = await ctx.runAction(internal.xero.tokensFor, { orgId: run.orgId });
+      if (!auth) {
+        await ctx.runMutation(internal.sync.finish, { runId, status: "reauth", error: "Xero is not connected." });
+        return;
+      }
+      await ctx.runMutation(internal.sync.patchRun, { runId, patch: { status: "running", retryAt: undefined, touchedAt: Date.now() } });
+      const tenant = { tokens: auth.tokens, tenant_id: auth.tenantId };
       switch (run.phase) {
         case "accounts":
           await stepAccounts(ctx, run, tenant);
@@ -155,7 +157,7 @@ async function stepAccounts(ctx: Ctx, run: Doc<"syncRuns">, tenant: Tenant) {
   const pending = await ctx.runQuery(internal.xero.connectionFor, { orgId: run.orgId });
   if (pending?.resetPending) {
     let more = true;
-    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: true });
+    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId: run.orgId, accounts: true, authored: true });
     await ctx.runMutation(internal.sync.resetDone, { orgId: run.orgId });
     await ctx.runMutation(internal.sync.storeAccounts, { orgId: run.orgId, accounts: result.accounts.map(toAccount) });
   }
@@ -331,7 +333,7 @@ export const advance = internalMutation({
     phase: v.union(v.literal("journals"), v.literal("balances"), v.literal("cash"), v.literal("invoices"), v.literal("reports"), v.literal("reconcile")),
   },
   handler: async (ctx, { runId, phase }) => {
-    await ctx.db.patch(runId, { phase, attempts: 0, error: undefined });
+    await ctx.db.patch(runId, { phase, attempts: 0, error: undefined, touchedAt: Date.now() });
   },
 });
 
@@ -446,6 +448,7 @@ export const storeBalances = internalMutation({
         pagesDone: run.pagesDone + 1,
         attempts: 0,
         error: undefined,
+        touchedAt: Date.now(),
         ...(next ? { cursor: next } : { phase: "cash" as const, cursor: undefined }),
       });
     }
@@ -586,7 +589,7 @@ export const storePage = internalMutation({
   handler: async (ctx, { runId, orgId, journals }) => {
     const { stored, last } = await storeJournals(ctx, orgId, journals as EngineJournal[]);
     const run = await ctx.db.get(runId);
-    if (run) await ctx.db.patch(runId, { pagesDone: run.pagesDone + 1, journalsStored: run.journalsStored + stored, attempts: 0, error: undefined });
+    if (run) await ctx.db.patch(runId, { pagesDone: run.pagesDone + 1, journalsStored: run.journalsStored + stored, attempts: 0, error: undefined, touchedAt: Date.now() });
     const connection = await ctx.db
       .query("xeroConnections")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
@@ -601,11 +604,17 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "commentaries", "activityCache", "plans", "boardNotes", "aiCache"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "activityCache", "plans", "aiCache"] as const;
+// What people wrote: kept when the same company's figures are rebuilt (a re-import, a change of Xero access,
+// a Demo Company reset), deleted only when a different Xero organisation replaces the books.
+const AUTHORED_TABLES = ["commentaries", "boardNotes"] as const;
 
-/** Delete one batch of an organisation's synced or imported figures (and, optionally, its chart). True while more remains. */
-export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean): Promise<boolean> {
-  const tables = withAccounts ? [...RESET_TABLES, "accounts" as const] : RESET_TABLES;
+/**
+ * Delete one batch of an organisation's synced or imported figures (and, optionally, its chart and the
+ * commentary and notes written about them). True while more remains.
+ */
+export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, withAccounts: boolean, withAuthored = false): Promise<boolean> {
+  const tables = [...RESET_TABLES, ...(withAuthored ? AUTHORED_TABLES : []), ...(withAccounts ? (["accounts"] as const) : [])];
   for (const table of tables) {
     const rows =
       table === "forecastRuns"
@@ -641,8 +650,8 @@ export async function deleteBatch(ctx: MutationCtx, orgId: Id<"organizations">, 
 }
 
 export const clearBatch = internalMutation({
-  args: { orgId: v.id("organizations"), accounts: v.boolean() },
-  handler: (ctx, { orgId, accounts }) => deleteBatch(ctx, orgId, accounts),
+  args: { orgId: v.id("organizations"), accounts: v.boolean(), authored: v.optional(v.boolean()) },
+  handler: (ctx, { orgId, accounts, authored }) => deleteBatch(ctx, orgId, accounts, authored),
 });
 
 /** Mark the organisation's figures as Xero's. True when they came from a file and must be cleared first. */
@@ -678,54 +687,89 @@ export const resetBatch = internalMutation({
   },
 });
 
+type Finished = "done" | "needsReview" | "failed" | "reauth";
+
 export const finish = internalMutation({
   args: {
     runId: v.id("syncRuns"),
     status: v.union(v.literal("done"), v.literal("needsReview"), v.literal("failed"), v.literal("reauth")),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { runId, status, error }) => {
-    const run = await ctx.db.get(runId);
-    if (!run) return;
-    const now = Date.now();
-    await ctx.db.patch(runId, { status, phase: status === "done" || status === "needsReview" ? "done" : run.phase, finishedAt: now, error });
-    const connection = await ctx.db
-      .query("xeroConnections")
-      .withIndex("by_org", (q) => q.eq("orgId", run.orgId))
-      .first();
-    const imported = run.source === "csv" || run.source === "sample";
-    if (imported) {
-      const org = await ctx.db.get(run.orgId);
-      if (status === "done") {
-        await audit(ctx, run.orgId, {
-          actor: "Ledgerline",
-          action: "imported",
-          target: `${run.journalsStored.toLocaleString("en-IE")} journals`,
-          detail: `${run.trigger}${org?.sourceLabel ? ` · ${org.sourceLabel}` : ""}`,
-          icon: "upload",
-          tone: "positive",
-        });
-      } else {
-        await audit(ctx, run.orgId, { actor: "Ledgerline", action: "could not finish importing", target: org?.sourceLabel ?? "the file", detail: error, icon: "warning", tone: "negative" });
-      }
-      return;
-    }
-    if (status === "done" || status === "needsReview") {
-      if (connection) await ctx.db.patch(connection._id, { lastSyncAt: now });
+  handler: (ctx, { runId, status, error }) => finishRun(ctx, runId, status, error),
+});
+
+async function finishRun(ctx: MutationCtx, runId: Id<"syncRuns">, status: Finished, error?: string) {
+  const run = await ctx.db.get(runId);
+  if (!run) return;
+  const now = Date.now();
+  await ctx.db.patch(runId, { status, phase: status === "done" || status === "needsReview" ? "done" : run.phase, finishedAt: now, error });
+  const connection = await ctx.db
+    .query("xeroConnections")
+    .withIndex("by_org", (q) => q.eq("orgId", run.orgId))
+    .first();
+  const imported = run.source === "csv" || run.source === "sample";
+  if (imported) {
+    const org = await ctx.db.get(run.orgId);
+    if (status === "done") {
       await audit(ctx, run.orgId, {
         actor: "Ledgerline",
-        action: "synced",
+        action: "imported",
         target: `${run.journalsStored.toLocaleString("en-IE")} journals`,
-        detail: `${run.trigger} · ${status === "done" ? "matches Xero" : "differs from Xero, review needed"}`,
-        icon: "sync",
-        tone: status === "done" ? "positive" : "negative",
+        detail: `${run.trigger}${org?.sourceLabel ? ` · ${org.sourceLabel}` : ""}`,
+        icon: "upload",
+        tone: "positive",
       });
-    } else if (status === "failed") {
-      await audit(ctx, run.orgId, { actor: "Ledgerline", action: "could not sync", target: connection?.tenantName, detail: error, icon: "warning", tone: "negative" });
+    } else {
+      await audit(ctx, run.orgId, { actor: "Ledgerline", action: "could not finish importing", target: org?.sourceLabel ?? "the file", detail: error, icon: "warning", tone: "negative" });
     }
-    if (connection?.rerunRequested) {
-      await ctx.db.patch(connection._id, { rerunRequested: false });
-      if (status === "done" || status === "needsReview") await ctx.scheduler.runAfter(1000, internal.sync.enqueue, { orgId: run.orgId, trigger: "Webhook: Xero change" });
+    return;
+  }
+  if (status === "done" || status === "needsReview") {
+    if (connection) await ctx.db.patch(connection._id, { lastSyncAt: now });
+    await audit(ctx, run.orgId, {
+      actor: "Ledgerline",
+      action: "synced",
+      target: `${run.journalsStored.toLocaleString("en-IE")} journals`,
+      detail: `${run.trigger} · ${status === "done" ? "matches Xero" : "differs from Xero, review needed"}`,
+      icon: "sync",
+      tone: status === "done" ? "positive" : "negative",
+    });
+  } else if (status === "failed") {
+    await audit(ctx, run.orgId, { actor: "Ledgerline", action: "could not sync", target: connection?.tenantName, detail: error, icon: "warning", tone: "negative" });
+  }
+  if (connection?.rerunRequested) {
+    await ctx.db.patch(connection._id, { rerunRequested: false });
+    if (status === "done" || status === "needsReview") await ctx.scheduler.runAfter(1000, internal.sync.enqueue, { orgId: run.orgId, trigger: "Webhook: Xero change" });
+  }
+}
+
+const QUIET_MS = { xero: 15 * 60 * 1000, import: 60 * 60 * 1000 };
+
+/**
+ * The watchdog. A step that dies without finishing (a timeout, a crash, a deploy mid-step) leaves its run live
+ * with nothing scheduled, and a live run blocks every later sync and import. Fail any run that has gone quiet,
+ * so the next one can start; journals mode resumes from its cursor, so nothing stored is lost.
+ */
+export const recoverStuck = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    for (const status of ["queued", "running", "backingOff"] as const) {
+      const runs = await ctx.db
+        .query("syncRuns")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .take(200);
+      for (const run of runs) {
+        const imported = run.source === "csv" || run.source === "sample";
+        const lastSign = Math.max(run.touchedAt ?? run.startedAt, run.retryAt ?? 0);
+        if (now - lastSign < (imported ? QUIET_MS.import : QUIET_MS.xero)) continue;
+        await finishRun(
+          ctx,
+          run._id,
+          "failed",
+          imported ? "The import stopped before it finished. Start it again." : "The sync stopped responding. The next sync carries on from what was stored.",
+        );
+      }
     }
   },
 });

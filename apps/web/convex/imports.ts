@@ -17,10 +17,14 @@ import { type EngineJournal, accountFields, storeJournals, upsertAccounts } from
 const source = v.union(v.literal("csv"), v.literal("sample"));
 const LIVE = ["queued", "running", "backingOff"];
 
-/** Who may import, into which organisation; refuses while Xero is connected or a sync is running. */
-export const permit = internalQuery({
-  args: {},
-  handler: async (ctx) => {
+/**
+ * Claim the organisation for an import: refuses while Xero is connected or a sync or import is running, and
+ * opens the run in the same transaction, so two imports started at once can't both clear and fill the books.
+ * The run waits in "accounts" until the old figures are cleared and the new chart is stored.
+ */
+export const claim = internalMutation({
+  args: { source },
+  handler: async (ctx, { source }) => {
     const { org, who } = await requireOrg(ctx, { write: true });
     const connection = await ctx.db
       .query("xeroConnections")
@@ -35,27 +39,30 @@ export const permit = internalQuery({
       .order("desc")
       .first();
     if (last && LIVE.includes(last.status)) throw new ConvexError("A sync or import is already running. Wait for it to finish.");
-    return { orgId: org._id, actor: who.name };
-  },
-});
-
-export const open = internalMutation({
-  args: { orgId: v.id("organizations"), actor: v.string(), source, label: v.string(), accounts: v.array(accountFields) },
-  handler: async (ctx, { orgId, actor, source, label, accounts }) => {
-    await upsertAccounts(ctx, orgId, accounts);
-    await ctx.db.patch(orgId, { source, sourceLabel: label, importedAt: Date.now(), asOf: undefined });
-    await audit(ctx, orgId, { actor, action: "started importing", target: label, detail: `${accounts.length} accounts`, icon: "upload" });
-    return await ctx.db.insert("syncRuns", {
-      orgId,
+    const now = Date.now();
+    const runId = await ctx.db.insert("syncRuns", {
+      orgId: org._id,
       trigger: source === "sample" ? "Sample company" : "CSV import",
       source,
-      phase: "journals",
+      phase: "accounts",
       status: "running",
       pagesDone: 0,
       journalsStored: 0,
       attempts: 0,
-      startedAt: Date.now(),
+      startedAt: now,
+      touchedAt: now,
     });
+    return { orgId: org._id, actor: who.name, runId };
+  },
+});
+
+export const open = internalMutation({
+  args: { runId: v.id("syncRuns"), orgId: v.id("organizations"), actor: v.string(), source, label: v.string(), accounts: v.array(accountFields) },
+  handler: async (ctx, { runId, orgId, actor, source, label, accounts }) => {
+    await upsertAccounts(ctx, orgId, accounts);
+    await ctx.db.patch(orgId, { source, sourceLabel: label, importedAt: Date.now(), asOf: undefined });
+    await ctx.db.patch(runId, { phase: "journals", touchedAt: Date.now() });
+    await audit(ctx, orgId, { actor, action: "started importing", target: label, detail: `${accounts.length} accounts`, icon: "upload" });
   },
 });
 
@@ -66,10 +73,16 @@ export const start = action({
     if (!accounts.length) throw new ConvexError("The chart of accounts is empty.");
     if (accounts.length > 2000) throw new ConvexError("Ledgerline imports up to 2,000 accounts.");
     if (accounts.some((a) => !a.xeroAccountId.startsWith("csv:"))) throw new ConvexError("Imported accounts must come from a file.");
-    const { orgId, actor } = await ctx.runQuery(internal.imports.permit, {});
-    let more = true;
-    while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId, accounts: true });
-    return await ctx.runMutation(internal.imports.open, { orgId, actor, source, label: label.slice(0, 120), accounts });
+    const { orgId, actor, runId } = await ctx.runMutation(internal.imports.claim, { source });
+    try {
+      let more = true;
+      while (more) more = await ctx.runMutation(internal.sync.clearBatch, { orgId, accounts: true });
+      await ctx.runMutation(internal.imports.open, { runId, orgId, actor, source, label: label.slice(0, 120), accounts });
+    } catch (err) {
+      await ctx.runMutation(internal.sync.finish, { runId, status: "failed", error: "The import couldn't clear the old figures. Try again." });
+      throw err;
+    }
+    return runId;
   },
 });
 
@@ -91,7 +104,7 @@ export const page = mutation({
       .collect();
     try {
       const { stored } = await storeJournals(ctx, org._id, journals as EngineJournal[], new Set(accounts.map((a) => a.xeroAccountId)));
-      await ctx.db.patch(runId, { pagesDone: run.pagesDone + 1, journalsStored: run.journalsStored + stored });
+      await ctx.db.patch(runId, { pagesDone: run.pagesDone + 1, journalsStored: run.journalsStored + stored, touchedAt: Date.now() });
     } catch (err) {
       throw new ConvexError(err instanceof Error ? err.message : String(err));
     }
@@ -111,7 +124,7 @@ export const runFor = internalQuery({
 export const toReports = internalMutation({
   args: { runId: v.id("syncRuns") },
   handler: async (ctx, { runId }) => {
-    await ctx.db.patch(runId, { phase: "reports", status: "running", error: undefined, attempts: 0 });
+    await ctx.db.patch(runId, { phase: "reports", status: "running", error: undefined, attempts: 0, touchedAt: Date.now() });
   },
 });
 
