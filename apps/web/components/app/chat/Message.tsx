@@ -70,7 +70,7 @@ function useToolProvider() {
   }, [convex, override]);
 }
 
-type Piece = { kind: "tiles" | "chart" | "table" | "callout" | "text" | "chips"; n?: number };
+type Piece = { kind: "tiles" | "chart" | "bars" | "table" | "callout" | "text" | "chips"; n?: number };
 
 /** What a ui block will draw, read from its code as it arrives, so the working block can say what it is doing. */
 function shapeOf(code: string): Piece[] {
@@ -81,7 +81,8 @@ function shapeOf(code: string): Piece[] {
     const type = m[1];
     if (type === "Row") out.push({ kind: "tiles", n: Math.max(1, (line.match(/Kpi\(/g) ?? []).length) });
     else if (type === "Kpi") out.push({ kind: "tiles", n: 1 });
-    else if (type === "LineChart" || type === "BarChart") out.push({ kind: "chart" });
+    else if (type === "LineChart") out.push({ kind: "chart" });
+    else if (type === "BarChart") out.push({ kind: "bars" });
     else if (type === "Table") out.push({ kind: "table" });
     else if (type === "Callout") out.push({ kind: "callout" });
     else if (type === "Text") out.push({ kind: "text" });
@@ -93,6 +94,7 @@ function shapeOf(code: string): Piece[] {
 const DOING: Record<Piece["kind"], string> = {
   tiles: "Pulling the headline figures",
   chart: "Drawing the chart",
+  bars: "Drawing the chart",
   table: "Setting out the table",
   callout: "Writing the takeaway",
   text: "Writing it up",
@@ -114,17 +116,95 @@ function Working({ pieces, live }: { pieces: Piece[]; live: boolean }) {
   }, []);
   const secs = Math.floor((now - started) / 1000);
   return (
-    <div className="ll-chat-work" role="status" aria-live="polite">
-      <AiOrb size={18} busy />
-      <span className="ll-chat-work-copy">
-        <span className="ll-chat-work-who">Ledgerline is making the visual</span>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.b key={doing} className="ll-shimmer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: "easeInOut" }}>
-            {doing}…
-          </motion.b>
-        </AnimatePresence>
-      </span>
-      <span className="ll-chat-work-time">{secs}s</span>
+    <div className="ll-chat-making" role="status" aria-live="polite">
+      <div className="ll-chat-work">
+        <AiOrb size={18} busy />
+        <span className="ll-chat-work-copy">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.b key={doing} className="ll-shimmer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: "easeInOut" }}>
+              {doing}…
+            </motion.b>
+          </AnimatePresence>
+        </span>
+        <span className="ll-chat-work-time">{secs}s</span>
+      </div>
+      <Sketch pieces={pieces} />
+    </div>
+  );
+}
+
+const LINE = "M0 74 C 22 70, 38 52, 60 56 S 98 80, 122 62 S 160 30, 184 38 S 222 58, 246 34 S 282 14, 300 18";
+const BARS = [0.42, 0.58, 0.5, 0.74, 0.66, 0.88, 0.7, 0.95];
+
+/**
+ * A sketch of the visual being made, drawn from its code as it streams: a line drawing itself, bars rising, tiles,
+ * rows and notes, each the size of the real piece so the finished visual crossfades into its place. Only transform
+ * and opacity move, so it stays smooth while the real one is being built.
+ */
+function Sketch({ pieces }: { pieces: Piece[] }) {
+  return (
+    <div className="ll-sk" aria-hidden>
+      {pieces.map((p, i) => (
+        <motion.div key={i} className={`ll-sk-piece is-${p.kind}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, ease: "easeOut" }}>
+          {p.kind === "tiles" ? (
+            <div className="ll-sk-tiles">
+              {Array.from({ length: Math.min(p.n ?? 1, 3) }, (_, j) => (
+                <div key={j} className="ll-sk-card ll-sk-sweep" style={{ "--d": `${j * 0.18}s` } as React.CSSProperties}>
+                  <i className="ll-sk-bit" style={{ width: "46%" }} />
+                  <i className="ll-sk-num" />
+                </div>
+              ))}
+            </div>
+          ) : p.kind === "chart" || p.kind === "bars" ? (
+            <div className="ll-sk-card ll-sk-figure">
+              <i className="ll-sk-bit" style={{ width: "34%" }} />
+              <div className="ll-sk-plot">
+                {p.kind === "chart" ? (
+                  <>
+                    <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id={`ll-sk-fill-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stopColor="var(--forecast)" stopOpacity=".3" />
+                          <stop offset="1" stopColor="var(--forecast)" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path d={`${LINE} L300 100 L0 100 Z`} fill={`url(#ll-sk-fill-${i})`} />
+                      <path d={LINE} fill="none" stroke="var(--forecast)" strokeWidth="2.25" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+                    </svg>
+                    <span className="ll-sk-cover" />
+                  </>
+                ) : (
+                  <div className="ll-sk-bars">
+                    {BARS.map((h, j) => (
+                      <i key={j} style={{ "--h": h, "--d": `${j * 0.09}s` } as React.CSSProperties} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : p.kind === "table" ? (
+            <div className="ll-sk-card ll-sk-table ll-sk-sweep">
+              {[0.62, 0.48, 0.7, 0.54].map((w, j) => (
+                <div key={j} className="ll-sk-row">
+                  <i className="ll-sk-bit" style={{ width: `${w * 100}%` }} />
+                  <i className="ll-sk-bit" style={{ width: "18%" }} />
+                </div>
+              ))}
+            </div>
+          ) : p.kind === "chips" ? (
+            <div className="ll-sk-chips">
+              {[34, 42, 28].map((w, j) => (
+                <i key={j} className="ll-sk-sweep" style={{ width: `${w}%`, "--d": `${j * 0.15}s` } as React.CSSProperties} />
+              ))}
+            </div>
+          ) : (
+            <div className={`ll-sk-card ll-sk-sweep${p.kind === "callout" ? " ll-sk-callout" : " ll-sk-text"}`}>
+              <i className="ll-sk-bit" style={{ width: "88%" }} />
+              <i className="ll-sk-bit" style={{ width: "60%" }} />
+            </div>
+          )}
+        </motion.div>
+      ))}
     </div>
   );
 }
