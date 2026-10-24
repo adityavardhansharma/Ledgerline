@@ -6,7 +6,7 @@ import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { pctChange, SummaryLine } from "@/components/app/report/Report";
-import { BoardCommentary, BoardNotes, CommentaryToolbar, errorText, VersionHistory } from "@/components/app/BoardCommentary";
+import { BoardCommentary, BoardNotes, CommentaryToolbar, DraftingCommentary, errorText, VersionHistory } from "@/components/app/BoardCommentary";
 import type { Section } from "@/convex/commentary";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { monthlySummaryCsv, statementCsv } from "@/lib/csv";
@@ -124,7 +124,9 @@ export default function BoardPackPage() {
                   { label: "Runway", value: forecast ? (forecast.cashOutPeriod ? `${(forecast.runwayMonths ?? 0).toFixed(1)} months` : "24+ months") : "–", note: forecast ? (forecast.cashOutPeriod ? `cash runs out in ${periodLabel(forecast.cashOutPeriod)}` : "cash stays positive") : undefined },
                 ]}
               />
-              {commentary?.sections ? (
+              {busy === "all" ? (
+                <DraftingCommentary />
+              ) : commentary?.sections ? (
                 <>
                   <BoardCommentary commentary={commentary} busy={busy} onRedraft={(section) => void write({ section })} />
                 </>
@@ -134,8 +136,6 @@ export default function BoardPackPage() {
                   tag="Earlier commentary"
                   meta="Written before board-pack sections. Redraft for headline, outlook, risks and decisions."
                 />
-              ) : busy === "all" ? (
-                <div className="ll-panel"><Skeleton lines={8} /></div>
               ) : (
                 <div className="ll-panel no-print">
                   <EmptyState icon="ai" title="Draft this month's commentary" action={<Button variant="primary" icon="ai" onClick={() => void write({})}>Draft commentary</Button>}>
