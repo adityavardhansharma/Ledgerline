@@ -33,6 +33,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Lint
+        run: npx eslint .
+        working-directory: apps/web
       - name: Type-check the app
         run: npx tsc --noEmit
         working-directory: apps/web

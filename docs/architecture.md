@@ -123,14 +123,15 @@ months, replacing them whole so late postings land once. If the check against Xe
 | Rate limit | The engine returns 429 with `retryAfter`; the step is rescheduled for then |
 | Expired access token | The engine refreshes it and returns the rotated pair; Convex stores it before anything else |
 | Rejected refresh token | Connection marked expired; the app shows "Reconnect"; figures are kept |
-| Demo Company reset | `journal-check` finds the stored journal gone; the organisation's synced data is deleted in batches and the sync restarts |
+| Demo Company reset | `journal-check` finds the stored journal gone; the organisation's synced figures are deleted in batches and the sync restarts. Board notes and commentary are kept; they are deleted only when a different Xero organisation is connected |
 | Webhook bursts | Each webhook schedules a sync 30 seconds later; a run already in progress sets `rerunRequested` instead |
 | Crash mid-page | The cursor moves in the same mutation as the page, so a retry refetches at most one page |
+| A step dies without finishing | Runs record `touchedAt` as they progress; every 10 minutes `sync.recoverStuck` fails a live run that has gone quiet (15 minutes, or an hour for an import) so the next sync can start |
 
 ## CSV import
 
 The browser parses both files (`lib/importCsv.ts`) and explains every problem by row before anything is sent.
-`imports.start` clears the organisation's figures and chart and stores the new chart; `imports.page` stores
+`imports.start` claims the organisation (checking nothing is running and opening the run in one transaction), clears its figures and chart and stores the new chart; `imports.page` stores
 journals in batches of about 800 lines through `storeJournals`, the same function a Xero sync uses, so balances
 and daily cash are maintained identically; `imports.complete` builds the statements. An import is recorded as a
 sync run with `source: "csv" | "sample"`, so progress, history and the audit log are shared.
@@ -187,12 +188,13 @@ sign or a percentage, retrying once. A person accepts the draft before the board
 | Concern | Control |
 | --- | --- |
 | Tenant isolation | Organisation resolved from the JWT in every function; indexes start with `orgId`; tested |
-| Roles | Owner, editor, accountant; accountants can't change figures or scenarios |
+| Roles | Owner (Clerk admin), editor (Clerk member), accountant; accountants can't change figures or scenarios. Any other Clerk role reads only |
 | Xero tokens | AES-GCM encrypted with `LL_TOKEN_KEY`; decrypted only inside actions; never sent to the browser |
-| OAuth | Authorisation code with PKCE and a single-use, 15-minute `state` |
+| OAuth | Authorisation code with PKCE and a single-use, 15-minute `state`. Convex's callback passes the code to the app's `/connect/xero`, and `xero.completeConnect` only accepts the state from the signed-in owner who created it, in the same company |
 | Webhooks | HMAC-SHA256 over the raw body, constant-time compare; 401 otherwise |
+| Browser | Pages can't be framed; nosniff, referrer and permissions policies, HSTS. Chat accepts requests only from `SITE_URL` and `CHAT_ORIGINS` |
 | Convex → engine | HMAC-SHA256 over timestamp, method, path and body; five-minute replay window |
-| LLM | Only computed facts are sent, never ledger lines or contact details |
+| LLM | The board pack sends only computed facts. Explaining a figure sends that account's lines for the month (descriptions, references and contact names), and chat tools return figures and customer names; nothing else from the ledger, and never Xero tokens |
 
 ## Testing
 
@@ -200,6 +202,6 @@ sign or a percentage, retrying once. A person accepts the draft before the board
 | --- | --- | --- |
 | Engine | pytest, Hypothesis, respx | Statements, forecast and Xero client; random ledgers and drivers always tie out |
 | Convex | convex-test, Vitest | Scoping, roles, idempotent storage, scenario inheritance, forecast caching, webhook signatures |
-| Web | TypeScript, Next build | Every screen type-checks and builds |
+| Web | TypeScript, ESLint, Next build | Every screen type-checks, lints and builds |
 
 CI runs all of it on every push (`.github/workflows/ci.yml`).

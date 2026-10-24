@@ -31,16 +31,17 @@ docs            Architecture, setup and decisions
 
 ## Quality
 
-- **Engine**: 49 pytest tests, including Hypothesis property tests that generate random balanced ledgers and
+- **Engine**: pytest, including Hypothesis property tests that generate random balanced ledgers and
   random drivers and assert every statement and every forecast month ties out. `ruff` lint and format.
 - **Backend**: `convex-test` tests for organisation scoping, roles, idempotent journal storage, drill-down
   isolation, scenario inheritance, forecast caching with signed engine calls, and webhook signatures.
-- **Web**: strict TypeScript across the app and Convex functions; production build in CI.
+- **Web**: strict TypeScript across the app and Convex functions, ESLint, and a production build in CI.
 
 ```bash
 cd apps/engine && .venv/bin/pytest          # engine
 cd apps/web && npx vitest run               # Convex functions and helpers
 npm run typecheck                           # all TypeScript
+npm run lint                                # ESLint for the web app
 ```
 
 ## Running it locally

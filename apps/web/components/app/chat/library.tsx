@@ -79,7 +79,7 @@ function Inline({ text, live }: { text: string; live?: boolean }) {
         const body = bold ? part.slice(2, -2) : part;
         // While streaming, each word is its own span so new words can fade in; settled text is plain.
         const content = live
-          ? body.split(/(\s+)/).map((w, j) => (/^\s+$/.test(w) ? w : <span key={`w${word++}`} className="ll-chat-word">{w}</span>))
+          ? body.split(/(\s+)/).map((w) => (/^\s+$/.test(w) ? w : <span key={`w${word++}`} className="ll-chat-word">{w}</span>))
           : body;
         return bold ? <strong key={i}>{content}</strong> : <span key={i}>{content}</span>;
       })}

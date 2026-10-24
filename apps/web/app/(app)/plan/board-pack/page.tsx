@@ -1,6 +1,6 @@
 "use client";
 
-import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart, Skeleton } from "@ledgerline/ui";
+import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart } from "@ledgerline/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { motion } from "motion/react";
