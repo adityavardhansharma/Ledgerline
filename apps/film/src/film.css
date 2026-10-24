@@ -155,15 +155,15 @@ body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing:
 
 /* ---------- trust ---------- */
 .tr-head, .tr-head2 { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font-size: 88px; }
-.tr-paper { position: absolute; left: 200px; right: 200px; top: 340px; padding: 38px 52px 84px; border-radius: 18px; background: #f7f5ee; color: #1b211e; overflow: visible;
-  background-image: repeating-linear-gradient(to bottom, transparent 0 63px, rgba(11, 117, 83, 0.13) 63px 64px); box-shadow: 0 60px 140px -40px rgba(0, 0, 0, 0.95); }
+.tr-paper { position: absolute; left: 200px; right: 200px; top: 320px; padding: 38px 52px 40px; border-radius: 18px; background: #f7f5ee; color: #1b211e; overflow: visible;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 103px, rgba(11, 117, 83, 0.13) 103px 104px); box-shadow: 0 60px 140px -40px rgba(0, 0, 0, 0.95); }
 .tr-paper-head { display: flex; justify-content: space-between; font: 500 15px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: #5d6b64; margin-bottom: 26px; }
 .tr-check { display: inline-flex; align-items: center; gap: 8px; color: #0b7553; }
-.tr-text { margin: 0; font: 400 48px/64px var(--font-display); letter-spacing: -0.01em; }
+.tr-text { margin: 0; font: 400 48px/104px var(--font-display); letter-spacing: -0.01em; }
 .tr-cite-wrap { position: relative; display: inline-block; }
 .tr-cite { font: 600 30px/1 var(--font-mono) !important; color: #0b7553 !important; background: #e6f2ec !important; padding: 3px 9px !important; border-radius: 8px !important; vertical-align: 4px !important; }
 .tr-cite.is-lit { box-shadow: 0 0 0 2px #0b7553, 0 0 24px rgba(11, 117, 83, 0.45); }
-.tr-src { position: absolute; left: 50%; top: 100%; margin-top: 8px; white-space: nowrap; font: 500 16px/1 var(--font-mono); letter-spacing: 0.02em; color: #0b7553; background: #fff; border: 1px solid #cfe3d9; padding: 6px 9px; border-radius: 7px; }
+.tr-src { position: absolute; left: 50%; top: 100%; margin-top: 8px; white-space: nowrap; margin-top: 6px !important; font: 500 16px/1 var(--font-mono); letter-spacing: 0.02em; color: #0b7553; background: #fff; border: 1px solid #cfe3d9; padding: 6px 9px; border-radius: 7px; }
 .tr-dropped, .tr-bad { display: inline-block; vertical-align: bottom; white-space: nowrap; overflow: visible; }
 .tr-dropped { overflow: hidden; }
 .tr-bad { position: relative; }

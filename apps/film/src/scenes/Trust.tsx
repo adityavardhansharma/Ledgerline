@@ -7,14 +7,13 @@ type Part = string | { text: string; source: string } | { text: string; bad: tru
 
 const DRAFT: Part[] = [
   "September revenue was ",
-  { text: "€246,281", source: "Profit and loss · Sep 2026" },
+  { text: "€246,281", source: "P&L · Sep 2026" },
   ", up ",
-  { text: "16.9%", source: "Statement · previous month" },
+  { text: "16.9%", source: "vs August" },
   " on August. Cash fell ",
   { text: "€50,497", source: "Cash flow · Sep 2026" },
   " in a profitable month, as customers paid later. Next quarter should bring in ",
   { text: "€750,000", bad: true },
-  ".",
 ];
 
 /** The board pack's rule, shown: a cited figure stays, a number the model wrote itself is struck out. */
@@ -53,6 +52,7 @@ function Validator() {
                 <span className="tr-bad-num" style={{ ["--x" as string]: reject }}>
                   {part.text}
                 </span>
+                .
                 <span className="tr-bad-tag" style={{ opacity: reject * (1 - gone), transform: `translateX(-50%) scale(${0.6 + backOut(reject) * 0.4})` }}>
                   <Icon name="error" size={14} /> Rejected · not a citation
                 </span>
