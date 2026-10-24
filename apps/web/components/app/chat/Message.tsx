@@ -105,7 +105,7 @@ const DOING: Record<Piece["kind"], string> = {
  * than a line; the visual itself opens up beneath it once it's ready.
  */
 function Working({ pieces, live }: { pieces: Piece[]; live: boolean }) {
-  const doing = live ? DOING[pieces[pieces.length - 1].kind] : "Fetching the figures";
+  const doing = useSteady(live ? DOING[pieces[pieces.length - 1].kind] : "Fetching the figures", 1100);
   const done = live ? pieces.length - 1 : pieces.length;
   const [started] = useState(() => Date.now());
   const [now, setNow] = useState(started);
@@ -139,6 +139,36 @@ function Working({ pieces, live }: { pieces: Piece[]; live: boolean }) {
       <span className="ll-chat-work-time">{secs}s</span>
     </div>
   );
+}
+
+/** Holds each value on screen for at least `ms`, so a label read from streaming code doesn't flicker. */
+function useSteady<T>(value: T, ms: number): T {
+  const [shown, setShown] = useState(value);
+  const since = useRef(0);
+  useEffect(() => {
+    if (Object.is(value, shown)) return;
+    const wait = Math.max(0, since.current + ms - Date.now());
+    const t = setTimeout(() => {
+      since.current = Date.now();
+      setShown(value);
+    }, wait);
+    return () => clearTimeout(t);
+  }, [value, shown, ms]);
+  return shown;
+}
+
+/** The height of an element, kept current as it changes. */
+function useHeight(el: React.RefObject<HTMLElement | null>, mounted: boolean) {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const node = el.current;
+    if (!node) return;
+    const watch = new ResizeObserver(() => setHeight(node.offsetHeight));
+    watch.observe(node);
+    setHeight(node.offsetHeight);
+    return () => watch.disconnect();
+  }, [el, mounted]);
+  return height;
 }
 
 /**
@@ -175,12 +205,27 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
       clearTimeout(fallback);
     };
   }, [live]);
+  // The block grows from the one-line placeholder to the visual's full height in one eased move: the stage's height
+  // is animated to whichever is showing, and the placeholder fades out over the visual as it fades in.
+  const skel = useRef<HTMLDivElement>(null);
+  const skelHeight = useHeight(skel, !ready);
+  const realHeight = useHeight(host, !live);
+  const target = ready ? realHeight : skelHeight;
+  const [settled, setSettled] = useState(false);
+  useEffect(() => setSettled(false), [ready]);
   return (
-    <motion.div className="ll-chat-ui" layout="size" transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}>
-      <div className="ll-chat-ui-stage">
+    <div className="ll-chat-ui">
+      <motion.div
+        className={`ll-chat-ui-stage${ready ? " is-ready" : ""}`}
+        initial={false}
+        animate={{ height: target || "auto" }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        onAnimationComplete={() => ready && setSettled(true)}
+        style={{ overflow: settled ? "visible" : "hidden" }}
+      >
         <AnimatePresence>
           {ready ? null : (
-            <motion.div key="working" className="ll-chat-ui-skel" style={{ overflow: "hidden" }} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } }}>
+            <motion.div key="working" ref={skel} className="ll-chat-ui-skel" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeOut" } }}>
               <Working pieces={pieces} live={live} />
             </motion.div>
           )}
@@ -190,8 +235,8 @@ const UiBlock = memo(function UiBlock({ code, live }: { code: string; live: bool
             <Renderer key={last.current.generation} response={program} library={chatLibrary} isStreaming={false} toolProvider={tools as never} queryLoader={<span className="ll-chat-loading" aria-label="Loading figures" />} />
           </div>
         )}
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 });
 

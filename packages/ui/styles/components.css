@@ -1250,7 +1250,8 @@ g.is-dim { opacity: .3; }
 /* The same orb as the AI mark everywhere: a ring with a faint fill, so it sits on any surface. Fast while the AI works. */
 .ll-orb { display: inline-block; vertical-align: middle; border-radius: 50%; flex: none; background: conic-gradient(from 0deg, var(--brand), var(--forecast), var(--chart-3), var(--brand)); -webkit-mask: radial-gradient(farthest-side, rgba(0, 0, 0, .2) 56%, #000 60%); mask: radial-gradient(farthest-side, rgba(0, 0, 0, .2) 56%, #000 60%); animation: ll-orb 6s linear infinite; }
 .ll-orb.is-busy, .ll-ask-orb.is-busy { animation-duration: .9s; }
-.ll-btn-primary .ll-orb { background: currentColor; }
+/* On green, one colour with a fading tail, so the turn still shows. */
+.ll-btn-primary .ll-orb { background: conic-gradient(from 0deg, currentColor, color-mix(in srgb, currentColor 20%, transparent) 75%, currentColor); }
 @media (prefers-reduced-motion: reduce) { .ll-orb, .ll-ask-orb { animation: none; } .ll-orb.is-busy, .ll-ask-orb.is-busy { animation: ll-breathe 1.4s ease-in-out infinite; } }
 .ll-ask-scrim { position: fixed; inset: 0; z-index: calc(var(--z-overlay) + 1); background: color-mix(in srgb, var(--ink) 14%, transparent); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); }
 .ll-ask-panel { width: min(720px, calc(100vw - 24px)); height: min(780px, calc(100dvh - 40px)); border-radius: 20px; will-change: transform, opacity; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow-modal); overflow: hidden; }
@@ -1310,7 +1311,7 @@ g.is-dim { opacity: .3; }
 .ll-chat-step.is-current .ll-chat-step-icon { color: var(--forecast); background: var(--forecast-tint); animation: ll-breathe 1.6s ease-in-out infinite; }
 .ll-chat-step.is-done .ll-chat-step-icon { color: var(--positive); background: var(--positive-tint); }
 @keyframes ll-breathe { 50% { transform: scale(.88); } }
-.ll-chat-word { animation: ll-ink .45s ease-out both; }
+.ll-chat-word { animation: ll-ink .6s ease-out both; }
 @keyframes ll-ink { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
 .ll-chat-caret { display: inline-block; width: 7px; height: 17px; margin-top: -6px; border-radius: 2px; background: var(--brand); animation: ll-caret 1s steps(1) infinite; }
 @keyframes ll-caret { 50% { opacity: 0; } }
@@ -2062,7 +2063,8 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 /* Chat ui blocks: after the text, a thinking-style "making the visual" line; the visual opens up once it's ready. */
 .ll-chat-ui { margin: 8px 0; }
 .ll-chat-ui-stage { position: relative; }
-.ll-chat-ui-real { opacity: 0; transition: opacity .4s ease; }
+.ll-chat-ui-stage.is-ready .ll-chat-ui-skel { position: absolute; inset: 0 0 auto 0; pointer-events: none; }
+.ll-chat-ui-real { opacity: 0; transition: opacity .5s ease .1s; }
 .ll-chat-ui-real:not(.is-ready) { position: absolute; inset: 0 0 auto 0; visibility: hidden; pointer-events: none; }
 .ll-chat-ui-real:not(.is-ready) * { animation-play-state: paused !important; }
 .ll-chat-ui-real.is-ready { opacity: 1; }

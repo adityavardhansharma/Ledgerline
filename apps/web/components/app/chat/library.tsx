@@ -68,7 +68,9 @@ export function Prose({ text, live }: { text: string; live?: boolean }) {
 }
 
 function Inline({ text, live }: { text: string; live?: boolean }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  // While streaming, a bold run still open is shown bold already, so it doesn't flash its asterisks first.
+  const closed = live && (text.match(/\*\*/g)?.length ?? 0) % 2 === 1 ? `${text}**` : text;
+  const parts = closed.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
   let word = 0;
   return (
     <>
@@ -77,7 +79,7 @@ function Inline({ text, live }: { text: string; live?: boolean }) {
         const body = bold ? part.slice(2, -2) : part;
         // While streaming, each word is its own span so new words can fade in; settled text is plain.
         const content = live
-          ? body.split(/(\s+)/).map((w, j) => (/^\s+$/.test(w) ? w : <span key={`${i}-${j}-${word++}`} className="ll-chat-word">{w}</span>))
+          ? body.split(/(\s+)/).map((w, j) => (/^\s+$/.test(w) ? w : <span key={`w${word++}`} className="ll-chat-word">{w}</span>))
           : body;
         return bold ? <strong key={i}>{content}</strong> : <span key={i}>{content}</span>;
       })}

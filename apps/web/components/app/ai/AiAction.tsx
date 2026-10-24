@@ -8,7 +8,7 @@ import type { Citation, Prose } from "@/convex/commentary";
 import { errorText } from "../BoardCommentary";
 
 /**
- * The shared look and motion of AI actions, the same language as the chat: a quiet sparkle button; while it
+ * The shared look and motion of AI actions, the same language as the chat: a quiet button with the AI orb; while it
  * works, a breathing mark and a status line that says what it's doing; then the answer card grows open and the
  * words write themselves in.
  */
