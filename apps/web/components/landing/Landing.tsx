@@ -157,7 +157,7 @@ export function Landing() {
           <div className="lp-ctas">
             <Link href="/sign-up">
               <Button variant="primary" size="lg" iconRight="arrow-right">
-                Connect Xero, free
+                Connect Xero
               </Button>
             </Link>
             <a href="#ask">
@@ -361,7 +361,7 @@ export function Landing() {
             <div className="lp-ctas">
               <Link href="/sign-up">
                 <Button variant="primary" size="lg" iconRight="arrow-right">
-                  Connect Xero, free
+                  Connect Xero
                 </Button>
               </Link>
             </div>
