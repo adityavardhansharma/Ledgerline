@@ -36,17 +36,18 @@
 @media (prefers-reduced-motion: reduce) { .lp-nav-inner, .lp-nav-start, .lp-nav-start::after { transition: none; } }
 
 /* Hero */
-.lp-hero { padding-top: 104px; text-align: center; }
+/* Spacing and headline size follow the viewport's height too, so the product window always peeks above the fold. */
+.lp-hero { padding-top: clamp(32px, 8svh, 104px); text-align: center; }
 .lp-eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--rule); border-radius: 999px; font-size: 13px; color: var(--ink-muted); background: var(--surface); transition: border-color .15s, color .15s; }
 .lp-eyebrow:hover { border-color: var(--rule-strong); color: var(--ink); }
 .lp-eyebrow b { font-weight: 600; font-size: 12px; color: var(--brand); background: var(--brand-tint); padding: 2px 9px; border-radius: 999px; }
-.lp-h1 { font: 400 clamp(46px, 7vw, 92px)/0.96 var(--font-display); letter-spacing: -0.035em; margin: 26px auto 0; max-width: 13ch; text-wrap: balance; }
+.lp-h1 { font: 400 clamp(46px, min(7vw, 9.5svh), 92px)/0.96 var(--font-display); letter-spacing: -0.035em; margin: clamp(16px, 2.6svh, 26px) auto 0; max-width: 13ch; text-wrap: balance; }
 .lp-h1 em { color: var(--brand); }
-.lp-lede { font-size: clamp(16px, 1.6vw, 18.5px); line-height: 1.6; color: var(--ink-muted); max-width: 54ch; margin: 26px auto 0; text-wrap: pretty; }
-.lp-ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+.lp-lede { font-size: clamp(16px, 1.6vw, 18.5px); line-height: 1.6; color: var(--ink-muted); max-width: 54ch; margin: clamp(16px, 2.6svh, 26px) auto 0; text-wrap: pretty; }
+.lp-ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: clamp(22px, 3.4svh, 34px); }
 
 /* The product, cropped: the top of the overview fading into the page, the Ask pill sitting on the fade. */
-.lp-stage { position: relative; margin-top: 72px; text-align: left; }
+.lp-stage { position: relative; margin-top: clamp(32px, 6svh, 72px); text-align: left; }
 .lp-window { border: 1px solid var(--rule); border-bottom: 0; border-radius: 20px 20px 0 0; background: var(--surface); overflow: hidden; height: 540px; -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 98%); mask-image: linear-gradient(to bottom, #000 62%, transparent 98%); }
 .lp-window-bar { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-bottom: 1px solid var(--rule); background: var(--surface-sunken); }
 .lp-window-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--rule); display: block; }
@@ -249,8 +250,8 @@
   .lp-nav-inner { padding-inline: 20px; }
   .lp-nav.is-scrolled .lp-nav-inner { padding-right: 6px; }
   .lp-nav.is-scrolled .lp-nav-inner { padding-left: 16px; }
-  .lp-hero { padding-top: 64px; }
-  .lp-stage { margin-top: 48px; }
+  .lp-hero { padding-top: clamp(28px, 6svh, 64px); }
+  .lp-stage { margin-top: clamp(28px, 5svh, 48px); }
   .lp-window { height: 440px; border-radius: 16px 16px 0 0; }
   .lp-window-body { padding: 14px; }
   .lp-section { padding-top: 96px; }
