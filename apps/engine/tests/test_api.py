@@ -42,6 +42,15 @@ def test_api_docs_are_not_public(monkeypatch):
     assert TestClient(app).get("/openapi.json").status_code == 401
 
 
+def test_malformed_periods_are_refused_up_front(monkeypatch):
+    monkeypatch.setenv("LL_ALLOW_UNSIGNED", "true")
+    get_settings.cache_clear()
+    body = {"accounts": [], "balances": [], "as_of": "2026-13"}
+    assert TestClient(app).post("/reports/build", json=body).status_code == 422
+    assert TestClient(app).post("/reports/build", json={**body, "as_of": "Sept"}).status_code == 422
+    get_settings.cache_clear()
+
+
 def test_signed_requests_are_accepted(monkeypatch):
     monkeypatch.setenv("LL_ENGINE_SECRET", "s")
     monkeypatch.setenv("LL_ALLOW_UNSIGNED", "false")
