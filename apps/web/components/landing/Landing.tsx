@@ -357,11 +357,11 @@ export function Landing() {
             <h2 className="lp-h1 is-final">
               Know your cash <em>every morning.</em>
             </h2>
-            <p className="lp-p">Connect Xero and see your first report in about two minutes.</p>
+            <p className="lp-p">Upload a CSV or connect Xero, and see your first report in about two minutes.</p>
             <div className="lp-ctas">
               <Link href="/sign-up">
                 <Button variant="primary" size="lg" iconRight="arrow-right">
-                  Connect Xero
+                  Upload CSV
                 </Button>
               </Link>
             </div>
