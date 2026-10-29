@@ -2303,6 +2303,55 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-skl-v { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; white-space: nowrap; }
 .ll-skl-v small { margin-left: 6px; font-size: 11.5px; color: var(--ink-subtle); }
 
+/* ---------- overview, as a function of the window's width ----------
+   Every place this page changes shape is a step in that function, and every step is a jump a reader sees. So: sizes
+   that can follow the width continuously do (clamp and max are kinks, not jumps); the steps left are few, at
+   shared widths, and away from 829–899px and 1058–1246px of main column, the ranges the column passes through
+   twice as the sidebar arrives (as icons at 901px of window, in full at 1320px). What's left: below 940px of main column, figures two by two, the rail under the chart and the revenue
+   flow as a list, all at once; below 600px, the rail's blocks one under another; below 540px of section, the
+   calendar's summary under it. */
+.ll-overview { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.ll-overview .ll-glide:empty { display: none; }
+.ll-overview .ll-report-rail { position: static; }
+
+.ll-brief { margin: -6px 0 0; max-width: 78ch; font-size: clamp(15px, 0.6cqi + 12px, 17px); line-height: 1.55; color: var(--ink); text-wrap: pretty; }
+.ll-overview .ll-brief { background: none; }
+
+/* Under the report: what needs attention first, the chart, then the rail's other blocks two across down to 600px of
+   main column, then one. */
+@container main (max-width: 940px) {
+  .ll-overview .ll-report { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 32px; }
+  .ll-overview .ll-report-main, .ll-overview .ll-report-main > .ll-stack-lg, .ll-overview .ll-report-rail { display: contents; }
+  .ll-overview .ll-report-main .ll-report-hero { grid-column: 1 / -1; }
+  /* The calendar after who owes money and how revenue goes: those decide something, the calendar explains. */
+  .ll-overview .ll-report-hero.is-days { order: 2; }
+  .ll-overview .ll-report-rail > * { margin: 0; break-inside: auto; }
+  /* What needs attention comes first when there's no room beside the chart: the same jump as the rail folding
+     under, not another one. */
+  .ll-overview .ll-report-rail > :first-child { grid-column: 1 / -1; order: -1; }
+}
+@container main (max-width: 600px) {
+  .ll-overview .ll-report { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The calendar shrinks with its section (its SVG scales: a straight line in the width, no jump) and its summary
+   keeps a column beside it; below 540px of section the summary goes under it, three across. Beside the rail the
+   summary is always under it: the column narrows by the rail's width when the rail moves up beside it at 940px, so
+   a fold inside it would happen, undo itself and happen again as the window widened. */
+.ll-overview .ll-report-hero.is-days { container-type: inline-size; }
+.ll-overview .ll-days { display: grid; grid-template-columns: minmax(0, max-content) minmax(150px, 1fr); gap: 28px; align-items: start; flex-wrap: initial; }
+.ll-overview .ll-days > :first-child { max-width: 100%; overflow: visible; min-width: 0; }
+.ll-overview .ll-days-sum { margin: 18px 0 0; padding-left: 20px; border-left: 1px solid var(--rule); grid-template-columns: minmax(0, 1fr); min-width: 0; }
+@container main (min-width: 941px) {
+  .ll-overview .ll-days { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .ll-overview .ll-days-sum { margin: 0; padding: 0; border-left: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+}
+@container (max-width: 540px) {
+  .ll-overview .ll-days { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .ll-overview .ll-days-sum { margin: 0; padding: 0; border-left: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ll-overview .ll-days-sum dd { font-size: clamp(16px, 4.4cqi, 22px); }
+}
+
 /* ---------- spacing, as a function of the main column's width ----------
    Spacing used to step: 32px gutters dropping to 16 at 900px of window and again at 600px of column, 48 above 1680,
    section gaps 28 or 22. Each step moved the whole page at once. Now each is one straight line in the column's width
