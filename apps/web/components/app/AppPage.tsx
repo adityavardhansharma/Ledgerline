@@ -5,7 +5,7 @@ import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerl
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
@@ -14,6 +14,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { BackendStatus } from "./BackendStatus";
 import { ImportProgress, useImport } from "./ImportPanel";
 import { SetupNeeded } from "./SetupNeeded";
+import { useGlide } from "./useGlide";
 import { useCompanyLimit, useWorkspace, type Workspace } from "./useWorkspace";
 
 
@@ -31,6 +32,9 @@ interface Props {
 
 const COLLAPSED_KEY = "ll-sidebar-collapsed";
 
+// What glides when a page's layout jumps (see useGlide): every block the pages are built from, and any top-level
+// block that holds none of them. Only the innermost match moves, so nothing glides twice.
+const GLIDES = ".ll-flow > *, .ll-summary > div, .ll-takeaway, .ll-brief, .ll-glide, .ll-report-hero, .ll-rail-block, .ll-panel, .ll-banner";
 
 /**
  * Between 901 and 1319px of window the sidebar shows as icons unless it's opened. The page's main column is the width
@@ -192,6 +196,8 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
       </>
     );
   }
+  const flow = useRef<HTMLDivElement>(null);
+  useGlide(flow, GLIDES);
 
   return (
     <AppShell
@@ -206,7 +212,9 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
       navOpen={navOpen}
       onMenu={() => setNavOpen((open) => !open)}
     >
-      {body}
+      <div className="ll-flow" ref={flow}>
+        {body}
+      </div>
     </AppShell>
   );
 }

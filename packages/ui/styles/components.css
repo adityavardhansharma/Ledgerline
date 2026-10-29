@@ -2317,3 +2317,9 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
    It stepped from 40 to 30 to 26px as the column narrowed; now a straight line from 26px at a 600px column to 36px at
    1000px. */
 .ll-page-title { font-size: clamp(26px, 2.5cqi + 11px, 36px); line-height: 1.1; }
+
+/* ---------- glide: what every page's blocks need to travel across a layout jump (useGlide) ----------
+   The page's blocks sit in one column with the page's section spacing; a block that glides needs a box to lift and a
+   stacking position to pass over the others. */
+.ll-flow { display: flex; flex-direction: column; gap: var(--flow); min-width: 0; }
+.ll-flow .ll-summary > div, .ll-flow .ll-glide, .ll-flow .ll-report-hero, .ll-flow .ll-rail-block, .ll-flow .ll-takeaway { position: relative; background: var(--surface); }
