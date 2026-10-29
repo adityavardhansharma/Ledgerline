@@ -683,8 +683,8 @@ function SankeyChart(p) {
   });
   var cols = Math.max.apply(null, p.nodes.map(function (nd) { return nd.col; })) + 1;
   var root = p.nodes.filter(function (nd) { return nd.col === 0; }).map(function (nd) { return byId[nd.id]; });
-  // Under about 150px a column, the labels can't sit beside their bars: read it as a list instead.
-  if ((W - pl - pr) / Math.max(1, cols - 1) < 150) return SankeyList(p, byId, root, fmt, mw[0]);
+  // Under about 150px a column (or the page's own minColumn), the labels can't sit beside their bars: read it as a list.
+  if ((W - pl - pr) / Math.max(1, cols - 1) < (p.minColumn || 150)) return SankeyList(p, byId, root, fmt, mw[0]);
   var maxChildren = Math.max.apply(null, p.nodes.map(function (nd) { return byId[nd.id].outs.length; }));
   var k = (H - pt - pb - gap * (maxChildren + 2)) / root.reduce(function (s, nd) { return s + nd.value; }, 0);
   var colX = function (c) { return pl + c * (W - pl - pr - nodeW) / (cols - 1); };
