@@ -30,7 +30,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { money, periodLabel } from "@/lib/format";
 import { ROUTES } from "@/lib/nav";
 import type { ForecastRun, Snapshot } from "@/lib/types";
-import { cashChart } from "@/lib/views";
+import { cashChart, cashLede } from "@/lib/views";
 
 // Drivers in groups: key, label, unit, scale (stored value × scale = shown value), min, max, step, help.
 const DRIVER_GROUPS: { title: string; drivers: [string, string, string, number, number, number, number, string][] }[] = [
@@ -152,8 +152,10 @@ function ForecastScreen() {
               <section className="ll-report-hero">
                 <header className="ll-hero-head">
                   <div>
-                    <h2>Cash at bank</h2>
-                    <p className="ll-report-hero-sub">{scenario.isBase ? "The base case, with its likely range" : `${scenario.name} against the base case, with its likely range`}</p>
+                    <h2>How long will the cash last?</h2>
+                    <p className="ll-report-hero-sub">
+                      {cashLede(forecast, scenario.isBase ? "the base case" : `“${scenario.name}”`)} {scenario.isBase ? "Shaded, its likely range." : "Against the base case; shaded, its likely range."}
+                    </p>
                   </div>
                   {forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}
                 </header>

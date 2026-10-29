@@ -122,7 +122,7 @@ export default function ScenariosPage() {
                 <ReportGrid
                   main={
                   <section className="ll-report-hero">
-                    <h2>Base case against {other.name}</h2>
+                    <h2>What does “{other.name}” do to cash?</h2>
                     <p className="ll-report-hero-sub">Month-end cash over the next two years{otherRun?.cashOutPeriod ? `; ${other.name} runs out in ${periodLabel(otherRun.cashOutPeriod)}` : ""}.</p>
                     {baseRun && otherRun ? (
                       <LineChart
@@ -143,7 +143,7 @@ export default function ScenariosPage() {
                   </section>
                   }
                   rail={
-                    <RailBlock title="Runway by scenario">
+                    <RailBlock title="How long does each one last?">
                       <BulletChart rows={scenarios.map((s) => ({ label: s.name, actual: s.summary?.runwayMonths ?? 24, target: 12, max: 24, bands: [6, 12, 24], format: (v: number) => (s.summary?.runwayMonths == null ? "24+ mo" : `${v.toFixed(1)} mo`) }))} />
                     </RailBlock>
                   }
