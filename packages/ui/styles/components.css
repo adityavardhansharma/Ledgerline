@@ -2374,6 +2374,12 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-report { gap: var(--flow); }
 .ll-report-hero { padding: calc(var(--pad) - 2px) var(--pad) calc(var(--pad) * 0.55); }
 
+/* ---------- board pack ----------
+   The document's margins and cover title stepped three times (48, 24, 16px; 56, 40, 32px). Now one line each, so the
+   paper narrows smoothly with the window and prints at its widest. */
+.ll-board { padding: clamp(20px, 3.6cqi - 4px, 40px) clamp(16px, 5.2cqi - 20px, 48px); }
+.ll-board-cover h1 { font-size: clamp(32px, 3cqi + 14px, 56px); line-height: 1.04; }
+
 /* ---------- page title, as a function of the main column's width ----------
    It stepped from 40 to 30 to 26px as the column narrowed; now a straight line from 26px at a 600px column to 36px at
    1000px. */
