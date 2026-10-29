@@ -2312,3 +2312,8 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-overview { gap: var(--flow); }
 .ll-report { gap: var(--flow); }
 .ll-report-hero { padding: calc(var(--pad) - 2px) var(--pad) calc(var(--pad) * 0.55); }
+
+/* ---------- page title, as a function of the main column's width ----------
+   It stepped from 40 to 30 to 26px as the column narrowed; now a straight line from 26px at a 600px column to 36px at
+   1000px. */
+.ll-page-title { font-size: clamp(26px, 2.5cqi + 11px, 36px); line-height: 1.1; }
