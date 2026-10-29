@@ -1578,7 +1578,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 
 /* Audit: a timeline, a day at a time. */
 .ll-timeline { display: flex; flex-direction: column; gap: 28px; max-width: 880px; }
-.ll-tl-day { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 24px; align-items: start; }
+.ll-tl-day { display: grid; grid-template-columns: clamp(120px, 18cqi, 210px) minmax(0, 1fr); gap: clamp(14px, 2cqi, 24px); align-items: start; }
 .ll-tl-day > h2 { position: sticky; top: 16px; margin: 0; padding-top: 10px; font: 600 13px/1.4 var(--font-sans); color: var(--ink); }
 .ll-tl-day ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
 .ll-tl-day li { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 10px 0 10px 22px; }
