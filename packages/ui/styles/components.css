@@ -2294,3 +2294,21 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-skl-bar i { display: block; height: 100%; border-radius: 3px; }
 .ll-skl-v { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; white-space: nowrap; }
 .ll-skl-v small { margin-left: 6px; font-size: 11.5px; color: var(--ink-subtle); }
+
+/* ---------- spacing, as a function of the main column's width ----------
+   Spacing used to step: 32px gutters dropping to 16 at 900px of window and again at 600px of column, 48 above 1680,
+   section gaps 28 or 22. Each step moved the whole page at once. Now each is one straight line in the column's width
+   between a floor and a ceiling (a clamp: two kinks, no jumps), never under 12px:
+     gutter  16px at 500px of column, 48px at 1680px
+     flow    the gap between sections, 20px to 32px
+     pad     the padding inside a section, 14px to 24px */
+.ll-main { --gutter: clamp(16px, 2.7cqi + 2.5px, 48px); --flow: clamp(20px, 1.2cqi + 12px, 32px); --pad: clamp(14px, 1.1cqi + 8px, 24px); }
+.ll-page { padding-left: max(var(--gutter), env(safe-area-inset-left)); padding-right: max(var(--gutter), env(safe-area-inset-right)); gap: var(--flow); }
+.ll-pagehead, .ll-topbar { padding-left: max(var(--gutter), env(safe-area-inset-left)); padding-right: max(var(--gutter), env(safe-area-inset-right)); }
+.ll-pagehead + .ll-page { padding-top: calc(var(--flow) - 4px); }
+@container main (max-width: 600px) {
+  .ll-topbar-r { margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 2px; scroll-padding-inline: var(--gutter); }
+}
+.ll-overview { gap: var(--flow); }
+.ll-report { gap: var(--flow); }
+.ll-report-hero { padding: calc(var(--pad) - 2px) var(--pad) calc(var(--pad) * 0.55); }
