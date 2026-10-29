@@ -2374,6 +2374,13 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-report { gap: var(--flow); }
 .ll-report-hero { padding: calc(var(--pad) - 2px) var(--pad) calc(var(--pad) * 0.55); }
 
+/* ---------- sign in and sign up, as functions of the window ----------
+   The pitch, the title and the form's gutter used to step at 1100 and 900px of width and 860px of height. Each now
+   follows the window in a straight line between a floor and a ceiling; the pitch also shrinks with a short window. */
+.ll-auth-pitch h2 { font-size: clamp(32px, min(3.4vw, 5svh), 46px); line-height: 1.09; }
+.ll-auth-card h1 { font-size: clamp(34px, 1.6vw + 22px, 44px); line-height: 1.09; }
+.ll-auth-form { padding-inline: clamp(16px, 2.5vw - 6px, 32px); }
+
 /* ---------- board pack ----------
    The document's margins and cover title stepped three times (48, 24, 16px; 56, 40, 32px). Now one line each, so the
    paper narrows smoothly with the window and prints at its widest. */
