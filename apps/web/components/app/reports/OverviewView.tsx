@@ -1,20 +1,24 @@
 "use client";
 
 import { Button, CalendarHeatmap, formatMoney, LineChart, SankeyChart, Sparkline, WaterfallChart } from "@ledgerline/ui";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { monthName, periodLabel } from "@/lib/format";
 import { ROUTES } from "@/lib/nav";
 import type { ForecastRun, Snapshot } from "@/lib/types";
-import { bridgeSteps, cashChart, sankeyData } from "@/lib/views";
+import { bridgeLede, bridgeSteps, cashChart, cashLede, overviewLede, sankeyData } from "@/lib/views";
 import { pctChange, RailBlock, ReportGrid, SummaryLine } from "../report/Report";
 
 type Bucket = { label: string; value: number };
 
 /**
- * The morning briefing: the four figures that matter, what changed since the last sync, then cash, with what needs
- * attention beside it. Further down, where the month's cash and revenue went.
+ * The morning briefing, answer first: the four figures and one sentence saying what they mean. Then how long the cash
+ * lasts, with what needs attention, who owes money and how revenue is going beside it; where there's no room beside
+ * it, what needs attention comes first, so on a phone it is on the first screen. Further down, where the month's
+ * cash and revenue went. Each section is headed by the question it answers.
+ *
+ * The layout is laid out as a function of the window's width, with as few jumps as possible (see the overview block
+ * in components.css), and the jumps that remain glide instead of teleporting (useGlide, from AppPage).
  */
 export function OverviewView({ snapshot, forecast, scenarioName, isBase, receivable, assumedTerms, digest, owed, check, days }: { days?: ComponentProps<typeof CalendarHeatmap>["days"] | null; snapshot: Snapshot; forecast: ForecastRun | null | undefined; scenarioName: string; isBase: boolean; receivable: Bucket[]; assumedTerms: boolean; digest: ReactNode; owed: ReactNode; check: ReactNode }) {
   const m = snapshot.measures;
@@ -33,8 +37,9 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
   const forecastRevenue = forecast?.months.slice(0, 3).map((x) => x.revenue / 100) ?? [];
   const yearRevenue = snapshot.series.revenue.slice(-12).map((c) => c / 100);
   const ytd = snapshot.series.periods.reduce((n, p, i) => (p >= snapshot.fyStart && p <= snapshot.asOf ? n + snapshot.series.revenue[i] / 100 : n), 0);
+  const bridge = bridgeLede(snapshot);
   return (
-    <>
+    <div className="ll-overview">
       <SummaryLine
         figures={[
           { label: "Cash at bank", value: formatMoney(m.cash / 100), change: m.cashDelta, changeText: m.cashDelta === null ? undefined : pctChange(m.cashDelta), good: "up", note: "on last month" },
@@ -47,18 +52,18 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
           },
         ]}
       />
-      {digest}
+      <p className="ll-brief">{overviewLede(snapshot, forecast, on)}</p>
       <ReportGrid
         main={
           <div className="ll-stack-lg">
             <section className="ll-report-hero">
-              <h2>Cash at bank, and where it&apos;s heading</h2>
-              <p className="ll-report-hero-sub">{forecast ? (forecast.lowestCash !== null && forecast.lowestCashPeriod ? `Lowest point ${formatMoney(forecast.lowestCash / 100)} in ${periodLabel(forecast.lowestCashPeriod)}, on ${on}.` : `On ${on}.`) : "Building the forecast…"}</p>
+              <h2>How long will the cash last?</h2>
+              <p className="ll-report-hero-sub">{cashLede(forecast, on)}</p>
               <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels height={280} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />
             </section>
-            <section className="ll-report-hero">
-              <h2>Every day in the bank</h2>
-              <p className="ll-report-hero-sub">Money in and out over the last six months. The darkest red days are payroll, rent and tax.</p>
+            <section className="ll-report-hero is-days">
+              <h2>When does money move?</h2>
+              <p className="ll-report-hero-sub">Money in and out of the bank, day by day, over the last six months.</p>
               {days && days.length ? (
                 <div className="ll-days">
                   <CalendarHeatmap cell={15} days={days} />
@@ -90,7 +95,7 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
                 </Button>
               </Link>
             </RailBlock>
-            <RailBlock title="Owed to you" aside={owedTotal ? <b className="ll-rail-figure">{formatMoney(owedTotal / 100)}</b> : null}>
+            <RailBlock title="Who owes you money?" aside={owedTotal ? <b className="ll-rail-figure">{formatMoney(owedTotal / 100)}</b> : null}>
               {owedTotal ? (
                 <>
                   <ul className="ll-age">
@@ -109,7 +114,7 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
                 <p className="ll-rail-note">Nobody owes you money right now.</p>
               )}
             </RailBlock>
-            <RailBlock title="Revenue" aside={<small className="ll-muted">last 12 months, then forecast</small>}>
+            <RailBlock title="Is revenue growing?" aside={<small className="ll-muted">last 12 months, then forecast</small>}>
               <div className="ll-rev">
                 <div className="ll-rev-top">
                   <b>{formatMoney(m.revenue / 100)}</b>
@@ -135,23 +140,31 @@ export function OverviewView({ snapshot, forecast, scenarioName, isBase, receiva
           </>
         }
       />
+      <div className="ll-glide">{digest}</div>
       <section className="ll-report-hero">
-        <h2>Where {month}&apos;s cash went</h2>
+        <h2>Where did {month}&apos;s cash go?</h2>
+        {bridge ? <p className="ll-report-hero-sub">{bridge}</p> : null}
         <WaterfallChart steps={bridgeSteps(snapshot)} height={280} />
       </section>
       {snapshot.sankey.links.length ? (
         <section className="ll-report-hero">
-          <h2>Where {month}&apos;s revenue went</h2>
+          <h2>Where did {month}&apos;s revenue go?</h2>
           <p className="ll-report-hero-sub">
             {formatMoney(m.revenue / 100)} of sales, followed through every cost to {formatMoney(m.netProfit / 100)} of net profit.
           </p>
-          <SankeyChart {...sankeyData(snapshot)} height={340} />
+          <SankeyChart {...sankeyData(snapshot)} height={340} minColumn={SANKEY_COLUMN} />
         </section>
       ) : null}
       {check}
-    </>
+    </div>
   );
 }
+
+// The Sankey reads as a list below this column width. Its columns are (section − 184px of labels) / 3, and in a main
+// column m wide the section's inside is m less two gutters and two paddings (components.css: 2.7% + 2.5px and 1.1% +
+// 8px of m), so a column is (0.924m − 205) / 3: 221.2px at m = 940. So it changes at the same width as the rail,
+// once, instead of at 745px of column, which a sidebar arriving all at once would make the page cross twice.
+const SANKEY_COLUMN = 221.3;
 
 /** Beside the calendar: the biggest day out, the biggest day in, and how many days money left. */
 function DaySummary({ days }: { days: { date: string; value: number }[] }) {
