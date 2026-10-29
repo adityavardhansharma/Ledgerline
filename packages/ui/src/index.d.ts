@@ -104,7 +104,7 @@ export declare const Topbar: C<TopbarProps>; export declare const AppShell: C<Ap
 export declare const AssumptionField: C<AssumptionFieldProps>; export declare const HireRow: C<HireRowProps>; export declare const ScenarioCard: C<ScenarioCardProps>;
 export declare const ScenarioCompare: C<ScenarioCompareProps>; export declare const AuditItem: C<AuditItemProps>; export declare const AuditTimeline: C<AuditTimelineProps>;
 export declare const IntegrationCard: C<IntegrationCardProps>; export declare const CommentaryCard: C<CommentaryCardProps>;
-export interface SankeyChartProps { nodes: Array<{ id: string; label: string; col: number; tone?: string; emphasis?: boolean }>; links: Array<{ source: string; target: string; value: number }>; height?: number; labelWidth?: number; format?: (v: number) => string; caption?: string; label?: string }
+export interface SankeyChartProps { nodes: Array<{ id: string; label: string; col: number; tone?: string; emphasis?: boolean }>; links: Array<{ source: string; target: string; value: number }>; height?: number; labelWidth?: number; format?: (v: number) => string; caption?: string; label?: string; /** Column width below which it reads as a list; 150 unless set. */ minColumn?: number }
 export interface RunwayGaugeProps { months: number; max?: number; size?: number; cashOut?: string; note?: string; capped?: boolean; compare?: number; compareLabel?: string }
 export interface TornadoChartProps { base: number; rows: Array<{ label: string; range?: string; low: number; high: number }>; unit?: string; lowLabel?: string; highLabel?: string; baseLabel?: string }
 export interface CalendarHeatmapProps { days: Array<{ date: string; value: number; note?: string; label?: string }>; cell?: number; hint?: string; label?: string }

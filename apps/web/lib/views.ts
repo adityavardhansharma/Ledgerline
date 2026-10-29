@@ -1,5 +1,6 @@
 import type { ForecastRun, Snapshot, Statement } from "./types";
-import { periodLabel } from "./format";
+import { formatMoney, formatPct } from "@ledgerline/ui";
+import { monthName as fullMonth, periodLabel } from "./format";
 
 const toEuros = (cents: number | null | undefined) => (cents == null ? null : cents / 100);
 
@@ -87,4 +88,38 @@ export function everyDay(rows: { date: string; valueCents: number }[], fromPerio
     out.push({ date, value: (byDate.get(date) ?? 0) / 100 });
   }
   return out;
+}
+
+const signed = (ratio: number) => `${ratio >= 0 ? "up" : "down"} ${formatPct(Math.abs(ratio))}`;
+
+/**
+ * The Overview's answer in one sentence, before any chart: where cash stands, how the month's sales went, and how
+ * long the cash lasts on the chosen scenario.
+ */
+export function overviewLede(snapshot: Snapshot, forecast: ForecastRun | null | undefined, on: string) {
+  const m = snapshot.measures;
+  const cash = `Cash is ${formatMoney(m.cash / 100)}${m.cashDelta === null ? "" : `, ${signed(m.cashDelta)} on last month`}`;
+  const sales = `${fullMonth(snapshot.asOf)} sales ${m.revenueDelta === null ? `were ${formatMoney(m.revenue / 100)}` : `were ${signed(m.revenueDelta)}`}`;
+  if (!forecast) return `${cash}. ${sales}.`;
+  const lasts = forecast.cashOutPeriod ? `On ${on} it runs out in ${periodLabel(forecast.cashOutPeriod)}` : `On ${on} it lasts the whole forecast`;
+  return `${cash}, and ${sales}. ${lasts}.`;
+}
+
+/** The answer to "how long will the cash last?", for under that chart's heading. */
+export function cashLede(forecast: ForecastRun | null | undefined, on: string) {
+  if (!forecast) return "Building the forecast…";
+  const low = forecast.lowestCash !== null && forecast.lowestCashPeriod ? ` Lowest point ${formatMoney(forecast.lowestCash / 100)} in ${periodLabel(forecast.lowestCashPeriod)}.` : "";
+  return forecast.cashOutPeriod ? `It runs out in ${periodLabel(forecast.cashOutPeriod)}, on ${on}.${low}` : `Through the whole forecast, on ${on}.${low}`;
+}
+
+/** What moved the month's cash most, from the bridge between opening and closing cash. */
+export function bridgeLede(snapshot: Snapshot) {
+  const start = snapshot.bridge.find((s) => s.kind === "start");
+  const end = snapshot.bridge.find((s) => s.kind === "end");
+  const steps = snapshot.bridge.filter((s) => !s.kind && s.value !== 0);
+  if (!start || !end || !steps.length) return null;
+  const change = end.value - start.value;
+  const biggest = steps.reduce((a, s) => (Math.abs(s.value) > Math.abs(a.value) ? s : a));
+  const moved = change === 0 ? "Cash ended where it started" : `Cash ${change > 0 ? "rose" : "fell"} ${formatMoney(Math.abs(change) / 100)}`;
+  return `${moved}. ${biggest.label} moved it most: ${biggest.value > 0 ? "+" : "−"}${formatMoney(Math.abs(biggest.value) / 100)}.`;
 }

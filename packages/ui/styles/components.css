@@ -1493,19 +1493,27 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
   .ll-report-rail { position: static; display: block; columns: 2 280px; column-gap: 32px; }
   .ll-report-rail > * { break-inside: avoid; margin-bottom: 22px; }
 }
-@container (max-width: 860px) {
+/* 884px is the main column's 940px less its two gutters (2 × 27.9px there; the gutter is 2.7% of the column plus
+   2.5px): four figures fold to two by two at the same width the rail folds under the report, so the page changes
+   once there, not twice 16px apart. */
+@container (max-width: 884px) {
   .ll-summary:has(> div:nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ll-summary:has(> div:nth-child(4)) > div:nth-child(odd) { padding-left: 0; border-left: 0; }
   .ll-summary:has(> div:nth-child(4)) > div:nth-child(n+3) { border-top: 1px solid var(--rule); }
 }
-@container (max-width: 560px) {
-  .ll-summary dd { font-size: 24px; }
-}
+/* Fewer than four figures go one per row on a phone; four stay two by two, so all four fit the first screen. */
 @container (max-width: 400px) {
-  .ll-summary, .ll-summary:has(> div:nth-child(4)) { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
-  .ll-summary > div, .ll-summary > div + div { padding-left: 0; border-left: 0; }
-  .ll-summary > div + div { border-top: 1px solid var(--rule); }
+  .ll-summary:not(:has(> div:nth-child(4))) { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+  .ll-summary:not(:has(> div:nth-child(4))) > div, .ll-summary:not(:has(> div:nth-child(4))) > div + div { padding-left: 0; border-left: 0; }
+  .ll-summary:not(:has(> div:nth-child(4))) > div + div { border-top: 1px solid var(--rule); }
+  .ll-summary:has(> div:nth-child(4)) > div { padding-right: 12px; }
+  .ll-summary:has(> div:nth-child(4)) > div:nth-child(even) { padding-left: 12px; }
 }
+/* A figure's size follows its own cell continuously instead of stepping at a breakpoint: 12% of the cell's width,
+   between 18 and 30px. At 12% and roughly 0.6em a character, thirteen characters fit any cell, so "−€12,345,678"
+   never overflows, at any width. */
+.ll-summary > div { container-type: inline-size; }
+.ll-summary dd { font-size: clamp(18px, 12cqi, 30px); }
 .ll-report-hero { padding: 20px 22px 12px; border: 1px solid var(--rule); border-radius: var(--radius-lg); background: var(--surface); }
 .ll-report-hero h2 { margin: 0 0 8px; font: 600 14px/1.3 var(--font-sans); }
 .ll-report-pair { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; }
@@ -1570,7 +1578,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 
 /* Audit: a timeline, a day at a time. */
 .ll-timeline { display: flex; flex-direction: column; gap: 28px; max-width: 880px; }
-.ll-tl-day { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 24px; align-items: start; }
+.ll-tl-day { display: grid; grid-template-columns: clamp(120px, 18cqi, 210px) minmax(0, 1fr); gap: clamp(14px, 2cqi, 24px); align-items: start; }
 .ll-tl-day > h2 { position: sticky; top: 16px; margin: 0; padding-top: 10px; font: 600 13px/1.4 var(--font-sans); color: var(--ink); }
 .ll-tl-day ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
 .ll-tl-day li { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 10px 0 10px 22px; }
@@ -1641,8 +1649,12 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
   .ll-tl-day > h2 { position: static; padding: 0; }
   .ll-member-can { display: none; }
   .ll-setting-control > .ll-switch, .ll-setting-value { align-self: flex-start; }
+  /* Too narrow for four columns: each line's description moves under its account instead of being dropped. */
+  .ll-journal table, .ll-journal tbody { display: block; }
+  .ll-journal tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 12px; padding: 4px 0; }
+  .ll-journal td, .ll-journal td + td { padding: 0; }
   .ll-journal-acct { width: auto; white-space: normal; max-width: none; }
-  .ll-journal .ll-desc { display: none; }
+  .ll-journal .ll-desc { grid-row: 2; grid-column: 1 / -1; max-width: none; white-space: normal; font-size: 12.5px; color: var(--ink-subtle); }
 }
 
 /* ---------- shell: a sidebar that narrows to icons, a slim header bar, the title below ---------- */
@@ -2174,7 +2186,9 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 
 /* Narrow sheets (phones, a folded foldable, a quarter-screen window): one compact header row whose actions
    scroll sideways instead of stacking, tighter gutters, and tables that scroll inside their frame. */
-@container main (max-width: 640px) {
+/* 600px, not 640: someone who opens the full sidebar in a window just past 900px has a main column of about 638px,
+   and that's a desktop, not a phone. Below 600px the column is only ever a phone or a narrow window. */
+@container main (max-width: 600px) {
   .ll-topbar { gap: 8px; }
   .ll-topbar-l { flex: 1 1 auto; min-width: 0; }
   .ll-topbar-l .ll-crumbs { min-width: 0; overflow: hidden; }
@@ -2292,3 +2306,101 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-skl-bar i { display: block; height: 100%; border-radius: 3px; }
 .ll-skl-v { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; white-space: nowrap; }
 .ll-skl-v small { margin-left: 6px; font-size: 11.5px; color: var(--ink-subtle); }
+
+/* ---------- overview, as a function of the window's width ----------
+   Every place this page changes shape is a step in that function, and every step is a jump a reader sees. So: sizes
+   that can follow the width continuously do (clamp and max are kinks, not jumps); the steps left are few, at
+   shared widths, and away from 829–899px and 1058–1246px of main column, the ranges the column passes through
+   twice as the sidebar arrives (as icons at 901px of window, in full at 1320px). What's left: below 940px of main column, figures two by two, the rail under the chart and the revenue
+   flow as a list, all at once; below 600px, the rail's blocks one under another; below 540px of section, the
+   calendar's summary under it. */
+.ll-overview { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.ll-overview .ll-glide:empty { display: none; }
+.ll-overview .ll-report-rail { position: static; }
+
+.ll-brief { margin: -6px 0 0; max-width: 78ch; font-size: clamp(15px, 0.6cqi + 12px, 17px); line-height: 1.55; color: var(--ink); text-wrap: pretty; }
+.ll-overview .ll-brief { background: none; }
+
+/* Under the report: what needs attention first, the chart, then the rail's other blocks two across down to 600px of
+   main column, then one. */
+@container main (max-width: 940px) {
+  .ll-overview .ll-report { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 32px; }
+  .ll-overview .ll-report-main, .ll-overview .ll-report-main > .ll-stack-lg, .ll-overview .ll-report-rail { display: contents; }
+  .ll-overview .ll-report-main .ll-report-hero { grid-column: 1 / -1; }
+  /* The calendar after who owes money and how revenue goes: those decide something, the calendar explains. */
+  .ll-overview .ll-report-hero.is-days { order: 2; }
+  .ll-overview .ll-report-rail > * { margin: 0; break-inside: auto; }
+  /* What needs attention comes first when there's no room beside the chart: the same jump as the rail folding
+     under, not another one. */
+  .ll-overview .ll-report-rail > :first-child { grid-column: 1 / -1; order: -1; }
+}
+@container main (max-width: 600px) {
+  .ll-overview .ll-report { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The calendar shrinks with its section (its SVG scales: a straight line in the width, no jump) and its summary
+   keeps a column beside it; below 540px of section the summary goes under it, three across. Beside the rail the
+   summary is always under it: the column narrows by the rail's width when the rail moves up beside it at 940px, so
+   a fold inside it would happen, undo itself and happen again as the window widened. */
+.ll-overview .ll-report-hero.is-days { container-type: inline-size; }
+.ll-overview .ll-days { display: grid; grid-template-columns: minmax(0, max-content) minmax(150px, 1fr); gap: 28px; align-items: start; flex-wrap: initial; }
+.ll-overview .ll-days > :first-child { max-width: 100%; overflow: visible; min-width: 0; }
+.ll-overview .ll-days-sum { margin: 18px 0 0; padding-left: 20px; border-left: 1px solid var(--rule); grid-template-columns: minmax(0, 1fr); min-width: 0; }
+@container main (min-width: 941px) {
+  .ll-overview .ll-days { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .ll-overview .ll-days-sum { margin: 0; padding: 0; border-left: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+}
+@container (max-width: 540px) {
+  .ll-overview .ll-days { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .ll-overview .ll-days-sum { margin: 0; padding: 0; border-left: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ll-overview .ll-days-sum dd { font-size: clamp(16px, 4.4cqi, 22px); }
+}
+
+/* ---------- spacing, as a function of the main column's width ----------
+   Spacing used to step: 32px gutters dropping to 16 at 900px of window and again at 600px of column, 48 above 1680,
+   section gaps 28 or 22. Each step moved the whole page at once. Now each is one straight line in the column's width
+   between a floor and a ceiling (a clamp: two kinks, no jumps), never under 12px:
+     gutter  16px at 500px of column, 48px at 1680px
+     flow    the gap between sections, 20px to 32px
+     pad     the padding inside a section, 14px to 24px */
+.ll-main { --gutter: clamp(16px, 2.7cqi + 2.5px, 48px); --flow: clamp(20px, 1.2cqi + 12px, 32px); --pad: clamp(14px, 1.1cqi + 8px, 24px); }
+.ll-page { padding-left: max(var(--gutter), env(safe-area-inset-left)); padding-right: max(var(--gutter), env(safe-area-inset-right)); gap: var(--flow); }
+.ll-pagehead, .ll-topbar { padding-left: max(var(--gutter), env(safe-area-inset-left)); padding-right: max(var(--gutter), env(safe-area-inset-right)); }
+.ll-pagehead + .ll-page { padding-top: calc(var(--flow) - 4px); }
+@container main (max-width: 600px) {
+  .ll-topbar-r { margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 2px; scroll-padding-inline: var(--gutter); }
+}
+.ll-overview { gap: var(--flow); }
+.ll-report { gap: var(--flow); }
+.ll-report-hero { padding: calc(var(--pad) - 2px) var(--pad) calc(var(--pad) * 0.55); }
+
+/* ---------- sign in and sign up, as functions of the window ----------
+   The pitch, the title and the form's gutter used to step at 1100 and 900px of width and 860px of height. Each now
+   follows the window in a straight line between a floor and a ceiling; the pitch also shrinks with a short window. */
+.ll-auth-pitch h2 { font-size: clamp(32px, min(3.4vw, 5svh), 46px); line-height: 1.09; }
+.ll-auth-card h1 { font-size: clamp(34px, 1.6vw + 22px, 44px); line-height: 1.09; }
+.ll-auth-form { padding-inline: clamp(16px, 2.5vw - 6px, 32px); }
+
+/* ---------- board pack ----------
+   The document's margins and cover title stepped three times (48, 24, 16px; 56, 40, 32px). Now one line each, so the
+   paper narrows smoothly with the window and prints at its widest. */
+.ll-board { padding: clamp(20px, 3.6cqi - 4px, 40px) clamp(16px, 5.2cqi - 20px, 48px); }
+.ll-board-cover h1 { font-size: clamp(32px, 3cqi + 14px, 56px); line-height: 1.04; }
+
+/* ---------- onboarding ----------
+   Gutters, the gap between the steps and the form, and the title follow the window instead of stepping at 760px.
+   The steps still move above the form there: that's a change of shape, not of spacing. */
+.ll-onb-top { padding-inline: max(clamp(16px, 3.3vw - 9px, 32px), env(safe-area-inset-left)); }
+.ll-onb-body { padding-inline: clamp(16px, 3.3vw - 9px, 32px); column-gap: clamp(24px, 4.8vw - 12px, 48px); }
+.ll-onb-main h1 { font-size: clamp(34px, 1.8vw + 22px, 48px); line-height: 1.08; }
+
+/* ---------- page title, as a function of the main column's width ----------
+   It stepped from 40 to 30 to 26px as the column narrowed; now a straight line from 26px at a 600px column to 36px at
+   1000px. */
+.ll-page-title { font-size: clamp(26px, 2.5cqi + 11px, 36px); line-height: 1.1; }
+
+/* ---------- glide: what every page's blocks need to travel across a layout jump (useGlide) ----------
+   The page's blocks sit in one column with the page's section spacing; a block that glides needs a box to lift and a
+   stacking position to pass over the others. */
+.ll-flow { display: flex; flex-direction: column; gap: var(--flow); min-width: 0; }
+.ll-flow .ll-summary > div, .ll-flow .ll-glide, .ll-flow .ll-report-hero, .ll-flow .ll-rail-block, .ll-flow .ll-takeaway { position: relative; background: var(--surface); }
