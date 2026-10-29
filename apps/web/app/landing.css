@@ -2,12 +2,12 @@
    small widget beside its words. Ledger paper appears twice, in the board pack and the close. */
 .lp { background: var(--bg); color: var(--ink); overflow-x: clip; }
 .lp a { text-decoration: none; color: inherit; }
-.lp-wrap { max-width: 1160px; margin: 0 auto; padding-inline: 32px; }
+.lp-wrap { max-width: 1160px; margin: 0 auto; padding-inline: clamp(20px, 2.5vw + 6px, 32px); }
 .lp section[id] { scroll-margin-top: 80px; }
 
 /* Nav: clear and full width over the hero; once the page moves it draws in to a floating glass pill. */
 .lp-nav { position: sticky; top: 0; z-index: 40; padding: 10px 16px 0; pointer-events: none; }
-.lp-nav-inner { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 28px; max-width: 1160px; height: 60px; margin: 0 auto; padding: 0 32px; border: 1px solid transparent; border-radius: 999px;
+.lp-nav-inner { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 28px; max-width: 1160px; height: 60px; margin: 0 auto; padding: 0 clamp(20px, 2.5vw + 6px, 32px); border: 1px solid transparent; border-radius: 999px;
   transition: max-width .55s cubic-bezier(.22, 1, .36, 1), padding .55s cubic-bezier(.22, 1, .36, 1), height .4s cubic-bezier(.22, 1, .36, 1), background-color .3s, border-color .3s, box-shadow .4s; }
 .lp-nav.is-scrolled .lp-nav-inner { max-width: 940px; height: 54px; padding-left: 18px; padding-right: 7px;
   background: color-mix(in srgb, var(--surface) 72%, transparent); border-color: color-mix(in srgb, var(--ink) 9%, transparent);
@@ -64,7 +64,7 @@
 .lp-proof .ll-icon { color: var(--brand); }
 
 /* Sections: the words sit beside or just above their widget, never in a block of their own. */
-.lp-section { padding-top: 136px; }
+.lp-section { padding-top: clamp(96px, 8vw + 24px, 136px); }
 .lp-intro { min-width: 0; }
 .lp-kicker { font: 500 13px/1 var(--font-sans); color: var(--brand); }
 .lp-h2 { font: 400 clamp(32px, 3.6vw, 44px)/1.06 var(--font-display); letter-spacing: -0.02em; margin: 14px 0 0; max-width: 18ch; text-wrap: balance; }
@@ -239,22 +239,22 @@
 @media (prefers-reduced-motion: reduce) {
   .lp-caret { animation: none; }
 }
+/* Gutters and the space between sections follow the window in a straight line between a floor and a ceiling:
+   20px to 32px of gutter from 560 to 1040px, 96px to 136px between sections from 900 to 1400px. They used to
+   step at 900px, so the whole page shifted at once there. */
 @media (max-width: 1040px) {
   .lp-window-top { grid-template-columns: minmax(0, 1fr); }
   .lp-window-gauge { display: none; }
 }
 @media (max-width: 900px) {
-  .lp-wrap { padding-inline: 20px; }
   .lp-nav-links { display: none; }
   .lp-nav-cta { margin-left: auto; }
-  .lp-nav-inner { padding-inline: 20px; }
   .lp-nav.is-scrolled .lp-nav-inner { padding-right: 6px; }
   .lp-nav.is-scrolled .lp-nav-inner { padding-left: 16px; }
   .lp-hero { padding-top: clamp(28px, 6svh, 64px); }
   .lp-stage { margin-top: clamp(28px, 5svh, 48px); }
   .lp-window { height: 440px; border-radius: 16px 16px 0 0; }
   .lp-window-body { padding: 14px; }
-  .lp-section { padding-top: 96px; }
   .lp-row, .lp-row.is-wide-right, .lp-row.is-flipped, .lp-ask { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .lp-row.is-flipped > :first-child { order: 2; }
   .lp-row.is-faq .lp-intro { position: static; }
@@ -283,7 +283,7 @@
 }
 
 /* Small sections: one AI action each, words beside a small widget, a third less space than a full section. */
-.lp-small { padding-top: 96px; }
+.lp-small { padding-top: clamp(72px, 4.8vw + 29px, 96px); }
 .lp-row.is-small { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 72px; }
 .lp-row.is-small.is-flipped { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); }
 .lp-h2.is-small { font-size: clamp(28px, 2.8vw, 34px); max-width: 16ch; }
@@ -300,7 +300,6 @@
 .lp-flag-line > span:last-child { font-family: var(--font-mono); font-size: 13.5px; }
 .lp-also { margin: 18px 0 0; font-size: 14px; color: var(--ink-subtle); }
 @media (max-width: 900px) {
-  .lp-small { padding-top: 72px; }
   .lp-row.is-small, .lp-row.is-small.is-flipped, .lp-strip, .lp-scene-still { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .lp-strip { gap: 16px; }
 }
