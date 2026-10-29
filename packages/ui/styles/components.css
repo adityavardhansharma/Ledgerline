@@ -2174,7 +2174,9 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 
 /* Narrow sheets (phones, a folded foldable, a quarter-screen window): one compact header row whose actions
    scroll sideways instead of stacking, tighter gutters, and tables that scroll inside their frame. */
-@container main (max-width: 640px) {
+/* 600px, not 640: someone who opens the full sidebar in a window just past 900px has a main column of about 638px,
+   and that's a desktop, not a phone. Below 600px the column is only ever a phone or a narrow window. */
+@container main (max-width: 600px) {
   .ll-topbar { gap: 8px; }
   .ll-topbar-l { flex: 1 1 auto; min-width: 0; }
   .ll-topbar-l .ll-crumbs { min-width: 0; overflow: hidden; }
