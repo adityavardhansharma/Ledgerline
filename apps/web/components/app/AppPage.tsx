@@ -5,7 +5,7 @@ import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerl
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
 import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
@@ -31,21 +31,54 @@ interface Props {
 
 const COLLAPSED_KEY = "ll-sidebar-collapsed";
 
-/** Whether the sidebar is narrowed to icons: remembered per browser, toggled with "[" anywhere but a text field. */
+
+/**
+ * Between 901 and 1319px of window the sidebar shows as icons unless it's opened. The page's main column is the width
+ * every page lays itself out by, and a full sidebar arriving at 900px would take 262px from it at once: the column
+ * would grow to 899px, drop to 638px and grow again, so every fold between those widths (two figures across, a rail
+ * beside a chart, a list beside a form) would happen, undo itself and happen again as the window widened. The icons
+ * take 72px, from 899 to about 829, where no page folds; the full sidebar arrives at 1320px, taking the column from
+ * about 1246 to 1058, where no page folds either. So the column only grows between jumps, and each fold happens once.
+ */
+const ICONS_BETWEEN = "(min-width: 901px) and (max-width: 1319px)";
+
+const inIconsBand = () => window.matchMedia(ICONS_BETWEEN).matches;
+
+function useIconsBand() {
+  return useSyncExternalStore(
+    (changed) => {
+      const query = window.matchMedia(ICONS_BETWEEN);
+      query.addEventListener("change", changed);
+      return () => query.removeEventListener("change", changed);
+    },
+    inIconsBand,
+    () => false,
+  );
+}
+
+/**
+ * Whether the sidebar is narrowed to icons: remembered per browser, toggled with "[" anywhere but a text field. In the
+ * icons band it starts narrowed, and the toggle opens it for this visit without changing what's remembered.
+ */
 function useCollapsed() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [remembered, setRemembered] = useState(false);
+  const [opened, setOpened] = useState(false);
+  const band = useIconsBand();
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
+      setRemembered(localStorage.getItem(COLLAPSED_KEY) === "1");
     } catch {}
   }, []);
-  const toggle = () =>
-    setCollapsed((was) => {
+  const toggle = () => {
+    if (inIconsBand()) return setOpened((was) => !was);
+    setRemembered((was) => {
       try {
         localStorage.setItem(COLLAPSED_KEY, was ? "0" : "1");
       } catch {}
       return !was;
     });
+  };
+  const collapsed = band ? !opened : remembered;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
