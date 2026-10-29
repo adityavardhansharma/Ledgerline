@@ -2380,6 +2380,13 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer-layer:not(
 .ll-board { padding: clamp(20px, 3.6cqi - 4px, 40px) clamp(16px, 5.2cqi - 20px, 48px); }
 .ll-board-cover h1 { font-size: clamp(32px, 3cqi + 14px, 56px); line-height: 1.04; }
 
+/* ---------- onboarding ----------
+   Gutters, the gap between the steps and the form, and the title follow the window instead of stepping at 760px.
+   The steps still move above the form there: that's a change of shape, not of spacing. */
+.ll-onb-top { padding-inline: max(clamp(16px, 3.3vw - 9px, 32px), env(safe-area-inset-left)); }
+.ll-onb-body { padding-inline: clamp(16px, 3.3vw - 9px, 32px); column-gap: clamp(24px, 4.8vw - 12px, 48px); }
+.ll-onb-main h1 { font-size: clamp(34px, 1.8vw + 22px, 48px); line-height: 1.08; }
+
 /* ---------- page title, as a function of the main column's width ----------
    It stepped from 40 to 30 to 26px as the column narrowed; now a straight line from 26px at a 600px column to 36px at
    1000px. */
