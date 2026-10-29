@@ -1493,7 +1493,10 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
   .ll-report-rail { position: static; display: block; columns: 2 280px; column-gap: 32px; }
   .ll-report-rail > * { break-inside: avoid; margin-bottom: 22px; }
 }
-@container (max-width: 860px) {
+/* 884px is the main column's 940px less its two gutters (2 × 27.9px there; the gutter is 2.7% of the column plus
+   2.5px): four figures fold to two by two at the same width the rail folds under the report, so the page changes
+   once there, not twice 16px apart. */
+@container (max-width: 884px) {
   .ll-summary:has(> div:nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ll-summary:has(> div:nth-child(4)) > div:nth-child(odd) { padding-left: 0; border-left: 0; }
   .ll-summary:has(> div:nth-child(4)) > div:nth-child(n+3) { border-top: 1px solid var(--rule); }
