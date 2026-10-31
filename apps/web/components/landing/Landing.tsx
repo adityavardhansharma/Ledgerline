@@ -2,7 +2,7 @@
 
 import { Button, HeroMetric, Icon, KpiTile, LineChart, Logo } from "@ledgerline/ui";
 import Link from "next/link";
-import { motion } from "motion/react";
+import { m as motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "../ThemeToggle";
 import { ChatDemo, HeroChat } from "./AiShowcase";

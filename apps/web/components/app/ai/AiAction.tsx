@@ -2,7 +2,7 @@
 
 import { AiOrb, Icon, IconButton } from "@ledgerline/ui";
 import { ConvexError } from "convex/values";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, m as motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Citation, Prose } from "@/convex/commentary";
 import { errorText } from "../BoardCommentary";

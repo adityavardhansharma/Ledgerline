@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@ledgerline/ui";
-import { motion, useInView } from "motion/react";
+import { m as motion, useInView } from "motion/react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { CONVERSATIONS, TOOLS } from "./aiSamples";

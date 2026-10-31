@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m as motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnswerBody, Reading, ToolOverride } from "../app/chat/Message";
 import { CONVERSATIONS, TOOLS } from "./aiSamples";
