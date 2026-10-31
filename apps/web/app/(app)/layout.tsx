@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { SetupNeeded } from "@/components/app/SetupNeeded";
+import { AppFrame } from "@/components/app/AppFrame";
 import { AskLedgerline } from "@/components/app/chat/AskLedgerline";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
 
@@ -30,7 +31,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
   return (
     <>
-      {children}
+      <AppFrame>{children}</AppFrame>
       <AskLedgerline />
     </>
   );
