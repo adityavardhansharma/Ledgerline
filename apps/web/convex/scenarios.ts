@@ -59,8 +59,7 @@ export const ensureBase = internalMutation({
   handler: async (ctx, { orgId }) => {
     const base = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .filter((q) => q.eq(q.field("isBase"), true))
+      .withIndex("by_org_base", (q) => q.eq("orgId", orgId).eq("isBase", true))
       .first();
     if (base) return base._id;
     const now = Date.now();
@@ -208,8 +207,7 @@ export const remove = mutation({
     if (scenario.isBase) throw new ConvexError("The base case can't be deleted.");
     const children = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", org._id))
-      .filter((q) => q.eq(q.field("parentId"), id))
+      .withIndex("by_parent", (q) => q.eq("parentId", id))
       .collect();
     // Children keep their changes and move up to this scenario's parent, with its changes folded in.
     for (const child of children) {

@@ -73,7 +73,9 @@ export default defineSchema({
     verifier: v.string(),
     redirectUri: v.string(),
     createdAt: v.number(),
-  }).index("by_state", ["state"]),
+  })
+    .index("by_state", ["state"])
+    .index("by_createdAt", ["createdAt"]),
 
   xeroConnections: defineTable({
     orgId: v.id("organizations"),
@@ -192,6 +194,7 @@ export default defineSchema({
     error: v.optional(v.string()),
   })
     .index("by_org", ["orgId", "startedAt"])
+    .index("by_org_status", ["orgId", "status", "startedAt"])
     .index("by_status", ["status"]),
 
   reportSnapshots: defineTable({
@@ -214,7 +217,10 @@ export default defineSchema({
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_org", ["orgId"]),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_base", ["orgId", "isBase"])
+    .index("by_parent", ["parentId"]),
 
   forecastRuns: defineTable({
     orgId: v.id("organizations"),

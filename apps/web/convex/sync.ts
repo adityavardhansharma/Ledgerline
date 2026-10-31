@@ -55,9 +55,8 @@ export const enqueue = internalMutation({
     }
     const previous = await ctx.db
       .query("syncRuns")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .withIndex("by_org_status", (q) => q.eq("orgId", orgId).eq("status", "done"))
       .order("desc")
-      .filter((q) => q.eq(q.field("status"), "done"))
       .first();
     const runId = await ctx.db.insert("syncRuns", {
       orgId,
