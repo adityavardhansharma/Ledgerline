@@ -6,19 +6,23 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ForecastRun } from "@/lib/types";
 
-/** The newest forecast for a scenario; asks the engine for a fresh run when inputs or actuals changed. */
-export function useForecast(scenarioId: Id<"scenarios"> | undefined, dependency: unknown = null) {
+/**
+ * The newest forecast for a scenario. The backend rebuilds forecasts whenever their inputs or the actuals change,
+ * so a page only reads; it asks for a run itself only when there is none yet, or the one stored predates the
+ * current actuals (a forecast made before the backend kept them up to date).
+ */
+export function useForecast(scenarioId: Id<"scenarios"> | undefined) {
   const latest = useQuery(api.forecast.latest, scenarioId ? { scenarioId } : "skip") as ForecastRun | null | undefined;
   const run = useAction(api.forecast.run);
   const asked = useRef<string>("");
+  const missing = latest === null || Boolean(latest?.stale);
   useEffect(() => {
-    if (!scenarioId) return;
-    const key = `${scenarioId}:${JSON.stringify(dependency)}`;
+    if (!scenarioId || !missing) return;
+    const key = `${scenarioId}:${latest?.createdAt ?? "none"}`;
     if (asked.current === key) return;
     asked.current = key;
-    const timer = setTimeout(() => void run({ scenarioId }).catch(() => undefined), 250);
-    return () => clearTimeout(timer);
-  }, [scenarioId, dependency, run]);
+    void run({ scenarioId }).catch(() => undefined);
+  }, [scenarioId, missing, latest?.createdAt, run]);
   return latest;
 }
 
