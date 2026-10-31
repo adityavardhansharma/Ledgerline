@@ -23,7 +23,7 @@ export default function BoardPackPage() {
   const draft = useAction(api.commentary.draft);
   const accept = useMutation(api.commentary.accept);
   const { base } = useScenarios();
-  const forecast = useForecast(base?.id, snapshot?.version);
+  const forecast = useForecast(base?.id);
   const [busy, setBusy] = useState<Section | "all" | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [history, setHistory] = useState(false);
