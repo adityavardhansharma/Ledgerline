@@ -604,7 +604,7 @@ export const storePage = internalMutation({
   },
 });
 
-const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "activityCache", "plans", "aiCache"] as const;
+const RESET_TABLES = ["ledgerLines", "journals", "accountBalances", "dailyCash", "reportSnapshots", "forecastRuns", "forecastSummaries", "activityCache", "plans", "aiCache"] as const;
 // What people wrote: kept when the same company's figures are rebuilt (a re-import, a change of Xero access,
 // a Demo Company reset), deleted only when a different Xero organisation replaces the books.
 const AUTHORED_TABLES = ["commentaries", "boardNotes"] as const;

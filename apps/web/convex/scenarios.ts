@@ -79,6 +79,36 @@ export const ensureBase = internalMutation({
   },
 });
 
+/** A scenario's headline figures from its newest forecast, if that forecast was built on the current actuals. */
+async function summaryOf(ctx: QueryCtx, scenarioId: Id<"scenarios">, actualsVersion: number) {
+  const row = await ctx.db
+    .query("forecastSummaries")
+    .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+    .first();
+  if (row) {
+    if (row.actualsVersion !== actualsVersion) return null;
+    const { runwayMonths, cashOutPeriod, endCash, lowestCash, revenueFirst12, ebitdaFirst12 } = row;
+    return { runwayMonths, cashOutPeriod, endCash, lowestCash, revenueFirst12, ebitdaFirst12 };
+  }
+  // Forecasts run before summaries existed: read the run itself until the scenario's next run writes one.
+  const run = await ctx.db
+    .query("forecastRuns")
+    .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+    .order("desc")
+    .first();
+  const fresh = run && run.actualsVersion === actualsVersion ? run.data : null;
+  return fresh
+    ? {
+        runwayMonths: fresh.runwayMonths,
+        cashOutPeriod: fresh.cashOutPeriod,
+        endCash: fresh.endCash,
+        lowestCash: fresh.lowestCash,
+        revenueFirst12: fresh.revenueFirst12,
+        ebitdaFirst12: fresh.ebitdaFirst12,
+      }
+    : null;
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -91,12 +121,6 @@ export const list = query({
     const byId = new Map(rows.map((r) => [r._id, r]));
     const out = [];
     for (const s of rows) {
-      const run = await ctx.db
-        .query("forecastRuns")
-        .withIndex("by_scenario", (q) => q.eq("scenarioId", s._id))
-        .order("desc")
-        .first();
-      const fresh = run && run.actualsVersion === found.org.actualsVersion ? run.data : null;
       out.push({
         id: s._id,
         name: s.name,
@@ -105,16 +129,7 @@ export const list = query({
         parentName: s.parentId ? (byId.get(s.parentId)?.name ?? null) : null,
         changes: Object.keys(s.overrides).length + s.hires.length + s.oneOffs.length + s.financing.length,
         updatedAt: s.updatedAt,
-        summary: fresh
-          ? {
-              runwayMonths: fresh.runwayMonths,
-              cashOutPeriod: fresh.cashOutPeriod,
-              endCash: fresh.endCash,
-              lowestCash: fresh.lowestCash,
-              revenueFirst12: fresh.revenueFirst12,
-              ebitdaFirst12: fresh.ebitdaFirst12,
-            }
-          : null,
+        summary: await summaryOf(ctx, s._id, found.org.actualsVersion),
       });
     }
     return out.sort((a, b) => Number(b.isBase) - Number(a.isBase) || a.name.localeCompare(b.name));
@@ -211,6 +226,11 @@ export const remove = mutation({
       .withIndex("by_scenario", (q) => q.eq("scenarioId", id))
       .collect();
     for (const run of runs) await ctx.db.delete(run._id);
+    const summaries = await ctx.db
+      .query("forecastSummaries")
+      .withIndex("by_scenario", (q) => q.eq("scenarioId", id))
+      .collect();
+    for (const row of summaries) await ctx.db.delete(row._id);
     await ctx.db.delete(id);
     await audit(ctx, org._id, { actor: who.name, action: "deleted scenario", target: scenario.name, icon: "trash", tone: "negative" });
   },

@@ -34,6 +34,7 @@ export const store = internalMutation({
   args: { orgId: v.id("organizations"), scenarioId: v.id("scenarios"), inputsHash: v.string(), actualsVersion: v.number(), data: v.any() },
   handler: async (ctx, args) => {
     await ctx.db.insert("forecastRuns", { ...args, createdAt: Date.now() });
+    await storeSummary(ctx, args.orgId, args.scenarioId, args.actualsVersion, args.data);
     await recordPlan(ctx, args.orgId, args.scenarioId, args.data);
     const runs = await ctx.db
       .query("forecastRuns")
@@ -43,6 +44,31 @@ export const store = internalMutation({
     for (const old of runs.slice(10)) await ctx.db.delete(old._id);
   },
 });
+
+type RunData = { runwayMonths?: number | null; cashOutPeriod?: string | null; endCash?: number | null; lowestCash?: number | null; revenueFirst12?: number | null; ebitdaFirst12?: number | null };
+
+/** Keep one small summary row per scenario, replaced by each new run (see forecastSummaries in the schema). */
+export async function storeSummary(ctx: MutationCtx, orgId: Id<"organizations">, scenarioId: Id<"scenarios">, actualsVersion: number, data: unknown) {
+  const d = (data ?? {}) as RunData;
+  const summary = {
+    actualsVersion,
+    runwayMonths: d.runwayMonths ?? null,
+    cashOutPeriod: d.cashOutPeriod ?? null,
+    endCash: d.endCash ?? null,
+    lowestCash: d.lowestCash ?? null,
+    revenueFirst12: d.revenueFirst12 ?? null,
+    ebitdaFirst12: d.ebitdaFirst12 ?? null,
+    createdAt: Date.now(),
+  };
+  const existing = await ctx.db
+    .query("forecastSummaries")
+    .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+    .collect();
+  const [keep, ...extra] = existing;
+  for (const row of extra) await ctx.db.delete(row._id);
+  if (keep) await ctx.db.patch(keep._id, summary);
+  else await ctx.db.insert("forecastSummaries", { orgId, scenarioId, ...summary });
+}
 
 /**
  * The first base-case forecast after a month closes becomes that month's plan: next month's board pack

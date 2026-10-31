@@ -188,6 +188,15 @@ describe("forecasts", () => {
     expect(await owner.action(api.forecast.run, { scenarioId: baseId })).toEqual({ cached: false });
     expect(calls).toHaveLength(2);
     expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(14);
+
+    // The scenario list reads one small summary per scenario, not the whole run.
+    const summaries = await t.run((ctx) => ctx.db.query("forecastSummaries").collect());
+    expect(summaries).toHaveLength(1);
+    const [listed] = await owner.query(api.scenarios.list, {});
+    expect(listed.summary).toEqual({ runwayMonths: 14, cashOutPeriod: "2027-12", endCash: 0, lowestCash: 0, revenueFirst12: 0, ebitdaFirst12: 0 });
+    // New actuals make the summary stale until the next run.
+    await t.mutation(internal.reports.storeSnapshot, { orgId, kind: "statements", bumpVersion: true, asOf: "2026-10", data: {} });
+    expect((await owner.query(api.scenarios.list, {}))[0].summary).toBeNull();
   });
 });
 

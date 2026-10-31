@@ -228,6 +228,23 @@ export default defineSchema({
     .index("by_scenario_hash", ["scenarioId", "inputsHash"])
     .index("by_scenario", ["scenarioId", "createdAt"]),
 
+  // The handful of figures the scenario list shows from a scenario's newest forecast run. A run holds every month,
+  // the bands and the sensitivity, far more than a list needs to read for each scenario on every report page.
+  forecastSummaries: defineTable({
+    orgId: v.id("organizations"),
+    scenarioId: v.id("scenarios"),
+    actualsVersion: v.number(),
+    runwayMonths: v.union(v.number(), v.null()),
+    cashOutPeriod: v.union(v.string(), v.null()),
+    endCash: v.union(v.number(), v.null()),
+    lowestCash: v.union(v.number(), v.null()),
+    revenueFirst12: v.union(v.number(), v.null()),
+    ebitdaFirst12: v.union(v.number(), v.null()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_scenario", ["scenarioId"]),
+
   commentaries: defineTable({
     orgId: v.id("organizations"),
     period: v.string(),
