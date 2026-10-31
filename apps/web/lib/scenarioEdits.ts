@@ -19,3 +19,25 @@ export function withOverride(current: ScenarioView, key: string, value: number |
   }
   return { ...current, own: { ...current.own, overrides: own }, overrides };
 }
+
+type Items = { hires?: ScenarioView["hires"]; oneOffs?: ScenarioView["oneOffs"]; financing?: ScenarioView["financing"] };
+
+/**
+ * The scenario after its own hires, one-offs or financing are replaced, as scenarios.setPlanItems leaves it. The
+ * resolved lists keep what the scenario inherits first, then its own items, as the server resolves them.
+ */
+export function withPlanItems(current: ScenarioView, items: Items): ScenarioView {
+  const next = { ...current, own: { ...current.own } };
+  const replace = <K extends keyof Items>(kind: K) => {
+    const mine = items[kind];
+    if (!mine) return;
+    const ownIds = new Set(current.own[kind].map((item) => item.id));
+    const inherited = current[kind].filter((item) => !ownIds.has(item.id));
+    (next.own[kind] as Items[K]) = mine;
+    (next[kind] as Items[K]) = [...inherited, ...mine] as Items[K];
+  };
+  replace("hires");
+  replace("oneOffs");
+  replace("financing");
+  return next;
+}

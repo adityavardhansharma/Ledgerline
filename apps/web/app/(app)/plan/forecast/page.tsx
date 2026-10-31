@@ -12,7 +12,7 @@ import {
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
@@ -24,7 +24,7 @@ import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { DriverField } from "@/components/app/DriverField";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
-import { useSetOverride } from "@/components/app/useScenarioEdits";
+import { useSetOverride, useSetPlanItems } from "@/components/app/useScenarioEdits";
 import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -63,7 +63,7 @@ function ForecastScreen() {
   const scenario = useQuery(api.scenarios.get, scenarioId ? { id: scenarioId } : "skip");
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const setOverride = useSetOverride();
-  const setPlanItems = useMutation(api.scenarios.setPlanItems);
+  const setPlanItems = useSetPlanItems();
   const forecast = useForecast(scenarioId) as ForecastRun | null | undefined;
   const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined) as ForecastRun | null | undefined;
   const [tab, setTab] = useState("assumptions");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withOverride, type ScenarioView } from "./scenarioEdits";
+import { withOverride, withPlanItems, type ScenarioView } from "./scenarioEdits";
 
 const branch = {
   id: "s2",
@@ -28,5 +28,23 @@ describe("optimistic driver edits", () => {
     const reset = withOverride(branch, "debtorDays", null);
     expect(reset.own.overrides).toEqual({});
     expect("debtorDays" in reset.overrides).toBe(false);
+  });
+});
+
+describe("optimistic plan items", () => {
+  const hire = (id: string, role: string) => ({ id, role, salaryCents: 4_000_000, startPeriod: "2026-11", count: 1 });
+  const withHires = { ...branch, own: { ...branch.own, hires: [hire("b1", "Joiner")] }, hires: [hire("p1", "Foreman"), hire("b1", "Joiner")] } as ScenarioView;
+
+  it("keeps inherited items first and replaces the scenario's own", () => {
+    const next = withPlanItems(withHires, { hires: [hire("b1", "Joiner"), hire("b2", "Apprentice")] });
+    expect(next.own.hires.map((h) => h.id)).toEqual(["b1", "b2"]);
+    expect(next.hires.map((h) => h.id)).toEqual(["p1", "b1", "b2"]);
+    expect(withPlanItems(withHires, { hires: [] }).hires.map((h) => h.id)).toEqual(["p1"]);
+  });
+
+  it("leaves the other lists alone", () => {
+    const next = withPlanItems(withHires, { oneOffs: [{ id: "o1", label: "Van", period: "2026-12", amountCents: 3_000_000, kind: "capex" }] });
+    expect(next.hires).toBe(withHires.hires);
+    expect(next.oneOffs.map((o) => o.id)).toEqual(["o1"]);
   });
 });
