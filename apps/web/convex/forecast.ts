@@ -45,15 +45,6 @@ export const inputs = internalQuery({
   handler: (ctx, { scenarioId }) => inputsFor(ctx, scenarioId),
 });
 
-export const cached = internalQuery({
-  args: { scenarioId: v.id("scenarios"), inputsHash: v.string() },
-  handler: (ctx, args) =>
-    ctx.db
-      .query("forecastRuns")
-      .withIndex("by_scenario_hash", (q) => q.eq("scenarioId", args.scenarioId).eq("inputsHash", args.inputsHash))
-      .first(),
-});
-
 export const store = internalMutation({
   args: { orgId: v.id("organizations"), scenarioId: v.id("scenarios"), inputsHash: v.string(), actualsVersion: v.number(), data: v.any() },
   handler: async (ctx, args) => {
@@ -91,7 +82,7 @@ async function recordPlan(ctx: MutationCtx, orgId: Id<"organizations">, scenario
   });
 }
 
-function payloadFor(input: Inputs, horizon?: number) {
+function payloadFor(input: Inputs, horizon?: number, full = true) {
   return {
     drivers: { ...input.drivers, ...input.plan.overrides },
     hires: input.plan.hires.map(({ id: _id, ...h }) => h),
@@ -99,8 +90,9 @@ function payloadFor(input: Inputs, horizon?: number) {
     financing: input.plan.financing.map(({ id: _id, ...f }) => f),
     horizon: Math.min(Math.max(horizon ?? 24, 6), 36),
     seed: 7,
-    bands: true,
-    sensitivity: true,
+    // The bands (200 perturbed runs) and the sensitivity (a rerun per driver) are most of the engine's work.
+    bands: full,
+    sensitivity: full,
   };
 }
 
@@ -110,20 +102,41 @@ async function hashOf(actualsVersion: number, payload: unknown) {
 }
 
 /**
- * Run the forecast for these inputs unless a run for exactly them is stored. A newer edit can land while the
- * engine works; the result is then dropped rather than stored over the newer run, which its own refresh writes.
+ * Run the forecast for these inputs unless a run for exactly them is stored, in which case that run becomes the
+ * newest again (going back to earlier values shows their forecast). A newer edit can land while the engine works;
+ * the result is then dropped rather than stored over the newer run, which its own refresh writes.
  */
-async function compute(ctx: ActionCtx, scenarioId: Id<"scenarios">, input: Inputs, horizon?: number): Promise<{ cached: boolean }> {
+async function compute(ctx: ActionCtx, scenarioId: Id<"scenarios">, input: Inputs, opts: { horizon?: number; full?: boolean } = {}): Promise<{ cached: boolean }> {
   if (!input.drivers) throw new ConvexError("Sync Xero before forecasting.");
-  const payload = payloadFor(input, horizon);
+  const full = opts.full ?? true;
+  const payload = payloadFor(input, opts.horizon, full);
   const inputsHash = await hashOf(input.actualsVersion, payload);
-  if (await ctx.runQuery(internal.forecast.cached, { scenarioId, inputsHash })) return { cached: true };
+  if (await ctx.runMutation(internal.forecast.promote, { scenarioId, inputsHash })) return { cached: true };
   const data = await engine("/forecast/run", payload);
   const now = await ctx.runQuery(internal.forecast.inputs, { scenarioId });
-  if (!now || (await hashOf(now.actualsVersion, payloadFor(now, horizon))) !== inputsHash) return { cached: false };
+  if (!now || (await hashOf(now.actualsVersion, payloadFor(now, opts.horizon, full))) !== inputsHash) return { cached: false };
   await ctx.runMutation(internal.forecast.store, { orgId: input.orgId, scenarioId, inputsHash, actualsVersion: input.actualsVersion, data: { ...(data as object), drivers: payload.drivers } });
   return { cached: false };
 }
+
+/** Make the stored run for these inputs the scenario's newest. False when there is none. */
+export const promote = internalMutation({
+  args: { scenarioId: v.id("scenarios"), inputsHash: v.string() },
+  handler: async (ctx, { scenarioId, inputsHash }) => {
+    const hit = await ctx.db
+      .query("forecastRuns")
+      .withIndex("by_scenario_hash", (q) => q.eq("scenarioId", scenarioId).eq("inputsHash", inputsHash))
+      .first();
+    if (!hit) return false;
+    const newest = await ctx.db
+      .query("forecastRuns")
+      .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+      .order("desc")
+      .first();
+    if (newest && newest._id !== hit._id) await ctx.db.patch(hit._id, { createdAt: Math.max(Date.now(), newest.createdAt + 1) });
+    return true;
+  },
+});
 
 /** Run (or fetch from cache) the forecast for a scenario. Keyed by the actuals version and every input. */
 export const run = action({
@@ -131,7 +144,7 @@ export const run = action({
   handler: async (ctx, { scenarioId, horizon }): Promise<{ cached: boolean }> => {
     const input = await ctx.runQuery(internal.forecast.context, { scenarioId });
     if (!input) throw new ConvexError("Scenario not found.");
-    return compute(ctx, scenarioId, input, horizon);
+    return compute(ctx, scenarioId, input, { horizon });
   },
 });
 
@@ -144,7 +157,11 @@ export const refresh = internalAction({
   handler: async (ctx, { scenarioId }) => {
     const input = await ctx.runQuery(internal.forecast.inputs, { scenarioId });
     if (!input?.drivers) return;
-    await compute(ctx, scenarioId, input);
+    // A quick pass without bands or sensitivity puts the new cash line on screen first; the full run replaces it.
+    const full = payloadFor(input);
+    if (await ctx.runMutation(internal.forecast.promote, { scenarioId, inputsHash: await hashOf(input.actualsVersion, full) })) return;
+    await compute(ctx, scenarioId, input, { full: false });
+    await compute(ctx, scenarioId, input, { full: true });
   },
 });
 

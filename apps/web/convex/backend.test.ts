@@ -195,11 +195,12 @@ describe("forecasts on write", () => {
   it("rebuilds a scenario's forecast, and its branches', in the background after an edit", async () => {
     vi.useFakeTimers();
     const { t, owner, orgId } = await setup();
-    const runs: { debtorDays: number }[] = [];
+    const runs: { debtorDays: number; bands: boolean }[] = [];
     vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
-      runs.push({ debtorDays: body.drivers.debtorDays });
-      return new Response(JSON.stringify({ months: [], runwayMonths: body.drivers.debtorDays, cashOutPeriod: null, lowestCash: 0, endCash: 0, revenueFirst12: 0, ebitdaFirst12: 0 }), { status: 200 });
+      runs.push({ debtorDays: body.drivers.debtorDays, bands: body.bands });
+      const extra = body.bands ? { bands: { p10: [], p25: [], p75: [], p90: [] } } : {};
+      return new Response(JSON.stringify({ months: [], runwayMonths: body.drivers.debtorDays, cashOutPeriod: null, lowestCash: 0, endCash: 0, revenueFirst12: 0, ebitdaFirst12: 0, ...extra }), { status: 200 });
     });
     // New actuals create the base case and forecast it without anyone opening a page.
     await t.mutation(internal.reports.storeSnapshot, {
@@ -218,10 +219,21 @@ describe("forecasts on write", () => {
     expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(41);
 
     // An edit to the base reaches the branch that inherits it.
+    runs.length = 0;
     await owner.mutation(api.scenarios.setOverride, { id: baseId, key: "debtorDays", value: 60 });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(60);
     expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(60);
+    // Each scenario got a quick pass first, then the full run with bands, which is what pages now show.
+    expect(runs.map((r) => r.bands).sort()).toEqual([false, false, true, true]);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.bands).toBeDefined();
+
+    // Going back to the earlier value shows its stored forecast again, without asking the engine.
+    runs.length = 0;
+    await owner.mutation(api.scenarios.setOverride, { id: baseId, key: "debtorDays", value: null });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(runs).toHaveLength(0);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(41);
     vi.useRealTimers();
   });
 
