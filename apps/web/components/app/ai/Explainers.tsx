@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@ledgerline/ui";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -161,19 +161,23 @@ export function ChangeDigest() {
  * the AI words why. Checked once per version of the figures.
  */
 export function useAnomalies(enabled: boolean) {
+  // Flags already found for these figures arrive with the page; the check runs only when there are none yet.
+  const stored = useQuery(api.aiActions.storedAnomalies, enabled ? {} : "skip");
   const check = useAction(api.aiActions.anomalies);
-  const [flags, setFlags] = useState<Anomaly[] | null>(null);
+  const [checked, setChecked] = useState<Anomaly[] | null>(null);
+  const needed = enabled && stored === null;
   useEffect(() => {
-    if (!enabled) return;
+    if (!needed) return;
     let live = true;
     check({})
-      .then((result) => live && setFlags(result))
+      .then((result) => live && setChecked(result))
       // Out of AI actions: the flags found last time, if there were any.
-      .catch((err) => live && setFlags(err instanceof ConvexError && Array.isArray(err.data?.last) ? (err.data.last as Anomaly[]) : []));
+      .catch((err) => live && setChecked(err instanceof ConvexError && Array.isArray(err.data?.last) ? (err.data.last as Anomaly[]) : []));
     return () => {
       live = false;
     };
-  }, [enabled, check]);
+  }, [needed, check]);
+  const flags = stored ?? checked;
   const map: Record<string, { text: string }> = {};
   for (const f of flags ?? []) {
     const typical = `typical month ${(f.typicalCents / 100).toLocaleString("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}`;

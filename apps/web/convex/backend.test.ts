@@ -757,6 +757,8 @@ describe("AI actions and search", () => {
       if (url.endsWith("/actions/reminder")) return new Response(JSON.stringify({ subject: ["Invoices due"], body: [["Please pay."]] }), { status: 200 });
       if (url.endsWith("/search/parse")) return new Response(JSON.stringify({ accounts: [], contact: "Seaview Hotel", words: "", dateFrom: "2026-09-01", dateTo: "", minCents: 10_000, maxCents: null, side: "any" }), { status: 200 });
       if (url.endsWith("/actions/parse-scenario")) return new Response(JSON.stringify({ detail: "number not stated" }), { status: 422 });
+      if (url.endsWith("/actions/anomalies/detect")) return new Response(JSON.stringify({ flags: [{ accountId: "csv:400", name: "Marketing", kind: "cost", period: "2026-09", nowCents: 5_000, typicalCents: 0 }] }), { status: 200 });
+      if (url.endsWith("/actions/anomalies/explain")) return new Response(JSON.stringify({ reasons: [] }), { status: 200 });
       return new Response(JSON.stringify({ error: "unexpected" }), { status: 500 });
     });
     const runId = await ctx.owner.action(api.imports.start, { source: "sample", label: "Kestrel", accounts: CHART });
@@ -883,6 +885,15 @@ describe("AI actions and search", () => {
     expect(found?.rows.every((r) => r.contact === "Seaview Hotel")).toBe(true);
     const none = await owner.query(api.search.results, { filters: { ...filters, minCents: 1_000_000 } });
     expect(none?.count).toBe(0);
+  });
+
+  it("keeps the unusual movements it found, so the P&L reads them without running the check again", async () => {
+    const { owner, calls } = await books();
+    expect(await owner.query(api.aiActions.storedAnomalies, {})).toBeNull();
+    const found = await owner.action(api.aiActions.anomalies, {});
+    expect(found.map((f) => f.accountId)).toEqual(["csv:400"]);
+    expect(await owner.query(api.aiActions.storedAnomalies, {})).toEqual(found);
+    expect(calls.filter((c) => c.url.endsWith("/actions/anomalies/detect"))).toHaveLength(1);
   });
 
   it("explains a rejected answer in plain words", async () => {
