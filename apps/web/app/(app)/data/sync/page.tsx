@@ -1,7 +1,8 @@
 "use client";
 
 import { Banner, Button, DataTable, Dialog, StatusPill, SyncProgress } from "@ledgerline/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AppPage, ConnectButton } from "@/components/app/AppPage";

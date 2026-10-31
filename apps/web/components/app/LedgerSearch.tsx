@@ -1,7 +1,8 @@
 "use client";
 
 import { AiOrb, Amount, Button, Icon, Skeleton } from "@ledgerline/ui";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Filters } from "@/convex/search";
