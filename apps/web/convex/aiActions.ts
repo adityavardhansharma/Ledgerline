@@ -400,8 +400,7 @@ export const downsideInput = internalQuery({
       .first();
     const base = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", org._id))
-      .filter((q) => q.eq(q.field("isBase"), true))
+      .withIndex("by_org_base", (q) => q.eq("orgId", org._id).eq("isBase", true))
       .first();
     const drivers = { ...((snapshot?.data as { drivers?: Record<string, unknown> } | undefined)?.drivers ?? {}), ...(base?.overrides ?? {}) };
     return { baseId: base?._id ?? null, drivers: Object.fromEntries(Object.entries(drivers).filter(([, value]) => typeof value === "number")) as Record<string, number> };

@@ -188,6 +188,15 @@ describe("forecasts", () => {
     expect(await owner.action(api.forecast.run, { scenarioId: baseId })).toEqual({ cached: false });
     expect(calls).toHaveLength(2);
     expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(14);
+
+    // The scenario list reads one small summary per scenario, not the whole run.
+    const summaries = await t.run((ctx) => ctx.db.query("forecastSummaries").collect());
+    expect(summaries).toHaveLength(1);
+    const [listed] = await owner.query(api.scenarios.list, {});
+    expect(listed.summary).toEqual({ runwayMonths: 14, cashOutPeriod: "2027-12", endCash: 0, lowestCash: 0, revenueFirst12: 0, ebitdaFirst12: 0 });
+    // New actuals make the summary stale until the next run.
+    await t.mutation(internal.reports.storeSnapshot, { orgId, kind: "statements", bumpVersion: true, asOf: "2026-10", data: {} });
+    expect((await owner.query(api.scenarios.list, {}))[0].summary).toBeNull();
   });
 });
 
@@ -804,10 +813,19 @@ describe("AI actions and search", () => {
   });
 
   it("works out unpaid invoices from imported journals and drafts a reminder from them", async () => {
-    const { owner, calls } = await books();
+    const { t, owner, orgId, calls } = await books();
     const ageing = (await owner.query(api.reports.ageing, {})) as { receivableTop: { contact: string; value: number }[]; receivable: { value: number }[] };
     expect(ageing.receivableTop).toEqual([{ contact: "Seaview Hotel", value: 25_000 }]);
     expect(ageing.receivable.reduce((s, b) => s + b.value, 0)).toBe(25_000);
+    // Worked out once when the figures were built, so the overview doesn't reread the ledger on every view.
+    const stored = await t.run((ctx) => ctx.db.query("reportSnapshots").withIndex("by_org_kind", (q) => q.eq("orgId", orgId).eq("kind", "ageing")).collect());
+    expect(stored).toHaveLength(1);
+    expect(stored[0].data).toEqual(ageing);
+    // A company imported before those snapshots existed still gets its ageing, worked out on the spot.
+    await t.run(async (ctx) => {
+      for (const row of stored) await ctx.db.delete(row._id);
+    });
+    expect(await owner.query(api.reports.ageing, {})).toEqual(ageing);
     await owner.action(api.aiActions.reminder, { contact: "Seaview Hotel" });
     const body = calls.find((c) => c.url.endsWith("/actions/reminder"))!.body;
     expect(body).toMatchObject({ contact: "Seaview Hotel", as_of: "2026-09-30", items: [{ number: "INV-2", due_date: "2026-10-04", amount_due_cents: 25_000 }] });

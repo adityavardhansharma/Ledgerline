@@ -73,7 +73,9 @@ export default defineSchema({
     verifier: v.string(),
     redirectUri: v.string(),
     createdAt: v.number(),
-  }).index("by_state", ["state"]),
+  })
+    .index("by_state", ["state"])
+    .index("by_createdAt", ["createdAt"]),
 
   xeroConnections: defineTable({
     orgId: v.id("organizations"),
@@ -141,6 +143,8 @@ export default defineSchema({
   })
     .index("by_org_account_period", ["orgId", "xeroAccountId", "period"])
     .index("by_org_period", ["orgId", "period"])
+    // Ledger search by customer or supplier reads only that contact's lines.
+    .index("by_org_contact_period", ["orgId", "contact", "period"])
     .index("by_journal", ["journalId"])
     .index("by_org", ["orgId"]),
 
@@ -190,6 +194,7 @@ export default defineSchema({
     error: v.optional(v.string()),
   })
     .index("by_org", ["orgId", "startedAt"])
+    .index("by_org_status", ["orgId", "status", "startedAt"])
     .index("by_status", ["status"]),
 
   reportSnapshots: defineTable({
@@ -212,7 +217,10 @@ export default defineSchema({
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_org", ["orgId"]),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_base", ["orgId", "isBase"])
+    .index("by_parent", ["parentId"]),
 
   forecastRuns: defineTable({
     orgId: v.id("organizations"),
@@ -225,6 +233,23 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_scenario_hash", ["scenarioId", "inputsHash"])
     .index("by_scenario", ["scenarioId", "createdAt"]),
+
+  // The handful of figures the scenario list shows from a scenario's newest forecast run. A run holds every month,
+  // the bands and the sensitivity, far more than a list needs to read for each scenario on every report page.
+  forecastSummaries: defineTable({
+    orgId: v.id("organizations"),
+    scenarioId: v.id("scenarios"),
+    actualsVersion: v.number(),
+    runwayMonths: v.union(v.number(), v.null()),
+    cashOutPeriod: v.union(v.string(), v.null()),
+    endCash: v.union(v.number(), v.null()),
+    lowestCash: v.union(v.number(), v.null()),
+    revenueFirst12: v.union(v.number(), v.null()),
+    ebitdaFirst12: v.union(v.number(), v.null()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_scenario", ["scenarioId"]),
 
   commentaries: defineTable({
     orgId: v.id("organizations"),
