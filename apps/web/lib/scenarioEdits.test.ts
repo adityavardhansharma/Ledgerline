@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withOverride, withPlanItems, type ScenarioView } from "./scenarioEdits";
+import { forecastBehind, withOverride, withPlanItems, type ScenarioView } from "./scenarioEdits";
 
 const branch = {
   id: "s2",
@@ -46,5 +46,20 @@ describe("optimistic plan items", () => {
     const next = withPlanItems(withHires, { oneOffs: [{ id: "o1", label: "Van", period: "2026-12", amountCents: 3_000_000, kind: "capex" }] });
     expect(next.hires).toBe(withHires.hires);
     expect(next.oneOffs.map((o) => o.id)).toEqual(["o1"]);
+  });
+});
+
+describe("whether the forecast is behind", () => {
+  const actuals = { growth: 0.01, debtorDays: 41, startPeriod: "2026-10" };
+  const run = { bands: {}, drivers: { growth: 0.02, debtorDays: 60, startPeriod: "2026-10" } };
+
+  it("is current when the run used the scenario's drivers and has its likely range", () => {
+    expect(forecastBehind(run, branch, actuals)).toBe(false);
+  });
+
+  it("is behind after a driver changes, on the quick pass, and on old actuals", () => {
+    expect(forecastBehind(run, withOverride(branch, "debtorDays", 75), actuals)).toBe(true);
+    expect(forecastBehind({ ...run, bands: undefined }, branch, actuals)).toBe(true);
+    expect(forecastBehind({ ...run, stale: true }, branch, actuals)).toBe(true);
   });
 });

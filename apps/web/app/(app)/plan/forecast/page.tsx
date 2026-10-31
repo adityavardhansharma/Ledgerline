@@ -25,6 +25,7 @@ import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList,
 import { DriverField } from "@/components/app/DriverField";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
 import { useSetOverride, useSetPlanItems } from "@/components/app/useScenarioEdits";
+import { forecastBehind } from "@/lib/scenarioEdits";
 import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -157,7 +158,7 @@ function ForecastScreen() {
                       {cashLede(forecast, scenario.isBase ? "the base case" : `“${scenario.name}”`)} {scenario.isBase ? "Shaded, its likely range." : "Against the base case; shaded, its likely range."}
                     </p>
                   </div>
-                  {forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}
+                  {forecastBehind(forecast, scenario, snapshot?.drivers) ? <Badge tone="warning">Updating</Badge> : null}
                 </header>
                 {forecast ? (
                   <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" height={320} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />

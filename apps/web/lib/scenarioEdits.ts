@@ -41,3 +41,19 @@ export function withPlanItems(current: ScenarioView, items: Items): ScenarioView
   replace("financing");
   return next;
 }
+
+/**
+ * Whether the forecast on screen is behind the scenario: made on older actuals, still the quick pass without its
+ * likely range, or made with drivers that have since changed. The page says it is updating until it catches up.
+ */
+export function forecastBehind(
+  forecast: { stale?: boolean; bands?: unknown; drivers?: Record<string, unknown> } | null | undefined,
+  scenario: Pick<ScenarioView, "overrides"> | null | undefined,
+  actuals: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!forecast || !scenario) return false;
+  if (forecast.stale || !forecast.bands) return true;
+  if (!forecast.drivers || !actuals) return false;
+  const expected = { ...actuals, ...scenario.overrides };
+  return Object.entries(expected).some(([key, value]) => typeof value === "number" && forecast.drivers![key] !== value);
+}
