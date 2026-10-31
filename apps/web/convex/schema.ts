@@ -141,6 +141,8 @@ export default defineSchema({
   })
     .index("by_org_account_period", ["orgId", "xeroAccountId", "period"])
     .index("by_org_period", ["orgId", "period"])
+    // Ledger search by customer or supplier reads only that contact's lines.
+    .index("by_org_contact_period", ["orgId", "contact", "period"])
     .index("by_journal", ["journalId"])
     .index("by_org", ["orgId"]),
 
