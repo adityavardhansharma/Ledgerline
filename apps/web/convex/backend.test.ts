@@ -191,6 +191,54 @@ describe("forecasts", () => {
   });
 });
 
+describe("forecasts on write", () => {
+  it("rebuilds a scenario's forecast, and its branches', in the background after an edit", async () => {
+    vi.useFakeTimers();
+    const { t, owner, orgId } = await setup();
+    const runs: { debtorDays: number }[] = [];
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      runs.push({ debtorDays: body.drivers.debtorDays });
+      return new Response(JSON.stringify({ months: [], runwayMonths: body.drivers.debtorDays, cashOutPeriod: null, lowestCash: 0, endCash: 0, revenueFirst12: 0, ebitdaFirst12: 0 }), { status: 200 });
+    });
+    // New actuals create the base case and forecast it without anyone opening a page.
+    await t.mutation(internal.reports.storeSnapshot, {
+      orgId,
+      kind: "statements",
+      bumpVersion: true,
+      asOf: "2026-09",
+      data: { drivers: { startPeriod: "2026-10", revenueLastMonth: 22_890_000, growth: 0, grossMargin: 0.42, debtorDays: 41, creditorDays: 32, stockDays: 0, overheadGrowth: 0.04, overheadsMonthly: 6_830_000, opening: { cash: 41_230_000 } } },
+    });
+    const baseId = await t.mutation(internal.scenarios.ensureBase, { orgId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(41);
+
+    const branchId = await owner.mutation(api.scenarios.branch, { fromId: baseId, name: "Slower payers" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(41);
+
+    // An edit to the base reaches the branch that inherits it.
+    await owner.mutation(api.scenarios.setOverride, { id: baseId, key: "debtorDays", value: 60 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(60);
+    expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(60);
+    vi.useRealTimers();
+  });
+
+  it("drops a result whose inputs changed while the engine worked", async () => {
+    const { t, owner, orgId } = await setup();
+    await t.mutation(internal.reports.storeSnapshot, { orgId, kind: "statements", bumpVersion: true, asOf: "2026-09", data: { drivers: { debtorDays: 41 } } });
+    const baseId = await t.run((ctx) => ctx.db.insert("scenarios", { orgId, name: "Base case", isBase: true, overrides: {}, hires: [], oneOffs: [], financing: [], createdBy: "test", createdAt: 0, updatedAt: 0 }));
+    vi.stubGlobal("fetch", async () => {
+      // Someone changes a driver while this run is in flight.
+      await t.run((ctx) => ctx.db.patch(baseId, { overrides: { debtorDays: 90 } }));
+      return new Response(JSON.stringify({ months: [], runwayMonths: 41 }), { status: 200 });
+    });
+    await owner.action(api.forecast.run, { scenarioId: baseId });
+    expect(await owner.query(api.forecast.latest, { scenarioId: baseId })).toBeNull();
+  });
+});
+
 describe("Connecting Xero", () => {
   const begin = async (t: ReturnType<typeof convexTest>, orgId: unknown, state: string) =>
     t.run((ctx) => ctx.db.insert("oauthStates", { orgId: orgId as never, userId: OWNER.subject, state, verifier: "v", redirectUri: "https://convex.test/xero/callback", createdAt: Date.now() }));

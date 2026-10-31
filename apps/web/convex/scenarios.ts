@@ -4,6 +4,7 @@ import { internalMutation, internalQuery, mutation, query, type QueryCtx } from 
 import { financing, hire, oneOff } from "./schema";
 import { audit } from "./lib/audit";
 import { currentOrg, requireOrg } from "./lib/auth";
+import { scheduleRefresh } from "./forecast";
 
 /** Drivers a scenario may override, with the range a person can set. */
 export const DRIVER_LIMITS: Record<string, [number, number, string]> = {
@@ -64,7 +65,7 @@ export const ensureBase = internalMutation({
       .first();
     if (base) return base._id;
     const now = Date.now();
-    return ctx.db.insert("scenarios", {
+    const id = await ctx.db.insert("scenarios", {
       orgId,
       name: "Base case",
       isBase: true,
@@ -76,6 +77,8 @@ export const ensureBase = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+    await scheduleRefresh(ctx, orgId, id);
+    return id;
   },
 });
 
@@ -170,6 +173,7 @@ export const branch = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await scheduleRefresh(ctx, org._id, id);
     await audit(ctx, org._id, { actor: who.name, action: "branched", target: trimmed, detail: `From ${scenario.name}`, icon: "branch", tone: "forecast" });
     return id;
   },
@@ -236,6 +240,7 @@ export const setOverride = mutation({
       overrides[key] = value;
     }
     await ctx.db.patch(id, { overrides, updatedAt: Date.now() });
+    await scheduleRefresh(ctx, org._id, id);
     const before = scenario.overrides[key];
     await audit(ctx, org._id, {
       actor: who.name,
@@ -265,17 +270,9 @@ export const setPlanItems = mutation({
     if (items.oneOffs) patch.oneOffs = items.oneOffs;
     if (items.financing) patch.financing = items.financing;
     await ctx.db.patch(id, patch);
+    await scheduleRefresh(ctx, org._id, id);
     const what = items.hires ? "hires" : items.oneOffs ? "one-off items" : "financing";
     await audit(ctx, org._id, { actor: who.name, action: `updated ${what} in`, target: scenario.name, icon: items.hires ? "hire" : "edit", tone: "forecast" });
   },
 });
 
-export const forForecast = internalQuery({
-  args: { id: v.id("scenarios") },
-  handler: async (ctx, { id }) => {
-    const scenario = await ctx.db.get(id);
-    if (!scenario) return null;
-    const resolved = await resolve(ctx, scenario);
-    return { scenario, overrides: resolved.overrides, hires: resolved.hires, oneOffs: resolved.oneOffs, financing: resolved.financing };
-  },
-});

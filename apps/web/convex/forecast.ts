@@ -1,24 +1,48 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action, internalMutation, internalQuery, query, type MutationCtx } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { currentOrg } from "./lib/auth";
 import { sha256 } from "./lib/crypto";
 import { engine } from "./lib/engine";
+import { resolve } from "./scenarios";
 
+/** Everything a scenario's forecast is built from: its organisation's actuals and drivers, and its resolved plan. */
+async function inputsFor(ctx: QueryCtx, scenarioId: Id<"scenarios">) {
+  const scenario = await ctx.db.get(scenarioId);
+  if (!scenario) return null;
+  const org = await ctx.db.get(scenario.orgId);
+  if (!org) return null;
+  const snapshot = await ctx.db
+    .query("reportSnapshots")
+    .withIndex("by_org_kind", (q) => q.eq("orgId", org._id).eq("kind", "statements"))
+    .order("desc")
+    .first();
+  const plan = await resolve(ctx, scenario);
+  return {
+    orgId: org._id,
+    actualsVersion: org.actualsVersion,
+    drivers: (snapshot?.data?.drivers ?? null) as Record<string, unknown> | null,
+    plan: { overrides: plan.overrides, hires: plan.hires, oneOffs: plan.oneOffs, financing: plan.financing },
+  };
+}
+type Inputs = NonNullable<Awaited<ReturnType<typeof inputsFor>>>;
+
+/** The inputs for the signed-in person's own scenario, or null. */
 export const context = internalQuery({
   args: { scenarioId: v.id("scenarios") },
   handler: async (ctx, { scenarioId }) => {
     const found = await currentOrg(ctx);
     const scenario = await ctx.db.get(scenarioId);
     if (!found || !scenario || scenario.orgId !== found.org._id) return null;
-    const snapshot = await ctx.db
-      .query("reportSnapshots")
-      .withIndex("by_org_kind", (q) => q.eq("orgId", found.org._id).eq("kind", "statements"))
-      .order("desc")
-      .first();
-    return { orgId: found.org._id, actualsVersion: found.org.actualsVersion, drivers: snapshot?.data?.drivers ?? null };
+    return inputsFor(ctx, scenarioId);
   },
+});
+
+/** The inputs for any scenario, for forecasts the backend schedules itself. */
+export const inputs = internalQuery({
+  args: { scenarioId: v.id("scenarios") },
+  handler: (ctx, { scenarioId }) => inputsFor(ctx, scenarioId),
 });
 
 export const cached = internalQuery({
@@ -67,33 +91,82 @@ async function recordPlan(ctx: MutationCtx, orgId: Id<"organizations">, scenario
   });
 }
 
+function payloadFor(input: Inputs, horizon?: number) {
+  return {
+    drivers: { ...input.drivers, ...input.plan.overrides },
+    hires: input.plan.hires.map(({ id: _id, ...h }) => h),
+    oneOffs: input.plan.oneOffs.map(({ id: _id, ...o }) => o),
+    financing: input.plan.financing.map(({ id: _id, ...f }) => f),
+    horizon: Math.min(Math.max(horizon ?? 24, 6), 36),
+    seed: 7,
+    bands: true,
+    sensitivity: true,
+  };
+}
+
+async function hashOf(actualsVersion: number, payload: unknown) {
+  const digest = await sha256(JSON.stringify([actualsVersion, payload]));
+  return Array.from(digest.slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Run the forecast for these inputs unless a run for exactly them is stored. A newer edit can land while the
+ * engine works; the result is then dropped rather than stored over the newer run, which its own refresh writes.
+ */
+async function compute(ctx: ActionCtx, scenarioId: Id<"scenarios">, input: Inputs, horizon?: number): Promise<{ cached: boolean }> {
+  if (!input.drivers) throw new ConvexError("Sync Xero before forecasting.");
+  const payload = payloadFor(input, horizon);
+  const inputsHash = await hashOf(input.actualsVersion, payload);
+  if (await ctx.runQuery(internal.forecast.cached, { scenarioId, inputsHash })) return { cached: true };
+  const data = await engine("/forecast/run", payload);
+  const now = await ctx.runQuery(internal.forecast.inputs, { scenarioId });
+  if (!now || (await hashOf(now.actualsVersion, payloadFor(now, horizon))) !== inputsHash) return { cached: false };
+  await ctx.runMutation(internal.forecast.store, { orgId: input.orgId, scenarioId, inputsHash, actualsVersion: input.actualsVersion, data: { ...(data as object), drivers: payload.drivers } });
+  return { cached: false };
+}
+
 /** Run (or fetch from cache) the forecast for a scenario. Keyed by the actuals version and every input. */
 export const run = action({
   args: { scenarioId: v.id("scenarios"), horizon: v.optional(v.number()) },
   handler: async (ctx, { scenarioId, horizon }): Promise<{ cached: boolean }> => {
-    const context = await ctx.runQuery(internal.forecast.context, { scenarioId });
-    if (!context) throw new ConvexError("Scenario not found.");
-    if (!context.drivers) throw new ConvexError("Sync Xero before forecasting.");
-    const plan = await ctx.runQuery(internal.scenarios.forForecast, { id: scenarioId });
-    if (!plan) throw new ConvexError("Scenario not found.");
-    const payload = {
-      drivers: { ...context.drivers, ...plan.overrides },
-      hires: plan.hires.map(({ id: _id, ...h }) => h),
-      oneOffs: plan.oneOffs.map(({ id: _id, ...o }) => o),
-      financing: plan.financing.map(({ id: _id, ...f }) => f),
-      horizon: Math.min(Math.max(horizon ?? 24, 6), 36),
-      seed: 7,
-      bands: true,
-      sensitivity: true,
-    };
-    const digest = await sha256(JSON.stringify([context.actualsVersion, payload]));
-    const inputsHash = Array.from(digest.slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
-    if (await ctx.runQuery(internal.forecast.cached, { scenarioId, inputsHash })) return { cached: true };
-    const data = await engine("/forecast/run", payload);
-    await ctx.runMutation(internal.forecast.store, { orgId: context.orgId, scenarioId, inputsHash, actualsVersion: context.actualsVersion, data: { ...(data as object), drivers: payload.drivers } });
-    return { cached: false };
+    const input = await ctx.runQuery(internal.forecast.context, { scenarioId });
+    if (!input) throw new ConvexError("Scenario not found.");
+    return compute(ctx, scenarioId, input, horizon);
   },
 });
+
+/**
+ * Bring a scenario's forecast up to date after its inputs changed, without anyone waiting on it: pages only read
+ * the newest run. Scheduled by the mutations that change a scenario and by every rebuild of the figures.
+ */
+export const refresh = internalAction({
+  args: { scenarioId: v.id("scenarios") },
+  handler: async (ctx, { scenarioId }) => {
+    const input = await ctx.runQuery(internal.forecast.inputs, { scenarioId });
+    if (!input?.drivers) return;
+    await compute(ctx, scenarioId, input);
+  },
+});
+
+/** Schedule a refresh for a scenario and every scenario branched from it, whose inputs it also changes. */
+export async function scheduleRefresh(ctx: MutationCtx, orgId: Id<"organizations">, scenarioId?: Id<"scenarios">) {
+  const all = await ctx.db
+    .query("scenarios")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const affected = new Set<Id<"scenarios">>(scenarioId ? [scenarioId] : all.map((s) => s._id));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const s of all) {
+      if (s.parentId && affected.has(s.parentId) && !affected.has(s._id)) {
+        affected.add(s._id);
+        grew = true;
+      }
+    }
+  }
+  // A short wait lets a burst of edits (a slider being dragged) settle; each refresh drops results its inputs outgrew.
+  for (const id of affected) await ctx.scheduler.runAfter(250, internal.forecast.refresh, { scenarioId: id });
+}
 
 /** The newest forecast for a scenario built on the current actuals. */
 export const latest = query({
