@@ -3,7 +3,7 @@
 import { AiOrb, Icon } from "@ledgerline/ui";
 import { Renderer } from "@openuidev/react-lang";
 import { useConvex } from "convex/react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m as motion } from "motion/react";
 import { createContext, memo, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { CHAT_TOOLS } from "@/convex/lib/chatSpec";

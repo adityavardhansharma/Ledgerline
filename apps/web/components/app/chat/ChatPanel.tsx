@@ -1,0 +1,442 @@
+"use client";
+
+import { Icon } from "@ledgerline/ui";
+import { useMutation, useQuery } from "convex/react";
+import { AnimatePresence, m as motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { CHAT_SOURCES } from "@/convex/lib/chatSpec";
+import { NAV_ITEMS, ROUTES } from "@/lib/nav";
+import { ChatActions } from "./library";
+import { AnswerBody, Reading } from "./Message";
+import { useChatStream } from "./useChatStream";
+
+// The ease the panel's contents arrive with.
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+type Suggestion = { text: string; topic: string; icon: Parameters<typeof Icon>[0]["name"] };
+const S = (text: string, topic: string, icon: Suggestion["icon"]): Suggestion => ({ text, topic, icon });
+const SUGGESTIONS: Record<string, Suggestion[]> = {
+  overview: [S("How is cash looking?", "Cash", "bank"), S("What changed most this month?", "This month", "trend-up"), S("Who owes us the most?", "Customers", "invoice"), S("Are we doing better than last year?", "Year on year", "compare")],
+  pnl: [S("Where do our costs go?", "Costs", "statement"), S("Why did revenue move this month?", "Revenue", "trend-up"), S("Show gross margin over the year", "Margin", "percent"), S("Which costs are growing fastest?", "Costs", "trend-down")],
+  forecast: [S("When is cash lowest, and why?", "Forecast", "forecast"), S("Is the base case realistic?", "Assumptions", "settings"), S("Compare my scenarios", "Scenarios", "branch"), S("What would another hire do to cash?", "Hiring", "hire")],
+  default: [S("How is the business doing?", "Overview", "overview"), S("How is cash looking?", "Cash", "bank"), S("Where do our costs go?", "Costs", "statement"), S("Who are our biggest customers?", "Customers", "team")],
+};
+
+function usePage() {
+  const path = usePathname() ?? "/";
+  const item = NAV_ITEMS.find((n) => "href" in n && path.startsWith(n.href));
+  const id = item && "id" in item ? item.id : "";
+  const key = id === "scenarios" ? "forecast" : id in SUGGESTIONS ? id : "default";
+  return { path, title: item && "label" in item ? item.label : "app", key };
+}
+
+/** The open chat: threads, messages, the composer and sources. Loaded only when the chat is first wanted. */
+export default function Panel({ onClose }: { onClose: () => void }) {
+  const page = usePage();
+  const router = useRouter();
+  const [threadId, setThreadId] = useState<Id<"chatThreads"> | null>(null);
+  const [history, setHistory] = useState(false);
+  const threads = useQuery(api.chat.threads, {});
+  const stored = useQuery(api.chat.messages, threadId ? { threadId } : "skip");
+  const removeThread = useMutation(api.chat.removeThread);
+  const { live, send, stop, reset } = useChatStream(useCallback((id: Id<"chatThreads">) => setThreadId(id), []));
+  const [text, setText] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
+  const busy = Boolean(live && live.phase !== "done" && live.phase !== "error");
+
+  useEffect(() => {
+    const t = setTimeout(() => box.current?.focus(), 180);
+    return () => clearTimeout(t);
+  }, []);
+
+  const ask = useCallback(
+    (q: string) => {
+      const question = q.trim();
+      if (!question || busy) return;
+      setText("");
+      setHistory(false);
+      pinned.current = true;
+      void send(question, threadId, { path: page.path, title: page.title }, sources);
+    },
+    [busy, send, threadId, page.path, page.title, sources],
+  );
+  const openPage = useCallback(
+    (key: string) => {
+      const href = ROUTES[key as keyof typeof ROUTES];
+      if (href) {
+        router.push(href);
+        onClose();
+      }
+    },
+    [router, onClose],
+  );
+  const actions = useMemo(() => ({ ask, open: openPage }), [ask, openPage]);
+
+  // Messages: what's saved, with the answer being written replaced by its live copy.
+  const rows = useMemo(() => {
+    const saved = (stored ?? []).map((m) => ({ id: m.id as string, role: m.role, content: m.content, status: m.status as string }));
+    if (!live) return saved;
+    const hasAnswer = live.answerId && saved.some((m) => m.id === live.answerId);
+    if (hasAnswer) {
+      return saved.map((m) => (m.id === live.answerId && (live.phase !== "done" || m.status === "streaming") ? { ...m, content: live.content, status: live.phase === "error" ? "error" : "live" } : m));
+    }
+    return [...saved, { id: "q-live", role: "user" as const, content: live.question, status: "done" }, { id: "a-live", role: "assistant" as const, content: live.content, status: "live" }];
+  }, [stored, live]);
+
+  // Stay at the bottom while words arrive, unless the person has scrolled up to read. A big step, like a chart
+  // opening, glides there instead of jumping.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el || !pinned.current) return;
+    const gap = el.scrollHeight - el.clientHeight - el.scrollTop;
+    if (gap > 120) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    else el.scrollTop = el.scrollHeight;
+  });
+
+  const empty = rows.length === 0;
+  const current = threads?.find((t) => t.id === threadId);
+  const newChat = () => {
+    reset();
+    setThreadId(null);
+    setHistory(false);
+    box.current?.focus();
+  };
+
+  const composer = (
+    <form
+      className={`ll-ask-composer${busy ? " is-busy" : ""}${empty ? " is-hero" : ""}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        ask(text);
+      }}
+    >
+      <textarea
+        ref={box}
+        rows={empty ? 2 : 1}
+        value={text}
+        maxLength={2000}
+        placeholder={empty ? "Ask anything about your figures…" : "Ask a follow-up…"}
+        aria-label="Ask a question"
+        onChange={(e) => {
+          setText(e.target.value);
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = `${Math.min(160, el.scrollHeight)}px`;
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            ask(text);
+          }
+        }}
+      />
+      <div className="ll-ask-composer-bar">
+        <SourcePicker value={sources} onChange={setSources} />
+        <AnimatePresence mode="wait" initial={false}>
+          {busy ? (
+            <motion.button key="stop" type="button" className="ll-ask-send is-stop" aria-label="Stop" onClick={stop} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
+              <span />
+            </motion.button>
+          ) : (
+            <motion.button key="send" type="submit" className="ll-ask-send" aria-label="Send" disabled={!text.trim()} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.15 }}>
+              <Icon name="arrow-up" size={16} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+    </form>
+  );
+
+  return (
+    <ChatActions.Provider value={actions}>
+      <motion.div className={`ll-ask-inner${history ? " is-history" : ""}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.32, ease: [0.16, 1, 0.3, 1] } }}>
+        <aside className="ll-ask-side" aria-label="Your conversations">
+          <div className="ll-ask-brand">
+            <span className={`ll-ask-orb${busy ? " is-busy" : ""}`} aria-hidden />
+            <strong>Ask Ledgerline</strong>
+          </div>
+          <button type="button" className="ll-ask-newchat" onClick={newChat}>
+            <Icon name="plus" size={15} /> New conversation
+          </button>
+          <div className="ll-ask-side-list">
+            {threads?.length ? (
+              groupThreads(threads).map((group) => (
+                <section key={group.label} className="ll-ask-history-group">
+                  <h4>{group.label}</h4>
+                  <ul>
+                    {group.items.map((t) => (
+                      <li key={t.id} className={t.id === threadId ? "is-on" : undefined}>
+                        <button
+                          type="button"
+                          className="ll-ask-history-item"
+                          onClick={() => {
+                            reset();
+                            setThreadId(t.id);
+                            setHistory(false);
+                          }}
+                        >
+                          <span className="ll-ask-history-text">
+                            <span>{t.title}</span>
+                            <small>{when(t.updatedAt)}</small>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ll-ask-history-del"
+                          aria-label={`Delete ${t.title}`}
+                          onClick={() => {
+                            if (t.id === threadId) {
+                              reset();
+                              setThreadId(null);
+                            }
+                            void removeThread({ threadId: t.id });
+                          }}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))
+            ) : (
+              <p className="ll-ask-side-empty">Questions you ask are kept here, just for you.</p>
+            )}
+          </div>
+        </aside>
+        <AnimatePresence>
+          {history ? <motion.div key="side-scrim" className="ll-ask-side-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={() => setHistory(false)} /> : null}
+        </AnimatePresence>
+
+        <div className="ll-ask-main">
+          <header className="ll-ask-head">
+            <button type="button" className={`ll-ask-icon ll-ask-menu${history ? " is-on" : ""}`} aria-label="Conversations" onClick={() => setHistory((x) => !x)}>
+              <Icon name="menu" size={17} />
+            </button>
+            <div className="ll-ask-title">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={current?.title ?? "new"} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
+                  {current?.title ?? (empty ? "" : "New conversation")}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            {!empty ? (
+              <button type="button" className="ll-ask-icon" aria-label="New conversation" title="New conversation" onClick={newChat}>
+                <Icon name="plus" size={17} />
+              </button>
+            ) : null}
+            <button type="button" className="ll-ask-icon" aria-label="Close" title="Close  Esc" onClick={onClose}>
+              <Icon name="close" size={17} />
+            </button>
+          </header>
+
+          <div className="ll-ask-body">
+            <div
+              className="ll-ask-scroll"
+              ref={scroller}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+              }}
+            >
+              {empty ? (
+                <Welcome onAsk={ask} suggestions={SUGGESTIONS[page.key]} composer={composer} />
+              ) : (
+                <div className="ll-ask-thread">
+                  {rows.map((m, i) =>
+                    m.role === "user" ? (
+                      <motion.div key={m.id} className="ll-ask-q" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.28, ease: EASE }}>
+                        {m.content}
+                      </motion.div>
+                    ) : (
+                      <motion.div key={m.id === "a-live" && live?.answerId ? live.answerId : m.id} className="ll-ask-a" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+                        <span className="ll-ask-a-mark" aria-hidden>
+                          <span className={`ll-ask-orb${m.status === "live" ? " is-busy" : ""}`} />
+                        </span>
+                        <div className="ll-ask-a-body">
+                          {m.status === "live" && live && i === rows.length - 1 && live.phase !== "writing" && !m.content ? (
+                            <Reading steps={live.steps} phase={live.phase} startedAt={live.startedAt} tookMs={live.thoughtMs} />
+                          ) : (
+                            <>
+                              {m.status === "live" && live?.steps.length ? <Reading steps={live.steps} phase={live.phase} startedAt={live.startedAt} tookMs={live.thoughtMs} /> : null}
+                              <AnswerBody content={m.content} live={m.status === "live"} />
+                            </>
+                          )}
+                          {m.status === "error" ? (
+                            <p className="ll-ask-error">
+                              <Icon name="warning" size={14} /> {live?.error ?? "That answer didn't finish."}
+                            </p>
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          {empty ? null : (
+            <>
+              {composer}
+              <p className="ll-ask-foot">Answers come from your books. Opinions are the assistant&apos;s own; check before you act.</p>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </ChatActions.Provider>
+  );
+}
+
+const DAY = 86_400_000;
+const startOfDay = (ms: number) => {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+function groupThreads<T extends { updatedAt: number }>(threads: T[]) {
+  const today = startOfDay(Date.now());
+  const groups: { label: string; items: T[] }[] = [
+    { label: "Today", items: [] },
+    { label: "Yesterday", items: [] },
+    { label: "This week", items: [] },
+    { label: "Earlier", items: [] },
+  ];
+  for (const t of threads) {
+    const day = startOfDay(t.updatedAt);
+    groups[day >= today ? 0 : day >= today - DAY ? 1 : day >= today - 6 * DAY ? 2 : 3].items.push(t);
+  }
+  return groups.filter((g) => g.items.length);
+}
+const when = (ms: number) => {
+  const minutes = Math.round((Date.now() - ms) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (startOfDay(ms) === startOfDay(Date.now())) return new Date(ms).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" });
+};
+
+function Welcome({ onAsk, suggestions, composer }: { onAsk: (q: string) => void; suggestions: Suggestion[]; composer: React.ReactNode }) {
+  return (
+    <div className="ll-ask-welcome">
+      <motion.div className="ll-ask-orb is-big" aria-hidden initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: EASE, delay: 0.1 }} />
+      <motion.h2 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.16 }}>
+        What would you like to know?
+      </motion.h2>
+      <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.22 }}>
+        Answers come from your own books and forecast, with the charts to show it.
+      </motion.p>
+      <motion.div className="ll-ask-welcome-box" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE, delay: 0.28 }}>
+        {composer}
+      </motion.div>
+      <div className="ll-ask-try">
+        {suggestions.map((s, i) => (
+          <motion.button key={s.text} type="button" onClick={() => onAsk(s.text)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE, delay: 0.34 + i * 0.05 }}>
+            <Icon name={s.icon} size={14} />
+            {s.text}
+          </motion.button>
+        ))}
+      </div>
+      <p className="ll-ask-foot">Opinions are the assistant&apos;s own; check before you act.</p>
+    </div>
+  );
+}
+
+/**
+ * Where the answer may look. Nothing chosen means everything; choosing sources limits the assistant to their
+ * tools, and it says so when a question needs one that isn't chosen.
+ */
+function SourcePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [spot, setSpot] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  // Float the list above everything, opening upward unless there isn't room.
+  useLayoutEffect(() => {
+    if (!open || !box.current) return;
+    const r = box.current.getBoundingClientRect();
+    const height = 400;
+    const left = Math.min(window.innerWidth - 336, Math.max(16, r.left - 6));
+    setSpot(r.top > height + 16 ? { left, bottom: window.innerHeight - r.top + 10 } : { left, top: r.bottom + 10 });
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc, true);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc, true);
+    };
+  }, [open]);
+  const chosen = CHAT_SOURCES.filter((s) => value.includes(s.id));
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  return (
+    <div className="ll-src" ref={box}>
+      <button type="button" className={`ll-src-btn${chosen.length ? " is-set" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Icon name="database" size={13} />
+        {chosen.length ? (chosen.length === 1 ? chosen[0].label : `${chosen.length} sources`) : "All sources"}
+        <Icon name="chevron-down" size={12} />
+      </button>
+      {chosen.length ? (
+        <button type="button" className="ll-src-clear" aria-label="Search all sources again" title="Search everything again" onClick={() => onChange([])}>
+          <Icon name="close" size={12} />
+        </button>
+      ) : null}
+      {typeof document !== "undefined"
+        ? createPortal(
+      <AnimatePresence>
+        {open && spot ? (
+          <motion.div ref={pop} className="ll-src-pop" style={spot} role="group" aria-label="Sources to look in" initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.98, transition: { duration: 0.12 } }} transition={{ duration: 0.2, ease: EASE }}>
+            <header>
+              <b>Look only in</b>
+              <button type="button" className={chosen.length ? undefined : "is-on"} onClick={() => onChange([])}>
+                Everything
+              </button>
+            </header>
+            <ul>
+              {CHAT_SOURCES.map((s) => {
+                const on = value.includes(s.id);
+                return (
+                  <li key={s.id}>
+                    <button type="button" role="checkbox" aria-checked={on} className={on ? "is-on" : undefined} onClick={() => toggle(s.id)}>
+                      <span className="ll-src-ico">
+                        <Icon name={s.icon} size={15} />
+                      </span>
+                      <span className="ll-src-text">
+                        <b>{s.label}</b>
+                        <small>{s.hint}</small>
+                      </span>
+                      <span className="ll-src-check" aria-hidden>
+                        {on ? <Icon name="check" size={13} /> : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <footer>{chosen.length ? "Answers use only what's ticked." : "Nothing ticked, so answers can use everything."}</footer>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+}
