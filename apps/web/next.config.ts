@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@ledgerline/ui"],
   poweredByHeader: false,
   reactStrictMode: true,
+  // Memoises components and hooks at build time, so a change re-renders only what depends on it (the forecast
+  // page's charts and statements no longer redraw on every slider tick). Components that break the rules of
+  // React are left as they are.
+  reactCompiler: true,
   agentRules: false,
   async headers() {
     return [
