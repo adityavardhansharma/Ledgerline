@@ -24,6 +24,7 @@ import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { DriverField } from "@/components/app/DriverField";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
+import { useSetOverride } from "@/components/app/useScenarioEdits";
 import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -61,7 +62,7 @@ function ForecastScreen() {
   const scenarioId = (params.get("scenario") as Id<"scenarios"> | null) ?? base?.id;
   const scenario = useQuery(api.scenarios.get, scenarioId ? { id: scenarioId } : "skip");
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
-  const setOverride = useMutation(api.scenarios.setOverride);
+  const setOverride = useSetOverride();
   const setPlanItems = useMutation(api.scenarios.setPlanItems);
   const forecast = useForecast(scenarioId) as ForecastRun | null | undefined;
   const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined) as ForecastRun | null | undefined;
