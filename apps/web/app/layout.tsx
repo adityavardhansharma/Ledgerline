@@ -28,6 +28,8 @@ export const viewport: Viewport = {
 
 const themeScript = `try{var t=localStorage.getItem('ll-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`;
 
+// Clerk sends anyone it has no destination for to "/", so its steps outside the sign-in form (a Google sign-in that
+// becomes a sign-up, choosing an organisation) landed on the homepage. These defaults cover every flow.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IE" className={`${geist.variable} ${geistMono.variable} ${instrument.variable}`} suppressHydrationWarning>
@@ -36,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {clerkConfigured ? (
-          <ClerkProvider>
+          <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" signInFallbackRedirectUrl="/overview" signUpFallbackRedirectUrl="/onboarding">
             <ConvexClientProvider>{children}</ConvexClientProvider>
           </ClerkProvider>
         ) : (
