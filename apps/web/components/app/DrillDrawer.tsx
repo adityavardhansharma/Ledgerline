@@ -1,7 +1,8 @@
 "use client";
 
 import { Banner, Breadcrumbs, Drawer, Icon, LedgerTable, Skeleton } from "@ledgerline/ui";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Activity } from "@/convex/ledger";

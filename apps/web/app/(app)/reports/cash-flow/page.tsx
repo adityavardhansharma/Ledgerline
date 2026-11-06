@@ -1,7 +1,7 @@
 "use client";
 
 import { PeriodPicker } from "@ledgerline/ui";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { CashFlowView } from "@/components/app/reports/CashFlowView";

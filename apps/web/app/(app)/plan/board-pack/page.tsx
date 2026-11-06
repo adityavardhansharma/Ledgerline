@@ -1,7 +1,8 @@
 "use client";
 
 import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart } from "@ledgerline/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { ConvexError } from "convex/values";
 import { motion } from "motion/react";
 import { useState } from "react";

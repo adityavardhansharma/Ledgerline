@@ -10,8 +10,10 @@
    { "org_id": "{{org.id}}", "org_role": "{{org.role}}", "org_name": "{{org.name}}" }
    ```
 
-4. Copy the template's **issuer** URL; Convex needs it as `CLERK_JWT_ISSUER_DOMAIN`.
-5. Put `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in `apps/web/.env.local`.
+4. Optional, saves a call to Clerk on each page load: under **Sessions → Customize session token**, add
+   `{ "onboarded": "{{user.unsafe_metadata.onboarded}}" }`. Without it the app asks Clerk instead.
+5. Copy the template's **issuer** URL; Convex needs it as `CLERK_JWT_ISSUER_DOMAIN`.
+6. Put `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in `apps/web/.env.local`.
 
 ## 2. Convex
 

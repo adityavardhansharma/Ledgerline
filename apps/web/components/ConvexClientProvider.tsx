@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 import { type ReactNode, useMemo } from "react";
 
 const url = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -26,7 +27,11 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   }
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuthForConvex}>
-      {children}
+      {/* Queries stay subscribed for five minutes after the last component using them unmounts, so going back to
+          a page shows its figures at once, already up to date. */}
+      <ConvexQueryCacheProvider expiration={5 * 60_000} maxIdleEntries={60}>
+        {children}
+      </ConvexQueryCacheProvider>
     </ConvexProviderWithClerk>
   );
 }

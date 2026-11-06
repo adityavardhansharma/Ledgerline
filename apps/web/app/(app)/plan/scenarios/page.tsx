@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge, BulletChart, Button, EmptyState, formatMoney, IconButton, LineChart, Menu, Panel, ScenarioCompare, Sparkline } from "@ledgerline/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
