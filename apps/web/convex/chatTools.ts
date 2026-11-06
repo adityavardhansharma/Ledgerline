@@ -4,7 +4,7 @@ import { query, type QueryCtx } from "./_generated/server";
 import { describe } from "./commentary";
 import { currentOrg } from "./lib/auth";
 import { toNumber } from "./lib/money";
-import { ageItems, importedOpenItems, monthEnd } from "./lib/openItems";
+import { ageingFor } from "./reports";
 
 /**
  * The chat's tools: small, read-only views of the signed-in organisation's figures, in euros. Each is a public
@@ -224,18 +224,7 @@ export const owed_to_you = query({
     const found = await currentOrg(ctx);
     if (!found?.org.asOf) return { total: 0, overdue: 0, buckets: [], customers: [] };
     type Ageing = { receivable?: { label: string; value: number }[]; receivableTop?: { contact: string; value: number }[] };
-    let ageing: Ageing | null = null;
-    if (found.org.source === "csv" || found.org.source === "sample") {
-      const items = await importedOpenItems(ctx, found.org._id);
-      ageing = items ? (ageItems(items, monthEnd(found.org.asOf)) as Ageing) : null;
-    } else {
-      const row = await ctx.db
-        .query("reportSnapshots")
-        .withIndex("by_org_kind", (q) => q.eq("orgId", found.org._id).eq("kind", "ageing"))
-        .order("desc")
-        .first();
-      ageing = (row?.data as Ageing | undefined) ?? null;
-    }
+    const ageing = (await ageingFor(ctx, found.org)) as Ageing | null;
     const buckets = (ageing?.receivable ?? []).map((b) => ({ label: b.label, value: eur(b.value) }));
     return {
       total: buckets.reduce((t, b) => t + b.value, 0),

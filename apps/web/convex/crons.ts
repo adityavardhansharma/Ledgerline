@@ -8,7 +8,7 @@ export const cleanupStates = internalMutation({
     const cutoff = Date.now() - 60 * 60 * 1000;
     const old = await ctx.db
       .query("oauthStates")
-      .filter((q) => q.lt(q.field("createdAt"), cutoff))
+      .withIndex("by_createdAt", (q) => q.lt("createdAt", cutoff))
       .take(200);
     for (const row of old) await ctx.db.delete(row._id);
   },
