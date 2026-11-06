@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import { currentOrg } from "./lib/auth";
 import { ageItems, importedOpenItems, monthEnd } from "./lib/openItems";
 import { engine } from "./lib/engine";
+import { scheduleRefresh } from "./forecast";
 import { lastCompleteMonth, toNumber } from "./lib/money";
 
 /** Accounts and monthly movements in the shape the engine expects. */
@@ -71,6 +72,8 @@ export const storeSnapshot = internalMutation({
     const version = bumpVersion ? org.actualsVersion + 1 : org.actualsVersion;
     if (bumpVersion) await ctx.db.patch(orgId, { actualsVersion: version, asOf });
     await ctx.db.insert("reportSnapshots", { orgId, kind, version, data, createdAt: Date.now() });
+    // New actuals: every scenario's forecast is rebuilt in the background, ready before anyone opens a report.
+    if (bumpVersion && kind === "statements") await scheduleRefresh(ctx, orgId);
     // Keep the three most recent snapshots of each kind.
     const old = await ctx.db
       .query("reportSnapshots")

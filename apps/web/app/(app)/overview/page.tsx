@@ -26,7 +26,7 @@ export default function OverviewPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const ageing = useQuery(api.reports.ageing);
   const scenario = useReportScenario();
-  const forecast = useForecast(scenario.selected?.id, snapshot?.version);
+  const forecast = useForecast(scenario.selected?.id);
   const daily = useQuery(api.reports.dailyCash, snapshot ? { from: `${snapshot.series.periods.at(-6)}-01`, to: `${snapshot.asOf}-31` } : "skip");
 
   return (

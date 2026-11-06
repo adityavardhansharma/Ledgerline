@@ -14,7 +14,7 @@ import {
 } from "@ledgerline/ui";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, toCsv } from "@/lib/csv";
@@ -63,9 +63,8 @@ function ForecastScreen() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const setOverride = useMutation(api.scenarios.setOverride);
   const setPlanItems = useMutation(api.scenarios.setPlanItems);
-  const dependency = useMemo(() => (scenario ? [scenario.overrides, scenario.hires, scenario.oneOffs, scenario.financing, snapshot?.version] : null), [scenario, snapshot?.version]);
-  const forecast = useForecast(scenarioId, dependency) as ForecastRun | null | undefined;
-  const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined, snapshot?.version) as ForecastRun | null | undefined;
+  const forecast = useForecast(scenarioId) as ForecastRun | null | undefined;
+  const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined) as ForecastRun | null | undefined;
   const [tab, setTab] = useState("assumptions");
   const [statementTab, setStatementTab] = useState("pnl");
   const [branching, setBranching] = useState(false);
