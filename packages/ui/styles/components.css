@@ -106,6 +106,12 @@
 .ll-slider-head { display: flex; justify-content: space-between; align-items: baseline; }
 .ll-slider-value { font: 600 13px/18px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--forecast); background: var(--forecast-tint); padding: 1px 8px; border-radius: var(--radius-pill); }
 .ll-slider-marks { display: flex; justify-content: space-between; font: 400 11px/14px var(--font-mono); color: var(--ink-subtle); }
+.ll-range { position: relative; display: block; width: 100%; height: 22px; cursor: pointer; }
+.ll-range::before { content: ''; position: absolute; left: 0; right: 0; top: 8px; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--forecast) var(--ll-fill, 50%), var(--surface-sunken) var(--ll-fill, 50%)); box-shadow: inset 0 0 0 1px var(--rule); }
+.ll-range:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-range-track { height: 100%; margin: 0 9px; }
+.ll-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 1px var(--rule-strong), 0 2px 6px rgba(0, 0, 0, .2); transition: transform .15s; }
+.ll-range-thumb:hover { transform: scale(1.15); }
 input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; }
 input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--forecast) var(--ll-fill, 50%), var(--surface-sunken) var(--ll-fill, 50%)); box-shadow: inset 0 0 0 1px var(--rule); }
 input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--surface-sunken); }

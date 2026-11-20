@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
+import { Slider as SliderRoot, SliderControl, SliderThumb, SliderTrack, SliderValue } from '@ui-sdk/react/slider';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 import { Tabs as TabsRoot, TabsList, TabsTab } from '@ui-sdk/react/tabs';
 
@@ -231,16 +232,22 @@ function Switch(p) {
       onCheckedChange: function (on) { p.onChange && p.onChange(on); } }, state), h(SwitchThumb, { className: 'll-switch-thumb' })),
     h('span', null, h('span', { className: 'll-switch-label', id: p.id + '-label' }, p.label), p.hint ? h('span', { className: 'll-switch-hint' }, p.hint) : null));
 }
+function plain(v) { return String(v); }
+// The native range kept its thumb inside the track and drew the fill as a gradient over the whole track; the control
+// draws that track and the inset thumb track keeps the thumb inside it, so both land where they did.
+function RangeControl(p) {
+  var pct = ((p.value - p.min) / (p.max - p.min)) * 100;
+  return h(SliderControl, { className: cx('ll-range', p.className), style: { '--ll-fill': pct + '%' } },
+    h(SliderTrack, { className: 'll-range-track' }, h(SliderThumb, { className: 'll-range-thumb', 'aria-label': p.label, 'aria-labelledby': p.labelledBy })));
+}
 function Slider(p) {
   var st = useState(p.defaultValue != null ? p.defaultValue : p.min), val = p.value != null ? p.value : st[0];
-  var pct = ((val - p.min) / (p.max - p.min)) * 100;
-  return h('div', { className: 'll-slider' },
+  return h(SliderRoot, { className: 'll-slider', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain, 'aria-labelledby': p.id + '-label',
+    onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
     h('div', { className: 'll-slider-head' },
-      h('label', { className: 'll-field-label', htmlFor: p.id }, p.label),
-      h('output', { className: 'll-slider-value', htmlFor: p.id }, p.format ? p.format(val) : val)),
-    h('input', { id: p.id, type: 'range', min: p.min, max: p.max, step: p.step || 1, value: val,
-      style: { '--ll-fill': pct + '%' },
-      onChange: function (e) { var v = +e.target.value; st[1](v); p.onChange && p.onChange(v); } }),
+      h('label', { className: 'll-field-label', id: p.id + '-label' }, p.label),
+      h(SliderValue, { className: 'll-slider-value' })),
+    h(RangeControl, { value: val, min: p.min, max: p.max, labelledBy: p.id + '-label' }),
     p.marks ? h('div', { className: 'll-slider-marks', 'aria-hidden': true }, p.marks.map(function (m) { return h('span', { key: m }, p.format ? p.format(m) : m); })) : null);
 }
 function SegmentedControl(p) {
