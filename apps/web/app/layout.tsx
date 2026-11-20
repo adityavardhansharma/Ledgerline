@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { Tooltips } from "@/components/Tooltips";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Clerk and Convex start in app/(account)/layout.tsx, so the landing page loads neither. */}
         {children}
         <Tooltips />
+        <Analytics />
       </body>
     </html>
   );

@@ -17,6 +17,7 @@
     "@openuidev/react-lang": "^1.0.1",
     "@ui-sdk/core": "^0.1.0-beta.13",
     "@ui-sdk/react": "^0.1.0-beta.13",
+    "@vercel/analytics": "^2.0.1",
     "convex": "^1.47.0",
     "convex-helpers": "0.1.128",
     "motion": "^12.43.0",
