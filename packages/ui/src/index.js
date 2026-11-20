@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
+import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
 import { Select as SelectRoot, SelectContent, SelectItem, SelectItemIndicator, SelectTrigger, SelectValue } from '@ui-sdk/react/select';
@@ -1124,15 +1125,39 @@ function Drawer(p) {
       h('div', { className: 'll-drawer-body' }, p.children),
       p.footer ? h('div', { className: 'll-drawer-foot' }, p.footer) : null));
 }
+function menuItemBody(it) {
+  return [it.icon ? h(Icon, { key: 'i', name: it.icon, size: 16 }) : h('span', { key: 'i', className: 'll-menu-pad' }),
+    h('span', { key: 'l', className: 'll-menu-label' }, it.label),
+    it.kbd ? h(Kbd, { key: 'k' }, it.kbd) : null,
+    it.active ? h(Icon, { key: 'c', name: 'check', size: 16 }) : null];
+}
+// Headings start a group that runs to the next heading or divider, so each group is named by its heading.
+function menuGroups(items) {
+  var out = [], group = null;
+  items.forEach(function (it, i) {
+    if (it.divider) { group = null; out.push({ divider: true, key: 'd' + i }); return; }
+    if (it.heading) { group = { heading: it.heading, items: [], key: 'g' + i }; out.push(group); return; }
+    if (group) group.items.push(it); else out.push(Object.assign({ key: 'i' + i }, it));
+  });
+  return out;
+}
+function menuEntry(it, i) {
+  if (it.divider) return h(MenuSeparator, { key: it.key, className: 'll-menu-div' });
+  if (it.heading) return h(MenuGroup, { key: it.key }, h(MenuGroupLabel, { className: 'll-menu-head' }, it.heading), it.items.map(menuEntry));
+  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
+}
 function Menu(p) {
+  if (p.trigger) {
+    var state = p.open != null ? { open: p.open } : {};
+    return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
+      h(MenuTrigger, { render: p.trigger }),
+      h(MenuContent, { className: cx('ll-menu', p.className), 'aria-label': p.label, side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
+        menuGroups(p.items).map(menuEntry)));
+  }
   return h('div', { className: 'll-menu', role: 'menu', 'aria-label': p.label }, p.items.map(function (it, i) {
     if (it.divider) return h('div', { key: i, className: 'll-menu-div', role: 'separator' });
     if (it.heading) return h('div', { key: i, className: 'll-menu-head' }, it.heading);
-    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick },
-      it.icon ? h(Icon, { name: it.icon, size: 16 }) : h('span', { className: 'll-menu-pad' }),
-      h('span', { className: 'll-menu-label' }, it.label),
-      it.kbd ? h(Kbd, null, it.kbd) : null,
-      it.active ? h(Icon, { name: 'check', size: 16 }) : null);
+    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick }, menuItemBody(it));
   }));
 }
 function CommandPalette(p) {

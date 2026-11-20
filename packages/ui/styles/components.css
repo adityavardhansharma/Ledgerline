@@ -549,7 +549,9 @@ g.is-dim { opacity: .3; }
 .ll-drawer-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-6); border-top: 1px solid var(--rule); background: var(--surface-sunken); }
 .ll-menu { width: 260px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--rule); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; }
 .ll-menu-item { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 400 14px/20px var(--font-sans); text-align: left; cursor: pointer; }
-.ll-menu-item:hover { background: var(--surface-hover); }
+.ll-menu-item:hover, .ll-menu-item[data-highlighted] { background: var(--surface-hover); }
+.ll-menu-item[data-highlighted]:focus-visible { outline: none; }
+[data-slot="menu-content"].ll-menu { margin: 0; color: var(--ink); }
 .ll-menu-item > .ll-icon { color: var(--ink-muted); }
 .ll-menu-item.is-danger, .ll-menu-item.is-danger > .ll-icon { color: var(--negative); }
 .ll-menu-item.is-active { font-weight: 600; }
