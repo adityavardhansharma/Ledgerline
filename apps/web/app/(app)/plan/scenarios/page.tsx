@@ -23,7 +23,6 @@ export default function ScenariosPage() {
   const run = useAction(api.forecast.run);
   const remove = useMutation(api.scenarios.remove);
   const [compareId, setCompareId] = useState<Id<"scenarios"> | null>(null);
-  const [menuFor, setMenuFor] = useState<Id<"scenarios"> | null>(null);
   const [branching, setBranching] = useState(false);
   const asked = useRef(new Set<string>());
 
@@ -109,10 +108,8 @@ export default function ScenariosPage() {
                     scenario={s}
                     comparing={!s.isBase && s.id === other?.id}
                     onCompare={s.isBase ? undefined : () => setCompareId(s.id)}
-                    menuOpen={menuFor === s.id}
-                    onMenu={() => setMenuFor(menuFor === s.id ? null : s.id)}
                     onOpen={() => router.push(`${ROUTES.forecast}?scenario=${s.id}`)}
-                    onDelete={s.isBase ? undefined : () => { setMenuFor(null); void remove({ id: s.id }); }}
+                    onDelete={s.isBase ? undefined : () => void remove({ id: s.id })}
                   />
                 ))}
               </div>
@@ -171,7 +168,7 @@ export default function ScenariosPage() {
 type ScenarioSummary = NonNullable<ReturnType<typeof useScenarios>["scenarios"]>[number];
 
 /** One scenario as a row: what it is, its cash line, the figures that matter, and its actions. */
-function ScenarioRow({ scenario, comparing, onCompare, menuOpen, onMenu, onOpen, onDelete }: { scenario: ScenarioSummary; comparing: boolean; onCompare?: () => void; menuOpen: boolean; onMenu: () => void; onOpen: () => void; onDelete?: () => void }) {
+function ScenarioRow({ scenario, comparing, onCompare, onOpen, onDelete }: { scenario: ScenarioSummary; comparing: boolean; onCompare?: () => void; onOpen: () => void; onDelete?: () => void }) {
   const run = useQuery(api.forecast.latest, { scenarioId: scenario.id }) as ForecastRun | null | undefined;
   const sum = scenario.summary;
   const cash = run?.months.map((m) => m.cash / 100) ?? [];
@@ -191,18 +188,13 @@ function ScenarioRow({ scenario, comparing, onCompare, menuOpen, onMenu, onOpen,
       <span className="ll-scn-num">{money(sum?.endCash)}</span>
       <span className={`ll-scn-num${runsOut ? " is-bad" : ""}`}>{runsOut ? `${sum!.runwayMonths!.toFixed(1)} mo` : "24+ mo"}</span>
       <span className="ll-scn-actions" onClick={(e) => e.stopPropagation()}>
-        <IconButton icon="more" label={`Actions for ${scenario.name}`} size="sm" onClick={onMenu} />
-        {menuOpen ? (
-          <span className="ll-scn-menu">
-            <Menu
-              label={`Actions for ${scenario.name}`}
-              items={[
-                { label: "Open in forecast", icon: "forecast", onClick: onOpen },
-                ...(onDelete ? [{ divider: true }, { label: "Delete scenario", icon: "trash" as const, danger: true, onClick: onDelete }] : []),
-              ]}
-            />
-          </span>
-        ) : null}
+        <Menu
+          trigger={<IconButton icon="more" label={`Actions for ${scenario.name}`} size="sm" />}
+          items={[
+            { label: "Open in forecast", icon: "forecast", onClick: onOpen },
+            ...(onDelete ? [{ divider: true }, { label: "Delete scenario", icon: "trash" as const, danger: true, confirm: `Deletes the scenario ${scenario.name}`, onClick: onDelete }] : []),
+          ]}
+        />
       </span>
     </div>
   );

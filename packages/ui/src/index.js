@@ -1170,7 +1170,7 @@ function menuGroups(items) {
 function menuEntry(it, i) {
   if (it.divider) return h(MenuSeparator, { key: it.key, className: 'll-menu-div' });
   if (it.heading) return h(MenuGroup, { key: it.key }, h(MenuGroupLabel, { className: 'll-menu-head' }, it.heading), it.items.map(menuEntry));
-  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
+  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, 'data-agent-confirm': it.confirm, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
 }
 function Menu(p) {
   if (p.trigger) {
