@@ -2,6 +2,19 @@
 /* Ledgerline design system: every component, chart and helper. Generated from the published system, now the source of truth. */
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { Button as ButtonPart } from '@ui-sdk/react/button';
+import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
+import { Dialog as DialogRoot, DialogBackdrop, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
+import { Field as FieldRoot, FieldDescription, FieldError, FieldLabel } from '@ui-sdk/react/field';
+import { Input as InputPart } from '@ui-sdk/react/input';
+import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuItemIndicator, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
+import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
+import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
+import { Select as SelectRoot, SelectContent, SelectItem, SelectItemIndicator, SelectTrigger, SelectValue } from '@ui-sdk/react/select';
+import { Slider as SliderRoot, SliderControl, SliderThumb, SliderTrack, SliderValue } from '@ui-sdk/react/slider';
+import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
+import { Tabs as TabsRoot, TabsList, TabsTab } from '@ui-sdk/react/tabs';
+import { Tooltip as TooltipRoot, TooltipContent, TooltipTrigger } from '@ui-sdk/react/tooltip';
 
 const ICONS = {
 "overview": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"8\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1.5\"/><rect x=\"3\" y=\"15\" width=\"7\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1.5\"/>",
@@ -152,10 +165,12 @@ function AiOrb(p) {
 function Spinner(p) {
   return h('span', { className: cx('ll-spinner', p && p.className), role: 'status', 'aria-label': (p && p.label) || 'Loading' });
 }
+// Passed as another part's render, like a menu trigger, the button is that part's element; otherwise it's ui-sdk's.
+function buttonTag(p) { return p['data-slot'] ? 'button' : ButtonPart; }
 function Button(p) {
   var variant = p.variant || 'secondary', size = p.size || 'md';
   var rest = omit(p, ['variant', 'size', 'icon', 'iconRight', 'loading', 'children', 'className', 'block']);
-  return h('button', Object.assign({ type: 'button' }, rest, {
+  return h(buttonTag(p), Object.assign({ type: 'button' }, rest, {
     className: cx('ll-btn', 'll-btn-' + variant, 'll-btn-' + size, p.block && 'll-btn-block', p.loading && 'is-loading', p.className),
     disabled: p.disabled || p.loading, 'aria-busy': p.loading || undefined
   }),
@@ -165,7 +180,7 @@ function Button(p) {
 }
 function IconButton(p) {
   var rest = omit(p, ['icon', 'label', 'variant', 'size', 'className']);
-  return h('button', Object.assign({ type: 'button' }, rest, {
+  return h(buttonTag(p), Object.assign({ type: 'button' }, rest, {
     className: cx('ll-iconbtn', 'll-iconbtn-' + (p.variant || 'ghost'), p.size === 'sm' && 'll-iconbtn-sm', p.className),
     'aria-label': p.label, title: p.label
   }), h(Icon, { name: p.icon, size: p.size === 'sm' ? 16 : 18 }));
@@ -174,11 +189,11 @@ function Kbd(p) { return h('kbd', { className: 'll-kbd' }, p.children); }
 
 /* ---------- forms ---------- */
 function Field(p) {
-  return h('div', { className: cx('ll-field', p.error && 'has-error', p.className) },
-    p.label ? h('label', { className: 'll-field-label', htmlFor: p.id }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
+  return h(FieldRoot, { className: cx('ll-field', p.error && 'has-error', p.className), invalid: !!p.error },
+    p.label ? h(FieldLabel, { className: 'll-field-label', id: p.id + '-label' }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
     p.children,
-    p.error ? h('div', { className: 'll-field-error', id: p.id + '-err' }, h(Icon, { name: 'error', size: 14 }), p.error)
-      : (p.hint ? h('div', { className: 'll-field-hint', id: p.id + '-hint' }, p.hint) : null));
+    p.error ? h(FieldError, { match: true, className: 'll-field-error', id: p.id + '-err' }, h(Icon, { name: 'error', size: 14 }), p.error)
+      : (p.hint ? h(FieldDescription, { render: h('div'), className: 'll-field-hint', id: p.id + '-hint' }, p.hint) : null));
 }
 function Input(p) {
   var rest = omit(p, ['label', 'hint', 'error', 'prefix', 'suffix', 'className', 'optional', 'icon', 'numeric']);
@@ -186,79 +201,89 @@ function Input(p) {
     h('div', { className: cx('ll-input', p.disabled && 'is-disabled', p.numeric && 'is-numeric') },
       p.icon ? h(Icon, { name: p.icon, size: 16, className: 'll-input-icon' }) : null,
       p.prefix ? h('span', { className: 'll-input-affix' }, p.prefix) : null,
-      h('input', Object.assign({ type: 'text' }, rest, { 'aria-invalid': p.error ? true : undefined,
-        'aria-describedby': p.error ? p.id + '-err' : (p.hint ? p.id + '-hint' : undefined) })),
+      h(InputPart, Object.assign({ type: 'text' }, rest)),
       p.suffix ? h('span', { className: 'll-input-affix' }, p.suffix) : null));
 }
 function Select(p) {
-  var rest = omit(p, ['label', 'hint', 'error', 'options', 'className']);
+  var items = (p.options || []).map(function (o) { return typeof o === 'string' ? { value: o, label: o } : o; });
+  var state = p.value != null ? { value: String(p.value) } : { defaultValue: p.defaultValue != null ? String(p.defaultValue) : (items[0] && items[0].value) };
   return h(Field, { id: p.id, label: p.label, hint: p.hint, error: p.error, className: p.className },
-    h('div', { className: 'll-select' },
-      h('select', rest, (p.options || []).map(function (o) {
-        var v = typeof o === 'string' ? o : o.value;
-        return h('option', { key: v, value: v }, typeof o === 'string' ? o : o.label);
-      })),
-      h(Icon, { name: 'chevron-down', size: 16, className: 'll-select-chev' })));
+    h(SelectRoot, Object.assign({ items: items, name: p.name, disabled: p.disabled, required: p.required, form: p.form,
+      onValueChange: function (v) {
+        if (v == null) return;
+        p.onValueChange && p.onValueChange(v);
+        p.onChange && p.onChange({ target: { value: v, name: p.name }, currentTarget: { value: v, name: p.name } });
+      } }, state),
+      h('div', { className: 'll-select' },
+        h(SelectTrigger, { id: p.id, className: 'll-select-trigger', 'aria-labelledby': p.label ? p.id + '-label' : undefined, 'aria-label': p.label ? undefined : p['aria-label'],
+          'aria-invalid': p.error ? true : undefined }, h(SelectValue, { className: 'll-select-value' })),
+        h(Icon, { name: 'chevron-down', size: 16, className: 'll-select-chev' })),
+      h(SelectContent, { className: 'll-menu ll-select-list', sideOffset: 6, align: 'start' },
+        items.map(function (o) {
+          return h(SelectItem, { key: o.value, value: o.value, className: 'll-menu-item' },
+            h('span', { className: 'll-menu-label' }, o.label),
+            h(SelectItemIndicator, { className: 'll-select-check' }, h(Icon, { name: 'check', size: 16 })));
+        }))));
 }
 function Checkbox(p) {
-  var st = useState(!!p.defaultChecked), on = p.checked != null ? p.checked : st[0];
-  return h('label', { className: cx('ll-check', p.disabled && 'is-disabled'), htmlFor: p.id },
-    h('input', { id: p.id, type: 'checkbox', checked: on, disabled: p.disabled,
-      onChange: function (e) { st[1](e.target.checked); p.onChange && p.onChange(e.target.checked); } }),
-    h('span', { className: 'll-check-box', 'aria-hidden': true }, h(Icon, { name: 'check', size: 14, strokeWidth: 2.5 })),
-    p.label ? h('span', null, p.label) : null);
+  var state = p.checked != null ? { checked: p.checked } : { defaultChecked: !!p.defaultChecked };
+  return h('label', { className: cx('ll-check', p.disabled && 'is-disabled') },
+    h(CheckboxRoot, Object.assign({ id: p.id, className: 'll-check-box', disabled: p.disabled, 'aria-labelledby': p.label ? p.id + '-label' : undefined,
+      onCheckedChange: function (on) { p.onChange && p.onChange(on); } }, state), h(Icon, { name: 'check', size: 14, strokeWidth: 2.5 })),
+    p.label ? h('span', { id: p.id + '-label' }, p.label) : null);
 }
 function RadioGroup(p) {
-  var st = useState(p.defaultValue || (p.options[0] && p.options[0].value)), val = p.value != null ? p.value : st[0];
-  return h('fieldset', { className: 'll-radios' },
-    p.label ? h('legend', { className: 'll-field-label' }, p.label) : null,
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || (p.options[0] && p.options[0].value) };
+  return h(RadioGroupRoot, Object.assign({ name: p.name, render: h('fieldset'), className: 'll-radios', 'aria-labelledby': p.label ? p.name + '-legend' : undefined,
+    onValueChange: function (v) { p.onChange && p.onChange(v); } }, state),
+    p.label ? h('legend', { className: 'll-field-label', id: p.name + '-legend' }, p.label) : null,
     p.options.map(function (o) {
       var id = p.name + '-' + o.value;
-      return h('label', { key: o.value, className: 'll-radio', htmlFor: id },
-        h('input', { id: id, type: 'radio', name: p.name, value: o.value, checked: val === o.value,
-          onChange: function () { st[1](o.value); p.onChange && p.onChange(o.value); } }),
-        h('span', { className: 'll-radio-dot', 'aria-hidden': true }),
-        h('span', null, h('span', { className: 'll-radio-label' }, o.label), o.hint ? h('span', { className: 'll-radio-hint' }, o.hint) : null));
+      return h('label', { key: o.value, className: 'll-radio' },
+        h(Radio, { id: id, value: o.value, className: 'll-radio-dot', 'aria-labelledby': id + '-label' }),
+        h('span', null, h('span', { className: 'll-radio-label', id: id + '-label' }, o.label), o.hint ? h('span', { className: 'll-radio-hint' }, o.hint) : null));
     }));
 }
 function Switch(p) {
-  var st = useState(!!p.defaultChecked), on = p.checked != null ? p.checked : st[0];
-  return h('label', { className: cx('ll-switch', p.disabled && 'is-disabled'), htmlFor: p.id },
-    h('input', { id: p.id, type: 'checkbox', role: 'switch', checked: on, disabled: p.disabled,
-      onChange: function (e) { st[1](e.target.checked); p.onChange && p.onChange(e.target.checked); } }),
-    h('span', { className: 'll-switch-track', 'aria-hidden': true }, h('span', { className: 'll-switch-thumb' })),
-    h('span', null, h('span', { className: 'll-switch-label' }, p.label), p.hint ? h('span', { className: 'll-switch-hint' }, p.hint) : null));
+  var state = p.checked != null ? { checked: p.checked } : { defaultChecked: !!p.defaultChecked };
+  return h('label', { className: cx('ll-switch', p.disabled && 'is-disabled') },
+    h(SwitchRoot, Object.assign({ id: p.id, className: 'll-switch-track', disabled: p.disabled, 'aria-labelledby': p.id + '-label',
+      onCheckedChange: function (on) { p.onChange && p.onChange(on); } }, state), h(SwitchThumb, { className: 'll-switch-thumb' })),
+    h('span', null, h('span', { className: 'll-switch-label', id: p.id + '-label' }, p.label), p.hint ? h('span', { className: 'll-switch-hint' }, p.hint) : null));
+}
+function plain(v) { return String(v); }
+// The native range kept its thumb inside the track and drew the fill as a gradient over the whole track; the control
+// draws that track and the inset thumb track keeps the thumb inside it, so both land where they did.
+function RangeControl(p) {
+  var pct = ((p.value - p.min) / (p.max - p.min)) * 100;
+  return h(SliderControl, { className: cx('ll-range', p.className), style: { '--ll-fill': pct + '%' } },
+    h(SliderTrack, { className: 'll-range-track' }, h(SliderThumb, { className: 'll-range-thumb', 'aria-label': p.label, 'aria-labelledby': p.labelledBy })));
 }
 function Slider(p) {
   var st = useState(p.defaultValue != null ? p.defaultValue : p.min), val = p.value != null ? p.value : st[0];
-  var pct = ((val - p.min) / (p.max - p.min)) * 100;
-  return h('div', { className: 'll-slider' },
+  return h(SliderRoot, { className: 'll-slider', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain, 'aria-labelledby': p.id + '-label',
+    onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
     h('div', { className: 'll-slider-head' },
-      h('label', { className: 'll-field-label', htmlFor: p.id }, p.label),
-      h('output', { className: 'll-slider-value', htmlFor: p.id }, p.format ? p.format(val) : val)),
-    h('input', { id: p.id, type: 'range', min: p.min, max: p.max, step: p.step || 1, value: val,
-      style: { '--ll-fill': pct + '%' },
-      onChange: function (e) { var v = +e.target.value; st[1](v); p.onChange && p.onChange(v); } }),
+      h('label', { className: 'll-field-label', id: p.id + '-label' }, p.label),
+      h(SliderValue, { className: 'll-slider-value' })),
+    h(RangeControl, { value: val, min: p.min, max: p.max, labelledBy: p.id + '-label' }),
     p.marks ? h('div', { className: 'll-slider-marks', 'aria-hidden': true }, p.marks.map(function (m) { return h('span', { key: m }, p.format ? p.format(m) : m); })) : null);
 }
 function SegmentedControl(p) {
-  var st = useState(p.defaultValue || p.options[0].value), val = p.value != null ? p.value : st[0];
-  return h('div', { className: cx('ll-seg', p.size === 'sm' && 'll-seg-sm'), role: 'radiogroup', 'aria-label': p.label },
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || p.options[0].value };
+  return h(SegmentedRoot, Object.assign({ className: cx('ll-seg', p.size === 'sm' && 'll-seg-sm'), 'aria-label': p.label,
+    onValueChange: function (v) { if (v != null && p.onChange) p.onChange(v); } }, state),
     p.options.map(function (o) {
-      var on = o.value === val;
-      return h('button', { key: o.value, type: 'button', role: 'radio', 'aria-checked': on, className: cx('ll-seg-opt', on && 'is-on'),
-        onClick: function () { st[1](o.value); p.onChange && p.onChange(o.value); } }, o.icon ? h(Icon, { name: o.icon, size: 16 }) : null, o.label);
+      return h(SegmentedControlItem, { key: o.value, value: o.value, className: 'll-seg-opt' }, o.icon ? h(Icon, { name: o.icon, size: 16 }) : null, o.label);
     }));
 }
 function Tabs(p) {
-  var st = useState(p.defaultValue || p.tabs[0].id), val = p.value != null ? p.value : st[0];
-  return h('div', { className: 'll-tabs', role: 'tablist', 'aria-label': p.label },
-    p.tabs.map(function (t) {
-      var on = t.id === val;
-      return h('button', { key: t.id, type: 'button', role: 'tab', 'aria-selected': on, className: cx('ll-tab', on && 'is-on'),
-        onClick: function () { st[1](t.id); p.onChange && p.onChange(t.id); } },
-        t.label, t.count != null ? h('span', { className: 'll-tab-count' }, t.count) : null);
-    }));
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || p.tabs[0].id };
+  return h(TabsRoot, Object.assign({ className: 'll-tabs-root', onValueChange: function (v) { if (v != null && p.onChange) p.onChange(v); } }, state),
+    h(TabsList, { className: 'll-tabs', 'aria-label': p.label },
+      p.tabs.map(function (t) {
+        return h(TabsTab, { key: t.id, value: t.id, className: 'll-tab' }, t.label, t.count != null ? h('span', { className: 'll-tab-count' }, t.count) : null);
+      })));
 }
 
 /* ---------- status ---------- */
@@ -283,9 +308,14 @@ function Avatar(p) {
   var size = p.size || 28;
   return h('span', { className: cx('ll-avatar', p.square && 'll-avatar-sq'), style: { width: size, height: size, fontSize: Math.round(size * 0.4) }, title: p.name }, initials(p.name));
 }
+// An element child, like a button, is the trigger and keeps its own name; loose text becomes an info button whose only
+// job is the tip, which a press toggles too.
 function Tooltip(p) {
-  return h('span', { className: 'll-tip-wrap', tabIndex: p.focusable ? 0 : undefined },
-    p.children, h('span', { className: cx('ll-tip', p.open && 'is-open'), role: 'tooltip' }, p.content));
+  var child = React.Children.count(p.children) === 1 && React.isValidElement(p.children) ? p.children : null;
+  return h(TooltipRoot, Object.assign({ delay: 0, closeDelay: 0, toggleable: !child }, p.open != null ? { open: p.open } : {}),
+    child ? h('span', { className: 'll-tip-wrap' }, h(TooltipTrigger, { render: child }))
+      : h(TooltipTrigger, { render: h('span', { className: 'll-tip-wrap', role: 'button', tabIndex: 0 }) }, p.children),
+    h(TooltipContent, { className: 'll-tip', side: 'top', sideOffset: 8 }, p.content));
 }
 function Skeleton(p) {
   if (p.lines) return h('div', { className: 'll-skel-lines' }, Array.from({ length: p.lines }).map(function (_, i) {
@@ -955,7 +985,7 @@ function FinancialStatement(p) {
     // An unusual movement: a dot with its reason on hover.
     if (flag) inner = h('span', { className: 'll-fs-flagged' }, h('span', { className: 'll-fs-flag', 'data-tip': flag.text, 'aria-label': flag.text, tabIndex: 0 }), inner);
     return h('td', { key: ci, className: cx('ll-fs-num', isF && 'is-forecast', p.totalColumn && ci === cols.length - 1 && 'is-totalcol', sel === key && 'is-selected') },
-      clickable && !isF ? h('button', { type: 'button', className: 'll-fs-drill', 'aria-label': 'Show ledger lines for ' + row.label + ', ' + cols[ci].label,
+      clickable && !isF ? h(ButtonPart, { type: 'button', className: 'll-fs-drill', 'aria-label': 'Show ledger lines for ' + row.label + ', ' + cols[ci].label,
         onClick: function () { st[1](key); p.onDrill && p.onDrill(row, ci); } }, inner) : inner);
   }
   return h('div', { className: 'll-fs-wrap' },
@@ -1087,34 +1117,73 @@ function Stepper(p) {
 }
 
 /* ---------- overlays ---------- */
+// React's autoFocus focuses from script without the attribute ui-sdk looks for, so opening focuses the first control in
+// the body or footer rather than the close button above them.
+var FIRST_CONTROL = ':is(.ll-dialog-body, .ll-drawer-body, .ll-dialog-foot, .ll-drawer-foot) :is(input:not([type=hidden]), textarea, select, button, a[href], [tabindex="0"]):not(:disabled)';
+// Callers close by unmounting, which ui-sdk never sees as a close, so focus goes back to what was focused before.
+function useReturnFocus() {
+  var opener = useState(function () { return typeof document === 'undefined' ? null : document.activeElement; })[0];
+  React.useEffect(function () {
+    return function () {
+      var now = document.activeElement;
+      if (opener && opener.isConnected && opener.focus && (!now || now === document.body)) opener.focus();
+    };
+  }, [opener]);
+}
+// Mounted means open: closing asks the caller through onClose, which unmounts it. The scrim doesn't close it, as before.
 function Dialog(p) {
-  var body = h('div', { className: cx('ll-dialog', p.size === 'sm' && 'll-dialog-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'll-dlg-t' },
-    h('div', { className: 'll-dialog-head' }, h('h2', { id: 'll-dlg-t', className: 'll-dialog-title' }, p.title), h(IconButton, { icon: 'close', label: 'Close', onClick: p.onClose })),
+  useReturnFocus();
+  var content = h(DialogContent, { className: cx('ll-dialog', p.size === 'sm' && 'll-dialog-sm'), inline: p.inline, initialFocus: p.inline ? 'none' : FIRST_CONTROL },
+    h('div', { className: 'll-dialog-head' }, h(DialogTitle, { className: 'll-dialog-title' }, p.title), h(DialogClose, { render: h(IconButton, { icon: 'close', label: 'Close' }) })),
     h('div', { className: 'll-dialog-body' }, p.children),
     p.footer ? h('div', { className: 'll-dialog-foot' }, p.footer) : null);
-  var layer = h('div', { className: cx('ll-scrim', p.inline && 'is-inline') }, body);
-  // Rendered at the top of the document so a sticky or transformed ancestor can't trap it under later content.
-  return !p.inline && typeof document !== 'undefined' ? createPortal(layer, document.body) : layer;
+  return h(DialogRoot, { open: true, modal: p.inline ? false : true, closeOnOutsidePress: false, onOpenChange: function (open) { if (!open && p.onClose) p.onClose(); } },
+    p.inline ? h('div', { className: 'll-scrim is-inline' }, content) : [h(DialogBackdrop, { key: 'b', className: 'll-scrim' }), h(React.Fragment, { key: 'c' }, content)]);
 }
 function Drawer(p) {
-  return h('div', { className: cx('ll-drawer-layer', p.inline && 'is-inline') },
-    p.inline ? null : h('div', { className: 'll-scrim-plain', onClick: p.onClose }),
-    h('aside', { className: 'll-drawer', role: 'dialog', 'aria-label': p.title },
-      h('div', { className: 'll-drawer-head' },
-        h('div', null, p.eyebrow ? h('div', { className: 'll-eyebrow' }, p.eyebrow) : null, h('h2', { className: 'll-drawer-title' }, p.title), p.subtitle ? h('div', { className: 'll-drawer-sub' }, p.subtitle) : null),
-        h(IconButton, { icon: 'close', label: 'Close', onClick: p.onClose })),
-      h('div', { className: 'll-drawer-body' }, p.children),
-      p.footer ? h('div', { className: 'll-drawer-foot' }, p.footer) : null));
+  useReturnFocus();
+  var content = h(DialogContent, { render: h('aside'), className: 'll-drawer', inline: p.inline, initialFocus: p.inline ? 'none' : FIRST_CONTROL },
+    h('div', { className: 'll-drawer-head' },
+      h('div', null, p.eyebrow ? h('div', { className: 'll-eyebrow' }, p.eyebrow) : null, h(DialogTitle, { className: 'll-drawer-title' }, p.title), p.subtitle ? h('div', { className: 'll-drawer-sub' }, p.subtitle) : null),
+      h(DialogClose, { render: h(IconButton, { icon: 'close', label: 'Close' }) })),
+    h('div', { className: 'll-drawer-body' }, p.children),
+    p.footer ? h('div', { className: 'll-drawer-foot' }, p.footer) : null);
+  return h(DialogRoot, { open: true, modal: p.inline ? false : true, onOpenChange: function (open) { if (!open && p.onClose) p.onClose(); } },
+    p.inline ? h('div', { className: 'll-drawer-layer is-inline' }, content) : [h(DialogBackdrop, { key: 'b', className: 'll-scrim-plain' }), h(React.Fragment, { key: 'c' }, content)]);
+}
+function menuItemBody(it) {
+  return [it.icon ? h(Icon, { key: 'i', name: it.icon, size: 16 }) : h('span', { key: 'i', className: 'll-menu-pad' }),
+    h('span', { key: 'l', className: 'll-menu-label' }, it.label),
+    it.kbd ? h(Kbd, { key: 'k' }, it.kbd) : null,
+    it.active ? h(Icon, { key: 'c', name: 'check', size: 16 }) : null];
+}
+// Headings start a group that runs to the next heading or divider, so each group is named by its heading.
+function menuGroups(items) {
+  var out = [], group = null;
+  items.forEach(function (it, i) {
+    if (it.divider) { group = null; out.push({ divider: true, key: 'd' + i }); return; }
+    if (it.heading) { group = { heading: it.heading, items: [], key: 'g' + i }; out.push(group); return; }
+    if (group) group.items.push(it); else out.push(Object.assign({ key: 'i' + i }, it));
+  });
+  return out;
+}
+function menuEntry(it, i) {
+  if (it.divider) return h(MenuSeparator, { key: it.key, className: 'll-menu-div' });
+  if (it.heading) return h(MenuGroup, { key: it.key }, h(MenuGroupLabel, { className: 'll-menu-head' }, it.heading), it.items.map(menuEntry));
+  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
 }
 function Menu(p) {
+  if (p.trigger) {
+    var state = p.open != null ? { open: p.open } : {};
+    return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
+      h(MenuTrigger, { render: p.trigger }),
+      h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
+        menuGroups(p.items).map(menuEntry)));
+  }
   return h('div', { className: 'll-menu', role: 'menu', 'aria-label': p.label }, p.items.map(function (it, i) {
     if (it.divider) return h('div', { key: i, className: 'll-menu-div', role: 'separator' });
     if (it.heading) return h('div', { key: i, className: 'll-menu-head' }, it.heading);
-    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick },
-      it.icon ? h(Icon, { name: it.icon, size: 16 }) : h('span', { className: 'll-menu-pad' }),
-      h('span', { className: 'll-menu-label' }, it.label),
-      it.kbd ? h(Kbd, null, it.kbd) : null,
-      it.active ? h(Icon, { name: 'check', size: 16 }) : null);
+    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick }, menuItemBody(it));
   }));
 }
 function CommandPalette(p) {
@@ -1228,12 +1297,12 @@ function Sidebar(p) {
   return h('nav', { className: cx('ll-sidebar', collapsed && 'is-collapsed'), 'aria-label': 'Main' },
     h('div', { className: 'll-sidebar-top' },
       h(Link, { href: p.homeHref || '#', className: 'll-sidebar-logo', 'aria-label': 'Ledgerline home' }, h(Logo, { size: 26, variant: collapsed ? 'mark' : undefined })),
-      p.onCollapse ? h('button', { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
+      p.onCollapse ? h(ButtonPart, { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
         h(Icon, { name: collapsed ? 'chevron-right' : 'chevron-left', size: 15 })) : null),
     h('div', { className: 'll-sidebar-org' },
       p.orgSwitcher || (collapsed ? h('span', { className: 'll-org-avatar', title: p.org || '' }, initials(p.org || '?')) : h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }))),
-    p.onAsk ? h('button', { type: 'button', className: 'll-sidebar-ask', onClick: p.onAsk, 'aria-label': 'Ask Ledgerline', 'data-label': 'Ask Ledgerline' }, h('span', { className: 'll-ask-orb', 'aria-hidden': true }), h('span', { className: 'll-sidebar-ask-text' }, 'Ask Ledgerline'), h('kbd', null, p.askShortcut || 'Ctrl J')) : null,
-    p.onSearch ? h('button', { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
+    p.onAsk ? h(ButtonPart, { type: 'button', className: 'll-sidebar-ask', onClick: p.onAsk, 'aria-label': 'Ask Ledgerline', 'data-label': 'Ask Ledgerline' }, h('span', { className: 'll-ask-orb', 'aria-hidden': true }), h('span', { className: 'll-sidebar-ask-text' }, 'Ask Ledgerline'), h('kbd', null, p.askShortcut || 'Ctrl J')) : null,
+    p.onSearch ? h(ButtonPart, { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
     h('div', { className: 'll-sidebar-nav' }, items.map(function (it, i) {
       if (it.heading) return h('div', { key: i, className: 'll-nav-head' }, h('span', null, it.heading));
       return h(NavItem, Object.assign({ key: it.id, linkAs: p.linkAs }, it, { active: it.id === p.active }));
@@ -1248,7 +1317,7 @@ function Sidebar(p) {
 function PeriodPicker(p) {
   // Shows the period the page covers. It only behaves as a control once it is given a way to change it.
   if (!p.onClick) return h('span', { className: 'll-picker is-static' }, h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'));
-  return h('button', { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog', onClick: p.onClick },
+  return h(ButtonPart, { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog', onClick: p.onClick },
     h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'), h(Icon, { name: 'chevron-down', size: 14 }));
 }
 function MonthGrid(p) {
@@ -1262,29 +1331,30 @@ function MonthGrid(p) {
     h('div', { className: 'll-monthgrid-foot' }, h('span', { className: 'll-legend-item' }, h('span', { className: 'll-legend-sw ll-hatch-sw' }), 'Forecast months'), h('span', null, 'Presets: This year · Last 12 months · Q3')));
 }
 function ScenarioSwitcher(p) {
-  var st = useState(false), open = st[0], ref = React.useRef(null);
-  React.useEffect(function () {
-    if (!open) return;
-    function away(e) { if (ref.current && !ref.current.contains(e.target)) st[1](false); }
-    function esc(e) { if (e.key === 'Escape') st[1](false); }
-    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc);
-    return function () { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
-  }, [open]);
   var options = p.options || [];
-  return h('div', { className: 'll-picker-wrap', ref: ref },
-    h('button', { type: 'button', className: 'll-picker ll-picker-scenario', 'aria-haspopup': 'menu', 'aria-expanded': open, disabled: !options.length,
-      onClick: function () { st[1](!open); } },
-      h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'),
-      options.length > 1 ? h(Icon, { name: 'chevron-down', size: 14 }) : null),
-    open && options.length > 1 ? h(Menu, { label: 'Scenarios', items: [{ heading: 'Show forecast months from' }].concat(options.map(function (o) {
-      return { label: o.name, icon: o.base ? 'statement' : 'branch', active: o.active, onClick: function () { st[1](false); p.onSelect && p.onSelect(o.id); } };
-    })) }) : null);
+  var active = options.filter(function (o) { return o.active; })[0];
+  var button = h('button', { type: 'button', className: 'll-picker ll-picker-scenario', disabled: !options.length },
+    h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'),
+    options.length > 1 ? h(Icon, { name: 'chevron-down', size: 14 }) : null);
+  if (options.length < 2) return h('div', { className: 'll-picker-wrap' }, button);
+  return h('div', { className: 'll-picker-wrap' },
+    h(MenuRoot, null,
+      h(MenuTrigger, { render: button }),
+      h(MenuContent, { className: 'll-menu', side: 'bottom', align: 'end', sideOffset: 6 },
+        h(MenuGroup, null, h(MenuGroupLabel, { className: 'll-menu-head' }, 'Show forecast months from'),
+          h(MenuRadioGroup, { value: active ? active.id : null, onValueChange: function (id) { p.onSelect && p.onSelect(id); } },
+            options.map(function (o) {
+              return h(MenuRadioItem, { key: o.id, value: o.id, label: o.name, closeOnSelect: true, className: 'll-menu-item' },
+                h(Icon, { name: o.base ? 'statement' : 'branch', size: 16 }),
+                h('span', { className: 'll-menu-label' }, o.name),
+                h(MenuItemIndicator, { className: 'll-menu-check' }, h(Icon, { name: 'check', size: 16 })));
+            }))))));
 }
 function Topbar(p) {
   // A slim bar that stays put (where you are, its status, the page's actions), then the title, which scrolls away.
   return h(React.Fragment, null,
     h('header', { className: 'll-topbar' },
-      p.onMenu ? h('button', { type: 'button', className: 'll-topbar-menu', onClick: p.onMenu, 'aria-label': 'Open navigation' }, h(Icon, { name: 'menu', size: 18 })) : null,
+      p.onMenu ? h(ButtonPart, { type: 'button', className: 'll-topbar-menu', onClick: p.onMenu, 'aria-label': 'Open navigation' }, h(Icon, { name: 'menu', size: 18 })) : null,
       h('div', { className: 'll-topbar-l' }, p.breadcrumbs ? h(Breadcrumbs, { items: p.breadcrumbs }) : null, p.status ? h('span', { className: 'll-topbar-status' }, p.status) : null),
       h('div', { className: 'll-topbar-r' }, p.children)),
     h('div', { className: 'll-pagehead' }, h('h1', { className: 'll-page-title' }, p.title), p.subtitle ? h('p', { className: 'll-page-sub' }, p.subtitle) : null));
@@ -1293,7 +1363,7 @@ function AppShell(p) {
   var sidebar = Object.assign({ active: p.active, org: p.org, rail: p.rail, runway: p.runway, syncText: p.syncText, syncing: p.syncing }, p.sidebar || {});
   return h('div', { className: cx('ll-shell', sidebar.collapsed && 'is-collapsed', p.navOpen && 'is-nav-open') },
     h(Sidebar, sidebar),
-    p.navOpen ? h('button', { type: 'button', className: 'll-nav-scrim', 'aria-label': 'Close navigation', onClick: p.onMenu }) : null,
+    p.navOpen ? h(ButtonPart, { type: 'button', className: 'll-nav-scrim', 'aria-label': 'Close navigation', onClick: p.onMenu }) : null,
     h('main', { className: 'll-main' },
       h(Topbar, { title: p.title, subtitle: p.subtitle, breadcrumbs: p.breadcrumbs, status: p.status, onMenu: p.onMenu }, p.actions),
       h('div', { className: 'll-page' }, p.children)),
@@ -1315,13 +1385,14 @@ function AssumptionField(p) {
   var changed = p.base != null && val !== p.base;
   return h('div', { className: cx('ll-assume', changed && 'is-changed') },
     h('div', { className: 'll-assume-head' },
-      h('label', { className: 'll-assume-label', htmlFor: p.id }, p.label),
+      h('label', { className: 'll-assume-label', htmlFor: p.id, id: p.id + '-label' }, p.label),
       changed ? h('span', { className: 'll-assume-base' }, 'Base ' + (p.format ? p.format(p.base) : p.base)) : null),
     h('div', { className: 'll-assume-row' },
-      h('input', { id: p.id + '-r', type: 'range', min: p.min, max: p.max, step: p.step || 1, value: val, 'aria-label': p.label,
-        style: { '--ll-fill': ((val - p.min) / (p.max - p.min) * 100) + '%' }, onChange: function (e) { var v = +e.target.value; st[1](v); p.onChange && p.onChange(v); } }),
+      h(SliderRoot, { className: 'll-assume-range', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain,
+        onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
+        h(RangeControl, { value: val, min: p.min, max: p.max, label: p.label })),
       h('div', { className: 'll-input is-numeric ll-assume-num' },
-        h('input', { id: p.id, type: 'text', inputMode: 'decimal', value: val, onChange: function (e) { var v = parseFloat(e.target.value); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
+        h(InputPart, { id: p.id, type: 'text', inputMode: 'decimal', value: String(val), 'aria-labelledby': p.id + '-label', onValueChange: function (text) { var v = parseFloat(text); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
         p.unit ? h('span', { className: 'll-input-affix' }, p.unit) : null)),
     p.help ? h('div', { className: 'll-field-hint' }, p.help) : null);
 }
@@ -1335,8 +1406,8 @@ function HireRow(p) {
 }
 function ScenarioCard(p) {
   var months = function (v) { return v === null || v === undefined ? (p.horizon ? p.horizon + '+ mo' : '\u2013') : v.toFixed(1) + ' mo'; };
-  return h('div', { className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare', p.onSelect && 'is-selectable'), onClick: p.onSelect, role: p.onSelect ? 'button' : undefined, tabIndex: p.onSelect ? 0 : undefined,
-      onKeyDown: p.onSelect ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.onSelect(); } } : undefined },
+  return h(p.onSelect ? ButtonPart : 'div', Object.assign({ className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare', p.onSelect && 'is-selectable') },
+      p.onSelect ? { render: h('div'), onClick: p.onSelect, 'aria-pressed': !!p.active } : {}),
     h('div', { className: 'll-scn-head' },
       h('span', { className: cx('ll-scn-chip', p.compare ? 'is-compare' : p.base ? 'is-base' : '') }, h(Icon, { name: p.base ? 'statement' : 'branch', size: 14 }), p.base ? 'Base' : p.compare ? 'Compared' : 'Branch'),
       p.menu || null),
@@ -1405,7 +1476,7 @@ function CommentaryCard(p) {
       h('span', { className: 'll-comm-meta' }, p.meta || 'Written from computed figures · every number links to its source')),
     h('div', { className: 'll-comm-body' }, p.paragraphs.map(function (para, i) {
       return h('p', { key: i }, para.map(function (part, j) {
-        return typeof part === 'string' ? part : h('button', { key: j, type: 'button', className: 'll-cite', title: part.source }, part.text);
+        return typeof part === 'string' ? part : h(ButtonPart, { key: j, type: 'button', className: 'll-cite', title: part.source }, part.text);
       }));
     })),
     p.actions ? h('div', { className: 'll-comm-foot' }, p.actions) : null);

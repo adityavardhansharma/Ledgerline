@@ -19,7 +19,8 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 export interface KbdProps extends Children {}
 export interface FieldProps extends Children { id: string; label?: string; hint?: string; error?: string; optional?: boolean }
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { id: string; label?: string; hint?: string; error?: string; prefix?: string; suffix?: string; icon?: IconName; numeric?: boolean; optional?: boolean }
-export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { id: string; label?: string; hint?: string; error?: string; options: Array<string | { value: string; label: string }> }
+/** A value from a popup list. `onChange` gets an event-shaped object, so `(e) => set(e.target.value)` keeps working. */
+export interface SelectProps { id: string; label?: string; hint?: string; error?: string; options: Array<string | { value: string; label: string }>; value?: string; defaultValue?: string; name?: string; form?: string; disabled?: boolean; required?: boolean; className?: string; 'aria-label'?: string; onChange?: (event: { target: { value: string; name?: string }; currentTarget: { value: string; name?: string } }) => void; onValueChange?: (value: string) => void }
 export interface CheckboxProps { id: string; label?: string; checked?: boolean; defaultChecked?: boolean; disabled?: boolean; onChange?: (checked: boolean) => void }
 export interface RadioGroupProps { name: string; label?: string; options: Array<{ value: string; label: string; hint?: string }>; value?: string; defaultValue?: string; onChange?: (value: string) => void }
 export interface SwitchProps { id: string; label: string; hint?: string; checked?: boolean; defaultChecked?: boolean; disabled?: boolean; onChange?: (on: boolean) => void }
@@ -29,7 +30,8 @@ export interface TabsProps { tabs: Array<{ id: string; label: string; count?: nu
 export interface BadgeProps extends Children { tone?: Tone; icon?: IconName }
 export interface StatusPillProps extends Children { status: 'synced' | 'syncing' | 'error' | 'stale' | 'draft' | 'actual' | 'forecast' | 'matched' | 'mismatch' | 'connected' | 'disconnected' }
 export interface AvatarProps { name: string; size?: number; square?: boolean }
-export interface TooltipProps extends Children { content: React.ReactNode; focusable?: boolean; open?: boolean }
+/** A single element child is the trigger; text becomes a focusable info button. `focusable` is no longer needed. */
+export interface TooltipProps extends Children { content: React.ReactNode; /** @deprecated Text triggers are always focusable now. */ focusable?: boolean; open?: boolean }
 export interface SkeletonProps { width?: number | string; height?: number; lines?: number }
 export interface ProgressBarProps { value: number; label?: string; tone?: 'forecast' | 'warning' }
 /** Every money figure: tabular, negatives in parentheses, zero as an en dash. */
@@ -58,7 +60,8 @@ export interface StepperProps { steps: Array<{ title: string; hint?: string }>; 
 export interface DialogProps extends Children { title: string; footer?: React.ReactNode; onClose?: () => void; size?: 'sm' | 'md'; inline?: boolean }
 export interface DrawerProps extends Children { title: string; eyebrow?: string; subtitle?: string; footer?: React.ReactNode; onClose?: () => void; inline?: boolean }
 export interface MenuItem { label?: string; icon?: IconName; kbd?: string; danger?: boolean; active?: boolean; divider?: boolean; heading?: string; onClick?: () => void }
-export interface MenuProps { items: MenuItem[]; label?: string }
+/** With a trigger it's a full menu that opens from it, named by the trigger; without one, the open list on its own, named by `label`. */
+export interface MenuProps { items: MenuItem[]; label?: string; trigger?: React.ReactElement; open?: boolean; onOpenChange?: (open: boolean) => void; side?: 'top' | 'bottom' | 'left' | 'right'; align?: 'start' | 'center' | 'end'; className?: string }
 export interface CommandPaletteProps { query?: string; groups: Array<{ label: string; items: Array<{ icon: IconName; label: string; meta?: string; kbd?: string; active?: boolean }> }> }
 export interface BreadcrumbsProps { items: string[] }
 export interface PaginationProps { page: number; pages: number; from: number; to: number; total: number }
