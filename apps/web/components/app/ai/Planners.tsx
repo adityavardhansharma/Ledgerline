@@ -1,8 +1,10 @@
 "use client";
 
 import { Button, Dialog, Input } from "@ledgerline/ui";
+import { Button as UIButton } from "@ui-sdk/react/button";
+import { Popover, PopoverContent } from "@ui-sdk/react/popover";
 import { useAction, useMutation } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ParsedScenario } from "@/convex/aiActions";
@@ -237,44 +239,34 @@ export function NameSuggest({ scenarioId, current }: { scenarioId: Id<"scenarios
   const suggest = useAction(api.aiActions.nameScenario);
   const rename = useMutation(api.scenarios.rename);
   const ai = useAi(suggest);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ai.open) return;
-    const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) ai.close();
-    };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [ai.open, ai.close]);
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
   return (
-    <div className="ll-ai-pop-wrap" ref={box}>
+    <div className="ll-ai-pop-wrap" ref={setBox}>
       <AiButton size="sm" busy={ai.busy} onClick={() => void ai.run({ scenarioId })} title={`Rename “${current}” to say what it tests`}>
         Suggest a name
       </AiButton>
-      {ai.open && !ai.busy ? (
-        <div className="ll-ai-pop" role="menu">
+      <Popover open={ai.open && !ai.busy} onOpenChange={(open) => !open && ai.close()}>
+        <PopoverContent className="ll-ai-pop" aria-label="Suggested names" anchor={box} side="bottom" align="end" sideOffset={6}>
           {ai.error ? (
             <p className="ll-ai-error">{ai.error}</p>
           ) : (
             <>
-            <Paused text={ai.notice} />
-            {(ai.data?.names ?? []).map((n) => (
-              <button
-                key={n}
-                type="button"
-                role="menuitem"
-                onClick={async () => {
-                  await rename({ id: scenarioId, name: n });
-                  ai.close();
-                }}
-              >
-                {n}
-              </button>
-            ))}
+              <Paused text={ai.notice} />
+              {(ai.data?.names ?? []).map((n) => (
+                <UIButton
+                  key={n}
+                  onClick={async () => {
+                    await rename({ id: scenarioId, name: n });
+                    ai.close();
+                  }}
+                >
+                  {n}
+                </UIButton>
+              ))}
             </>
           )}
-        </div>
-      ) : null}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
