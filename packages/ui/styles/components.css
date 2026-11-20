@@ -155,8 +155,8 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .ll-avatar { display: inline-grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg, var(--chart-2), var(--chart-4)); color: #ffffff; font-weight: 600; flex: none; letter-spacing: .02em; box-shadow: 0 0 0 2px var(--surface); }
 .ll-avatar-sq { border-radius: 9px; background: linear-gradient(135deg, var(--brand), var(--chart-4)); }
 .ll-tip-wrap { position: relative; display: inline-flex; }
-.ll-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: max-content; max-width: 260px; padding: 8px 10px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 16px; box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none; transition: opacity .15s; z-index: var(--z-toast); }
-.ll-tip-wrap:hover .ll-tip, .ll-tip-wrap:focus-within .ll-tip, .ll-tip.is-open { opacity: 1; }
+.ll-tip { width: max-content; max-width: 260px; margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 16px; box-shadow: var(--shadow-pop); pointer-events: none; transition: opacity .15s; }
+.ll-tip[data-starting-style], .ll-tip[data-ending-style] { opacity: 0; }
 .ll-skel { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--surface-hover) 50%, var(--surface-sunken) 75%); background-size: 200% 100%; animation: ll-shimmer 1.4s linear infinite; }
 .ll-skel-lines { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 @keyframes ll-shimmer { to { background-position: -200% 0; } }

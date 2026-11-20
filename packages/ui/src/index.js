@@ -11,6 +11,7 @@ import { Select as SelectRoot, SelectContent, SelectItem, SelectItemIndicator, S
 import { Slider as SliderRoot, SliderControl, SliderThumb, SliderTrack, SliderValue } from '@ui-sdk/react/slider';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 import { Tabs as TabsRoot, TabsList, TabsTab } from '@ui-sdk/react/tabs';
+import { Tooltip as TooltipRoot, TooltipContent, TooltipTrigger } from '@ui-sdk/react/tooltip';
 
 const ICONS = {
 "overview": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"8\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1.5\"/><rect x=\"3\" y=\"15\" width=\"7\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1.5\"/>",
@@ -303,9 +304,14 @@ function Avatar(p) {
   var size = p.size || 28;
   return h('span', { className: cx('ll-avatar', p.square && 'll-avatar-sq'), style: { width: size, height: size, fontSize: Math.round(size * 0.4) }, title: p.name }, initials(p.name));
 }
+// An element child, like a button, is the trigger and keeps its own name; loose text becomes an info button whose only
+// job is the tip, which a press toggles too.
 function Tooltip(p) {
-  return h('span', { className: 'll-tip-wrap', tabIndex: p.focusable ? 0 : undefined },
-    p.children, h('span', { className: cx('ll-tip', p.open && 'is-open'), role: 'tooltip' }, p.content));
+  var child = React.Children.count(p.children) === 1 && React.isValidElement(p.children) ? p.children : null;
+  return h(TooltipRoot, Object.assign({ delay: 0, closeDelay: 0, toggleable: !child }, p.open != null ? { open: p.open } : {}),
+    child ? h('span', { className: 'll-tip-wrap' }, h(TooltipTrigger, { render: child }))
+      : h(TooltipTrigger, { render: h('span', { className: 'll-tip-wrap', role: 'button', tabIndex: 0 }) }, p.children),
+    h(TooltipContent, { className: 'll-tip', side: 'top', sideOffset: 8 }, p.content));
 }
 function Skeleton(p) {
   if (p.lines) return h('div', { className: 'll-skel-lines' }, Array.from({ length: p.lines }).map(function (_, i) {

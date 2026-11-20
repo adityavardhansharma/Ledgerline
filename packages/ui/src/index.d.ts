@@ -30,7 +30,8 @@ export interface TabsProps { tabs: Array<{ id: string; label: string; count?: nu
 export interface BadgeProps extends Children { tone?: Tone; icon?: IconName }
 export interface StatusPillProps extends Children { status: 'synced' | 'syncing' | 'error' | 'stale' | 'draft' | 'actual' | 'forecast' | 'matched' | 'mismatch' | 'connected' | 'disconnected' }
 export interface AvatarProps { name: string; size?: number; square?: boolean }
-export interface TooltipProps extends Children { content: React.ReactNode; focusable?: boolean; open?: boolean }
+/** A single element child is the trigger; text becomes a focusable info button. `focusable` is no longer needed. */
+export interface TooltipProps extends Children { content: React.ReactNode; /** @deprecated Text triggers are always focusable now. */ focusable?: boolean; open?: boolean }
 export interface SkeletonProps { width?: number | string; height?: number; lines?: number }
 export interface ProgressBarProps { value: number; label?: string; tone?: 'forecast' | 'warning' }
 /** Every money figure: tabular, negatives in parentheses, zero as an en dash. */
