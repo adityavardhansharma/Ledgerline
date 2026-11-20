@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
-import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
+import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuItemIndicator, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
 import { Select as SelectRoot, SelectContent, SelectItem, SelectItemIndicator, SelectTrigger, SelectValue } from '@ui-sdk/react/select';
@@ -1151,7 +1151,7 @@ function Menu(p) {
     var state = p.open != null ? { open: p.open } : {};
     return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
       h(MenuTrigger, { render: p.trigger }),
-      h(MenuContent, { className: cx('ll-menu', p.className), 'aria-label': p.label, side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
+      h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
         menuGroups(p.items).map(menuEntry)));
   }
   return h('div', { className: 'll-menu', role: 'menu', 'aria-label': p.label }, p.items.map(function (it, i) {
@@ -1305,23 +1305,24 @@ function MonthGrid(p) {
     h('div', { className: 'll-monthgrid-foot' }, h('span', { className: 'll-legend-item' }, h('span', { className: 'll-legend-sw ll-hatch-sw' }), 'Forecast months'), h('span', null, 'Presets: This year · Last 12 months · Q3')));
 }
 function ScenarioSwitcher(p) {
-  var st = useState(false), open = st[0], ref = React.useRef(null);
-  React.useEffect(function () {
-    if (!open) return;
-    function away(e) { if (ref.current && !ref.current.contains(e.target)) st[1](false); }
-    function esc(e) { if (e.key === 'Escape') st[1](false); }
-    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc);
-    return function () { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
-  }, [open]);
   var options = p.options || [];
-  return h('div', { className: 'll-picker-wrap', ref: ref },
-    h('button', { type: 'button', className: 'll-picker ll-picker-scenario', 'aria-haspopup': 'menu', 'aria-expanded': open, disabled: !options.length,
-      onClick: function () { st[1](!open); } },
-      h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'),
-      options.length > 1 ? h(Icon, { name: 'chevron-down', size: 14 }) : null),
-    open && options.length > 1 ? h(Menu, { label: 'Scenarios', items: [{ heading: 'Show forecast months from' }].concat(options.map(function (o) {
-      return { label: o.name, icon: o.base ? 'statement' : 'branch', active: o.active, onClick: function () { st[1](false); p.onSelect && p.onSelect(o.id); } };
-    })) }) : null);
+  var active = options.filter(function (o) { return o.active; })[0];
+  var button = h('button', { type: 'button', className: 'll-picker ll-picker-scenario', disabled: !options.length },
+    h('span', { className: 'll-picker-dot' }), h('span', { className: 'll-picker-k' }, 'Scenario'), h('span', null, p.name || 'Base case'),
+    options.length > 1 ? h(Icon, { name: 'chevron-down', size: 14 }) : null);
+  if (options.length < 2) return h('div', { className: 'll-picker-wrap' }, button);
+  return h('div', { className: 'll-picker-wrap' },
+    h(MenuRoot, null,
+      h(MenuTrigger, { render: button }),
+      h(MenuContent, { className: 'll-menu', side: 'bottom', align: 'end', sideOffset: 6 },
+        h(MenuGroup, null, h(MenuGroupLabel, { className: 'll-menu-head' }, 'Show forecast months from'),
+          h(MenuRadioGroup, { value: active ? active.id : null, onValueChange: function (id) { p.onSelect && p.onSelect(id); } },
+            options.map(function (o) {
+              return h(MenuRadioItem, { key: o.id, value: o.id, label: o.name, closeOnSelect: true, className: 'll-menu-item' },
+                h(Icon, { name: o.base ? 'statement' : 'branch', size: 16 }),
+                h('span', { className: 'll-menu-label' }, o.name),
+                h(MenuItemIndicator, { className: 'll-menu-check' }, h(Icon, { name: 'check', size: 16 })));
+            }))))));
 }
 function Topbar(p) {
   // A slim bar that stays put (where you are, its status, the page's actions), then the title, which scrolls away.

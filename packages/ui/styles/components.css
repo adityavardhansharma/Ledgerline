@@ -554,8 +554,9 @@ g.is-dim { opacity: .3; }
 [data-slot="menu-content"].ll-menu { margin: 0; color: var(--ink); }
 .ll-menu-item > .ll-icon { color: var(--ink-muted); }
 .ll-menu-item.is-danger, .ll-menu-item.is-danger > .ll-icon { color: var(--negative); }
-.ll-menu-item.is-active { font-weight: 600; }
-.ll-menu-item.is-active > .ll-icon:last-child { color: var(--brand); }
+.ll-menu-item.is-active, .ll-menu-item[data-checked] { font-weight: 600; }
+.ll-menu-item.is-active > .ll-icon:last-child, .ll-menu-check { color: var(--brand); }
+.ll-menu-check { display: inline-flex; }
 .ll-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ll-menu-pad { width: 16px; }
 .ll-menu-div { height: 1px; background: var(--rule); margin: 6px 0; }
