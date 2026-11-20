@@ -19,7 +19,8 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 export interface KbdProps extends Children {}
 export interface FieldProps extends Children { id: string; label?: string; hint?: string; error?: string; optional?: boolean }
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { id: string; label?: string; hint?: string; error?: string; prefix?: string; suffix?: string; icon?: IconName; numeric?: boolean; optional?: boolean }
-export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { id: string; label?: string; hint?: string; error?: string; options: Array<string | { value: string; label: string }> }
+/** A value from a popup list. `onChange` gets an event-shaped object, so `(e) => set(e.target.value)` keeps working. */
+export interface SelectProps { id: string; label?: string; hint?: string; error?: string; options: Array<string | { value: string; label: string }>; value?: string; defaultValue?: string; name?: string; form?: string; disabled?: boolean; required?: boolean; className?: string; 'aria-label'?: string; onChange?: (event: { target: { value: string; name?: string }; currentTarget: { value: string; name?: string } }) => void; onValueChange?: (value: string) => void }
 export interface CheckboxProps { id: string; label?: string; checked?: boolean; defaultChecked?: boolean; disabled?: boolean; onChange?: (checked: boolean) => void }
 export interface RadioGroupProps { name: string; label?: string; options: Array<{ value: string; label: string; hint?: string }>; value?: string; defaultValue?: string; onChange?: (value: string) => void }
 export interface SwitchProps { id: string; label: string; hint?: string; checked?: boolean; defaultChecked?: boolean; disabled?: boolean; onChange?: (on: boolean) => void }

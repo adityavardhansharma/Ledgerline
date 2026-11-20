@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
+import { Select as SelectRoot, SelectContent, SelectItem, SelectItemIndicator, SelectTrigger, SelectValue } from '@ui-sdk/react/select';
 import { Slider as SliderRoot, SliderControl, SliderThumb, SliderTrack, SliderValue } from '@ui-sdk/react/slider';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 import { Tabs as TabsRoot, TabsList, TabsTab } from '@ui-sdk/react/tabs';
@@ -181,7 +182,7 @@ function Kbd(p) { return h('kbd', { className: 'll-kbd' }, p.children); }
 /* ---------- forms ---------- */
 function Field(p) {
   return h('div', { className: cx('ll-field', p.error && 'has-error', p.className) },
-    p.label ? h('label', { className: 'll-field-label', htmlFor: p.id }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
+    p.label ? h('label', { className: 'll-field-label', htmlFor: p.id, id: p.id + '-label' }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
     p.children,
     p.error ? h('div', { className: 'll-field-error', id: p.id + '-err' }, h(Icon, { name: 'error', size: 14 }), p.error)
       : (p.hint ? h('div', { className: 'll-field-hint', id: p.id + '-hint' }, p.hint) : null));
@@ -197,14 +198,25 @@ function Input(p) {
       p.suffix ? h('span', { className: 'll-input-affix' }, p.suffix) : null));
 }
 function Select(p) {
-  var rest = omit(p, ['label', 'hint', 'error', 'options', 'className']);
+  var items = (p.options || []).map(function (o) { return typeof o === 'string' ? { value: o, label: o } : o; });
+  var state = p.value != null ? { value: String(p.value) } : { defaultValue: p.defaultValue != null ? String(p.defaultValue) : (items[0] && items[0].value) };
   return h(Field, { id: p.id, label: p.label, hint: p.hint, error: p.error, className: p.className },
-    h('div', { className: 'll-select' },
-      h('select', rest, (p.options || []).map(function (o) {
-        var v = typeof o === 'string' ? o : o.value;
-        return h('option', { key: v, value: v }, typeof o === 'string' ? o : o.label);
-      })),
-      h(Icon, { name: 'chevron-down', size: 16, className: 'll-select-chev' })));
+    h(SelectRoot, Object.assign({ items: items, name: p.name, disabled: p.disabled, required: p.required, form: p.form,
+      onValueChange: function (v) {
+        if (v == null) return;
+        p.onValueChange && p.onValueChange(v);
+        p.onChange && p.onChange({ target: { value: v, name: p.name }, currentTarget: { value: v, name: p.name } });
+      } }, state),
+      h('div', { className: 'll-select' },
+        h(SelectTrigger, { id: p.id, className: 'll-select-trigger', 'aria-labelledby': p.label ? p.id + '-label' : undefined, 'aria-label': p.label ? undefined : p['aria-label'],
+          'aria-invalid': p.error ? true : undefined }, h(SelectValue, { className: 'll-select-value' })),
+        h(Icon, { name: 'chevron-down', size: 16, className: 'll-select-chev' })),
+      h(SelectContent, { className: 'll-menu ll-select-list', sideOffset: 6, align: 'start' },
+        items.map(function (o) {
+          return h(SelectItem, { key: o.value, value: o.value, className: 'll-menu-item' },
+            h('span', { className: 'll-menu-label' }, o.label),
+            h(SelectItemIndicator, { className: 'll-select-check' }, h(Icon, { name: 'check', size: 16 })));
+        }))));
 }
 function Checkbox(p) {
   var state = p.checked != null ? { checked: p.checked } : { defaultChecked: !!p.defaultChecked };
