@@ -12,9 +12,9 @@ import {
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { forecastCsv, toCsv } from "@/lib/csv";
@@ -24,6 +24,8 @@ import { DownsideButton, NameSuggest, ScenarioComposer } from "@/components/app/
 import { AddFinancing, AddHire, AddOneOff, FINANCING, loaded, ONE_OFF, PlanList, Sections } from "@/components/app/PlanItems";
 import { DriverField } from "@/components/app/DriverField";
 import { useForecast, useScenarios } from "@/components/app/useForecast";
+import { useSetOverride, useSetPlanItems } from "@/components/app/useScenarioEdits";
+import { forecastBehind } from "@/lib/scenarioEdits";
 import { moneyChange, SummaryLine } from "@/components/app/report/Report";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -61,11 +63,10 @@ function ForecastScreen() {
   const scenarioId = (params.get("scenario") as Id<"scenarios"> | null) ?? base?.id;
   const scenario = useQuery(api.scenarios.get, scenarioId ? { id: scenarioId } : "skip");
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
-  const setOverride = useMutation(api.scenarios.setOverride);
-  const setPlanItems = useMutation(api.scenarios.setPlanItems);
-  const dependency = useMemo(() => (scenario ? [scenario.overrides, scenario.hires, scenario.oneOffs, scenario.financing, snapshot?.version] : null), [scenario, snapshot?.version]);
-  const forecast = useForecast(scenarioId, dependency) as ForecastRun | null | undefined;
-  const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined, snapshot?.version) as ForecastRun | null | undefined;
+  const setOverride = useSetOverride();
+  const setPlanItems = useSetPlanItems();
+  const forecast = useForecast(scenarioId) as ForecastRun | null | undefined;
+  const baseForecast = useForecast(base && base.id !== scenarioId ? base.id : undefined) as ForecastRun | null | undefined;
   const [tab, setTab] = useState("assumptions");
   const [statementTab, setStatementTab] = useState("pnl");
   const [branching, setBranching] = useState(false);
@@ -157,7 +158,7 @@ function ForecastScreen() {
                       {cashLede(forecast, scenario.isBase ? "the base case" : `“${scenario.name}”`)} {scenario.isBase ? "Shaded, its likely range." : "Against the base case; shaded, its likely range."}
                     </p>
                   </div>
-                  {forecast?.stale ? <Badge tone="warning">Updating</Badge> : null}
+                  {forecastBehind(forecast, scenario, snapshot?.drivers) ? <Badge tone="warning">Updating</Badge> : null}
                 </header>
                 {forecast ? (
                   <LineChart labels={chart.labels} series={chart.series as never} forecastFrom={chart.forecastFrom} todayLabel="Today" zero endLabels scenarioArea negativeNote="overdrawn" height={320} thresholds={[{ value: 0, label: "CASH RUNS OUT", tone: "negative" }]} />

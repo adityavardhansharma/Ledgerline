@@ -108,6 +108,14 @@ export const results = query({
         capped ||= rows.length === 5000;
         candidates.push(...rows);
       }
+    } else if (f.contact) {
+      // One customer or supplier: read only their lines, so the cap applies to them rather than to the whole ledger.
+      candidates = await ctx.db
+        .query("ledgerLines")
+        .withIndex("by_org_contact_period", (q) => q.eq("orgId", orgId).eq("contact", f.contact).gte("period", fromPeriod).lte("period", toPeriod))
+        .order("desc")
+        .take(8000);
+      capped = candidates.length === 8000;
     } else {
       candidates = await ctx.db
         .query("ledgerLines")

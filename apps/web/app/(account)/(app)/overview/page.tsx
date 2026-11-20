@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, PeriodPicker, ScenarioSwitcher } from "@ledgerline/ui";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import Link from "next/link";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
@@ -26,7 +26,7 @@ export default function OverviewPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const ageing = useQuery(api.reports.ageing);
   const scenario = useReportScenario();
-  const forecast = useForecast(scenario.selected?.id, snapshot?.version);
+  const forecast = useForecast(scenario.selected?.id);
   const daily = useQuery(api.reports.dailyCash, snapshot ? { from: `${snapshot.series.periods.at(-6)}-01`, to: `${snapshot.asOf}-31` } : "skip");
 
   return (

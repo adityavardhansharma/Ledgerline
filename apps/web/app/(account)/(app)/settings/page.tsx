@@ -2,7 +2,8 @@
 
 import { useOrganization } from "@clerk/nextjs";
 import { Avatar, Badge, Banner, Button, Icon, Input, ProgressBar, RadioGroup, Select, Switch } from "@ledgerline/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { errorText } from "@/components/app/BoardCommentary";

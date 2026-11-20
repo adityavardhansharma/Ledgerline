@@ -11,7 +11,7 @@ import { clerkConfigured } from "@/lib/config";
 export default function AccountLayout({ children }: { children: ReactNode }) {
   if (!clerkConfigured) return <MotionProvider>{children}</MotionProvider>;
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" signInFallbackRedirectUrl="/overview" signUpFallbackRedirectUrl="/onboarding">
       <ConvexClientProvider>
         <MotionProvider>{children}</MotionProvider>
       </ConvexClientProvider>

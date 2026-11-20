@@ -1,7 +1,8 @@
 "use client";
 
 import { Banner, Button, CommentaryCard, EmptyState, FinancialStatement, formatMoney, LineChart, Logo, Panel, SankeyChart } from "@ledgerline/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { ConvexError } from "convex/values";
 import { m as motion } from "motion/react";
 import { useState } from "react";
@@ -23,7 +24,7 @@ export default function BoardPackPage() {
   const draft = useAction(api.commentary.draft);
   const accept = useMutation(api.commentary.accept);
   const { base } = useScenarios();
-  const forecast = useForecast(base?.id, snapshot?.version);
+  const forecast = useForecast(base?.id);
   const [busy, setBusy] = useState<Section | "all" | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [history, setHistory] = useState(false);

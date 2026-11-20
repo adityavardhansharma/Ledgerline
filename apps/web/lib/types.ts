@@ -82,4 +82,8 @@ export interface ForecastRun {
   bands?: { p10: number[]; p25: number[]; p75: number[]; p90: number[] };
   sensitivity?: { base: number; capped: boolean; rows: { label: string; range: string; low: number; high: number }[] };
   stale?: boolean;
+  /** When the run was stored, in milliseconds. */
+  createdAt?: number;
+  /** The drivers the run was made with: the actuals' drivers with the scenario's overrides on top. */
+  drivers?: Record<string, unknown>;
 }

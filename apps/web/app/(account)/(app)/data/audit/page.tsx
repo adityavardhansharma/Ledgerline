@@ -1,7 +1,8 @@
 "use client";
 
 import { Button, Icon } from "@ledgerline/ui";
-import { useConvex, usePaginatedQuery } from "convex/react";
+import { useConvex } from "convex/react";
+import { usePaginatedQuery } from "convex-helpers/react/cache";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
 import { toCsv } from "@/lib/csv";

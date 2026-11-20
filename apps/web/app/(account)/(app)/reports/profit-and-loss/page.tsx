@@ -1,7 +1,7 @@
 "use client";
 
 import { PeriodPicker, ScenarioSwitcher, SegmentedControl } from "@ledgerline/ui";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";
@@ -19,7 +19,7 @@ import { pnlWithForecast } from "@/lib/views";
 export default function ProfitAndLossPage() {
   const snapshot = useQuery(api.reports.statements) as Snapshot | null | undefined;
   const scenario = useReportScenario();
-  const forecast = useForecast(scenario.selected?.id, snapshot?.version);
+  const forecast = useForecast(scenario.selected?.id);
   const [drill, setDrill] = useState<DrillTarget | null>(null);
   const [view, setView] = useState("m");
   const anomalies = useAnomalies(Boolean(snapshot));
