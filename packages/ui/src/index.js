@@ -1405,8 +1405,8 @@ function HireRow(p) {
 }
 function ScenarioCard(p) {
   var months = function (v) { return v === null || v === undefined ? (p.horizon ? p.horizon + '+ mo' : '\u2013') : v.toFixed(1) + ' mo'; };
-  return h('div', { className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare', p.onSelect && 'is-selectable'), onClick: p.onSelect, role: p.onSelect ? 'button' : undefined, tabIndex: p.onSelect ? 0 : undefined,
-      onKeyDown: p.onSelect ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.onSelect(); } } : undefined },
+  return h(p.onSelect ? ButtonPart : 'div', Object.assign({ className: cx('ll-scn', p.active && 'is-active', p.compare && 'is-compare', p.onSelect && 'is-selectable') },
+      p.onSelect ? { render: h('div'), onClick: p.onSelect, 'aria-pressed': !!p.active } : {}),
     h('div', { className: 'll-scn-head' },
       h('span', { className: cx('ll-scn-chip', p.compare ? 'is-compare' : p.base ? 'is-base' : '') }, h(Icon, { name: p.base ? 'statement' : 'branch', size: 14 }), p.base ? 'Base' : p.compare ? 'Compared' : 'Branch'),
       p.menu || null),
