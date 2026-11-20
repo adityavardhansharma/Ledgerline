@@ -1952,6 +1952,7 @@ input[type=range].ll-drv-range:focus-visible::-webkit-slider-thumb { box-shadow:
 .ll-scn-num { text-align: right; font: 500 13.5px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
 .ll-scn-num.is-bad { color: var(--negative); }
 .ll-scn-actions { position: relative; display: flex; justify-content: flex-end; }
+.ll-scn-name[data-slot="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 .ll-scn-menu { position: absolute; right: 0; top: 36px; z-index: 30; }
 @container main (max-width: 820px) {
   .ll-scn-row { grid-template-columns: minmax(0, 1fr) auto 40px; }
