@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
+import { Dialog as DialogRoot, DialogBackdrop, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
 import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuItemIndicator, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
@@ -1106,14 +1107,28 @@ function Stepper(p) {
 }
 
 /* ---------- overlays ---------- */
+// React's autoFocus focuses from script without the attribute ui-sdk looks for, so opening focuses the first control in
+// the body or footer rather than the close button above them.
+var FIRST_CONTROL = ':is(.ll-dialog-body, .ll-drawer-body, .ll-dialog-foot, .ll-drawer-foot) :is(input:not([type=hidden]), textarea, select, button, a[href], [tabindex="0"]):not(:disabled)';
+// Callers close by unmounting, which ui-sdk never sees as a close, so focus goes back to what was focused before.
+function useReturnFocus() {
+  var opener = useState(function () { return typeof document === 'undefined' ? null : document.activeElement; })[0];
+  React.useEffect(function () {
+    return function () {
+      var now = document.activeElement;
+      if (opener && opener.isConnected && opener.focus && (!now || now === document.body)) opener.focus();
+    };
+  }, [opener]);
+}
+// Mounted means open: closing asks the caller through onClose, which unmounts it. The scrim doesn't close it, as before.
 function Dialog(p) {
-  var body = h('div', { className: cx('ll-dialog', p.size === 'sm' && 'll-dialog-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'll-dlg-t' },
-    h('div', { className: 'll-dialog-head' }, h('h2', { id: 'll-dlg-t', className: 'll-dialog-title' }, p.title), h(IconButton, { icon: 'close', label: 'Close', onClick: p.onClose })),
+  useReturnFocus();
+  var content = h(DialogContent, { className: cx('ll-dialog', p.size === 'sm' && 'll-dialog-sm'), inline: p.inline, initialFocus: p.inline ? 'none' : FIRST_CONTROL },
+    h('div', { className: 'll-dialog-head' }, h(DialogTitle, { className: 'll-dialog-title' }, p.title), h(DialogClose, { render: h(IconButton, { icon: 'close', label: 'Close' }) })),
     h('div', { className: 'll-dialog-body' }, p.children),
     p.footer ? h('div', { className: 'll-dialog-foot' }, p.footer) : null);
-  var layer = h('div', { className: cx('ll-scrim', p.inline && 'is-inline') }, body);
-  // Rendered at the top of the document so a sticky or transformed ancestor can't trap it under later content.
-  return !p.inline && typeof document !== 'undefined' ? createPortal(layer, document.body) : layer;
+  return h(DialogRoot, { open: true, modal: p.inline ? false : true, closeOnOutsidePress: false, onOpenChange: function (open) { if (!open && p.onClose) p.onClose(); } },
+    p.inline ? h('div', { className: 'll-scrim is-inline' }, content) : [h(DialogBackdrop, { key: 'b', className: 'll-scrim' }), h(React.Fragment, { key: 'c' }, content)]);
 }
 function Drawer(p) {
   return h('div', { className: cx('ll-drawer-layer', p.inline && 'is-inline') },
