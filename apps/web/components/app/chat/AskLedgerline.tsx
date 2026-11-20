@@ -3,6 +3,7 @@
 import { Icon } from "@ledgerline/ui";
 import { Button } from "@ui-sdk/react/button";
 import { Checkbox } from "@ui-sdk/react/checkbox";
+import { Dialog, DialogBackdrop, DialogContent } from "@ui-sdk/react/dialog";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@ui-sdk/react/popover";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -46,6 +47,12 @@ export function AskLedgerline() {
   const [open, setOpen] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl J");
   const reduce = useReducedMotion();
+  // The pill unmounts while the panel is open, so after closing, focus goes back to it once it's back.
+  const refocus = useRef(false);
+  const close = () => {
+    refocus.current = true;
+    setOpen(false);
+  };
   useEffect(() => {
     if (/Mac|iPhone|iPad/.test(navigator.platform)) setShortcut("⌘J");
   }, []);
@@ -56,7 +63,6 @@ export function AskLedgerline() {
         e.preventDefault();
         setOpen((x) => !x);
       }
-      if (e.key === "Escape" && !e.defaultPrevented) setOpen(false);
     };
     const onAsk = () => setOpen(true);
     window.addEventListener("keydown", onKey);
@@ -69,33 +75,37 @@ export function AskLedgerline() {
 
   return (
     <>
+      {/* The panel rises from where the pill sits; the pill steps aside. Nothing stretches, so text never warps.
+          The dialog stays mounted, and open, until motion's exit finishes. */}
       <AnimatePresence>
         {open ? (
-          <motion.div
-            key="scrim"
-            className="ll-ask-scrim no-print"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3, ease: "easeOut" } }}
-            exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeIn" } }}
-            onClick={() => setOpen(false)}
-          />
-        ) : null}
-      </AnimatePresence>
-      {/* The panel rises from where the pill sits; the pill steps aside. Nothing stretches, so text never warps. */}
-      <AnimatePresence>
-        {open ? (
-          <motion.section
-            key="panel"
-            className="ll-ask-panel no-print"
-            style={{ transformOrigin: "50% 100%" }}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.965 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: reduce ? { duration: 0.15 } : OPEN }}
-            exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, y: 18, scale: 0.98, transition: CLOSE }}
-            role="dialog"
-            aria-label="Ask Ledgerline"
-          >
-            <Panel onClose={() => setOpen(false)} />
-          </motion.section>
+          <Dialog key="ask" open modal closeOnOutsidePress onOpenChange={(next) => !next && close()}>
+            <DialogBackdrop
+              render={
+                <motion.div
+                  className="ll-ask-scrim no-print"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.3, ease: "easeOut" } }}
+                  exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeIn" } }}
+                />
+              }
+            />
+            <DialogContent
+              aria-label="Ask Ledgerline"
+              initialFocus="textarea"
+              render={
+                <motion.section
+                  className="ll-ask-panel no-print"
+                  style={{ transformOrigin: "50% 100%" }}
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.965 }}
+                  animate={{ opacity: 1, y: 0, scale: 1, transition: reduce ? { duration: 0.15 } : OPEN }}
+                  exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, y: 18, scale: 0.98, transition: CLOSE }}
+                />
+              }
+            >
+              <Panel onClose={close} />
+            </DialogContent>
+          </Dialog>
         ) : null}
       </AnimatePresence>
       <AnimatePresence>
@@ -107,6 +117,12 @@ export function AskLedgerline() {
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: reduce ? { duration: 0.15 } : { ...OPEN, delay: 0.08 } }}
             exit={reduce ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, y: 8, scale: 0.94, transition: { duration: 0.16, ease: "easeIn" } }}
+            ref={(el: HTMLButtonElement | null) => {
+              if (el && refocus.current) {
+                refocus.current = false;
+                el.focus({ preventScroll: true });
+              }
+            }}
             onClick={() => setOpen(true)}
             whileHover={reduce ? undefined : { y: -2, transition: { duration: 0.2 } }}
             whileTap={{ scale: 0.97 }}
