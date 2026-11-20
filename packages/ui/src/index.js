@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { Button as ButtonPart } from '@ui-sdk/react/button';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Dialog as DialogRoot, DialogBackdrop, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
+import { Field as FieldRoot, FieldDescription, FieldError, FieldLabel } from '@ui-sdk/react/field';
+import { Input as InputPart } from '@ui-sdk/react/input';
 import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuItemIndicator, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
@@ -187,11 +189,11 @@ function Kbd(p) { return h('kbd', { className: 'll-kbd' }, p.children); }
 
 /* ---------- forms ---------- */
 function Field(p) {
-  return h('div', { className: cx('ll-field', p.error && 'has-error', p.className) },
-    p.label ? h('label', { className: 'll-field-label', htmlFor: p.id, id: p.id + '-label' }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
+  return h(FieldRoot, { className: cx('ll-field', p.error && 'has-error', p.className), invalid: !!p.error },
+    p.label ? h(FieldLabel, { className: 'll-field-label', id: p.id + '-label' }, p.label, p.optional ? h('span', { className: 'll-field-opt' }, ' optional') : null) : null,
     p.children,
-    p.error ? h('div', { className: 'll-field-error', id: p.id + '-err' }, h(Icon, { name: 'error', size: 14 }), p.error)
-      : (p.hint ? h('div', { className: 'll-field-hint', id: p.id + '-hint' }, p.hint) : null));
+    p.error ? h(FieldError, { match: true, className: 'll-field-error', id: p.id + '-err' }, h(Icon, { name: 'error', size: 14 }), p.error)
+      : (p.hint ? h(FieldDescription, { render: h('div'), className: 'll-field-hint', id: p.id + '-hint' }, p.hint) : null));
 }
 function Input(p) {
   var rest = omit(p, ['label', 'hint', 'error', 'prefix', 'suffix', 'className', 'optional', 'icon', 'numeric']);
@@ -199,8 +201,7 @@ function Input(p) {
     h('div', { className: cx('ll-input', p.disabled && 'is-disabled', p.numeric && 'is-numeric') },
       p.icon ? h(Icon, { name: p.icon, size: 16, className: 'll-input-icon' }) : null,
       p.prefix ? h('span', { className: 'll-input-affix' }, p.prefix) : null,
-      h('input', Object.assign({ type: 'text' }, rest, { 'aria-invalid': p.error ? true : undefined,
-        'aria-describedby': p.error ? p.id + '-err' : (p.hint ? p.id + '-hint' : undefined) })),
+      h(InputPart, Object.assign({ type: 'text' }, rest)),
       p.suffix ? h('span', { className: 'll-input-affix' }, p.suffix) : null));
 }
 function Select(p) {
@@ -1384,14 +1385,14 @@ function AssumptionField(p) {
   var changed = p.base != null && val !== p.base;
   return h('div', { className: cx('ll-assume', changed && 'is-changed') },
     h('div', { className: 'll-assume-head' },
-      h('label', { className: 'll-assume-label', htmlFor: p.id }, p.label),
+      h('label', { className: 'll-assume-label', htmlFor: p.id, id: p.id + '-label' }, p.label),
       changed ? h('span', { className: 'll-assume-base' }, 'Base ' + (p.format ? p.format(p.base) : p.base)) : null),
     h('div', { className: 'll-assume-row' },
       h(SliderRoot, { className: 'll-assume-range', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain,
         onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
         h(RangeControl, { value: val, min: p.min, max: p.max, label: p.label })),
       h('div', { className: 'll-input is-numeric ll-assume-num' },
-        h('input', { id: p.id, type: 'text', inputMode: 'decimal', value: val, onChange: function (e) { var v = parseFloat(e.target.value); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
+        h(InputPart, { id: p.id, type: 'text', inputMode: 'decimal', value: String(val), 'aria-labelledby': p.id + '-label', onValueChange: function (text) { var v = parseFloat(text); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
         p.unit ? h('span', { className: 'll-input-affix' }, p.unit) : null)),
     p.help ? h('div', { className: 'll-field-hint' }, p.help) : null);
 }
