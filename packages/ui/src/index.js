@@ -1390,7 +1390,7 @@ function AssumptionField(p) {
     h('div', { className: 'll-assume-row' },
       h(SliderRoot, { className: 'll-assume-range', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain,
         onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
-        h(RangeControl, { value: val, min: p.min, max: p.max, label: p.label })),
+        h(RangeControl, { value: val, min: p.min, max: p.max, label: 'Adjust ' + p.label })),
       h('div', { className: 'll-input is-numeric ll-assume-num' },
         h(InputPart, { id: p.id, type: 'text', inputMode: 'decimal', value: String(val), 'aria-labelledby': p.id + '-label', onValueChange: function (text) { var v = parseFloat(text); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
         p.unit ? h('span', { className: 'll-input-affix' }, p.unit) : null)),

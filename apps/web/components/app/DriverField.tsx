@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@ui-sdk/react/input";
+import { Slider, SliderControl, SliderThumb, SliderTrack } from "@ui-sdk/react/slider";
 import { useEffect, useState } from "react";
 
 /**
@@ -23,11 +25,17 @@ export function DriverField({ id, label, unit, min, max, step, value, parent, he
       <div className="ll-drv-top">
         <label htmlFor={id}>{label}</label>
         <span className="ll-drv-value">
-          <input id={id} type="number" inputMode="decimal" min={min} max={max} step={step} value={current} disabled={readOnly} onChange={(e) => set(Number(e.target.value))} />
+          <Input id={id} type="number" inputMode="decimal" min={min} max={max} step={step} value={String(current)} disabled={readOnly} onChange={(e) => set(Number(e.target.value))} />
           <span>{unit}</span>
         </span>
       </div>
-      <input type="range" className="ll-drv-range" aria-label={label} min={min} max={max} step={step} value={current} disabled={readOnly} style={{ "--fill": `${fill}%` } as React.CSSProperties} onChange={(e) => set(Number(e.target.value))} />
+      <Slider value={current} min={min} max={max} step={step} disabled={readOnly} format={(v) => shown(v)} onValueChange={(v) => set(v as number)}>
+        <SliderControl className="ll-drv-range" style={{ "--fill": `${fill}%` } as React.CSSProperties}>
+          <SliderTrack className="ll-drv-track">
+            <SliderThumb className="ll-drv-thumb" aria-label={`Adjust ${label}`} />
+          </SliderTrack>
+        </SliderControl>
+      </Slider>
       <div className="ll-drv-foot">
         {changed ? (
           <>
