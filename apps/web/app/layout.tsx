@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
-import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { Tooltips } from "@/components/Tooltips";
-import { clerkConfigured } from "@/lib/config";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -29,6 +26,8 @@ export const viewport: Viewport = {
 
 const themeScript = `try{var t=localStorage.getItem('ll-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`;
 
+// Clerk sends anyone it has no destination for to "/", so its steps outside the sign-in form (a Google sign-in that
+// becomes a sign-up, choosing an organisation) landed on the homepage. These defaults cover every flow.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IE" className={`${geist.variable} ${geistMono.variable} ${instrument.variable}`} suppressHydrationWarning>
@@ -36,13 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        {clerkConfigured ? (
-          <ClerkProvider>
-            <ConvexClientProvider>{children}</ConvexClientProvider>
-          </ClerkProvider>
-        ) : (
-          children
-        )}
+        {/* Clerk and Convex start in app/(account)/layout.tsx, so the landing page loads neither. */}
+        {children}
         <Tooltips />
         <Analytics />
       </body>

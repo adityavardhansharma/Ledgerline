@@ -1,7 +1,7 @@
 "use client";
 
 import { AiOrb, Icon } from "@ledgerline/ui";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+import { AnimatePresence, m as motion, useInView, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AiNote, AiProse } from "../app/ai/AiAction";
 import { SEARCH } from "./aiSamples";

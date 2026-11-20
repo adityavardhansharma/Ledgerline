@@ -1,9 +1,10 @@
 "use client";
 
 import { AiOrb, Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { ConvexError } from "convex/values";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m as motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Citation, Commentary, Prose, Question, Risk, Section, Sections } from "@/convex/commentary";
