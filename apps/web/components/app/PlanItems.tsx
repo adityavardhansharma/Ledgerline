@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Icon, IconButton, Input, SegmentedControl, Select, type IconName } from "@ledgerline/ui";
+import { Button as UIButton } from "@ui-sdk/react/button";
 import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { useState } from "react";
 import { money, periodLabel } from "@/lib/format";
@@ -64,9 +65,9 @@ function Composer({ add, title, summary, valid, onAdd, children }: { add: string
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <button type="button" className="ll-plan-add" onClick={() => setOpen(true)}>
+      <UIButton className="ll-plan-add" onClick={() => setOpen(true)}>
         <Icon name="plus" size={16} /> {add}
-      </button>
+      </UIButton>
     );
   }
   return (
