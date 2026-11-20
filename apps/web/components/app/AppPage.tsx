@@ -3,6 +3,7 @@
 import { OrganizationSwitcher, UserButton, useAuth, useUser } from "@clerk/nextjs";
 import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerline/ui";
 import { useAction } from "convex/react";
+import { useShortcut } from "@ui-sdk/react/shortcuts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -64,7 +65,7 @@ function useIconsBand() {
  * Whether the sidebar is narrowed to icons: remembered per browser, toggled with "[" anywhere but a text field. In the
  * icons band it starts narrowed, and the toggle opens it for this visit without changing what's remembered.
  */
-function useCollapsed() {
+export function useCollapsed() {
   const [remembered, setRemembered] = useState(false);
   const [opened, setOpened] = useState(false);
   const band = useIconsBand();
@@ -83,15 +84,7 @@ function useCollapsed() {
     });
   };
   const collapsed = band ? !opened : remembered;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
-      toggle();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcut("[", toggle, { description: "Collapse or expand the sidebar" });
   return [collapsed, toggle] as const;
 }
 
