@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
+import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 
 const ICONS = {
@@ -210,16 +211,15 @@ function Checkbox(p) {
     p.label ? h('span', { id: p.id + '-label' }, p.label) : null);
 }
 function RadioGroup(p) {
-  var st = useState(p.defaultValue || (p.options[0] && p.options[0].value)), val = p.value != null ? p.value : st[0];
-  return h('fieldset', { className: 'll-radios' },
-    p.label ? h('legend', { className: 'll-field-label' }, p.label) : null,
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || (p.options[0] && p.options[0].value) };
+  return h(RadioGroupRoot, Object.assign({ name: p.name, render: h('fieldset'), className: 'll-radios', 'aria-labelledby': p.label ? p.name + '-legend' : undefined,
+    onValueChange: function (v) { p.onChange && p.onChange(v); } }, state),
+    p.label ? h('legend', { className: 'll-field-label', id: p.name + '-legend' }, p.label) : null,
     p.options.map(function (o) {
       var id = p.name + '-' + o.value;
-      return h('label', { key: o.value, className: 'll-radio', htmlFor: id },
-        h('input', { id: id, type: 'radio', name: p.name, value: o.value, checked: val === o.value,
-          onChange: function () { st[1](o.value); p.onChange && p.onChange(o.value); } }),
-        h('span', { className: 'll-radio-dot', 'aria-hidden': true }),
-        h('span', null, h('span', { className: 'll-radio-label' }, o.label), o.hint ? h('span', { className: 'll-radio-hint' }, o.hint) : null));
+      return h('label', { key: o.value, className: 'll-radio' },
+        h(Radio, { id: id, value: o.value, className: 'll-radio-dot', 'aria-labelledby': id + '-label' }),
+        h('span', null, h('span', { className: 'll-radio-label', id: id + '-label' }, o.label), o.hint ? h('span', { className: 'll-radio-hint' }, o.hint) : null));
     }));
 }
 function Switch(p) {
