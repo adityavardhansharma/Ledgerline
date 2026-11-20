@@ -2,6 +2,7 @@
 /* Ledgerline design system: every component, chart and helper. Generated from the published system, now the source of truth. */
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 
 const ICONS = {
@@ -202,12 +203,11 @@ function Select(p) {
       h(Icon, { name: 'chevron-down', size: 16, className: 'll-select-chev' })));
 }
 function Checkbox(p) {
-  var st = useState(!!p.defaultChecked), on = p.checked != null ? p.checked : st[0];
-  return h('label', { className: cx('ll-check', p.disabled && 'is-disabled'), htmlFor: p.id },
-    h('input', { id: p.id, type: 'checkbox', checked: on, disabled: p.disabled,
-      onChange: function (e) { st[1](e.target.checked); p.onChange && p.onChange(e.target.checked); } }),
-    h('span', { className: 'll-check-box', 'aria-hidden': true }, h(Icon, { name: 'check', size: 14, strokeWidth: 2.5 })),
-    p.label ? h('span', null, p.label) : null);
+  var state = p.checked != null ? { checked: p.checked } : { defaultChecked: !!p.defaultChecked };
+  return h('label', { className: cx('ll-check', p.disabled && 'is-disabled') },
+    h(CheckboxRoot, Object.assign({ id: p.id, className: 'll-check-box', disabled: p.disabled, 'aria-labelledby': p.label ? p.id + '-label' : undefined,
+      onCheckedChange: function (on) { p.onChange && p.onChange(on); } }, state), h(Icon, { name: 'check', size: 14, strokeWidth: 2.5 })),
+    p.label ? h('span', { id: p.id + '-label' }, p.label) : null);
 }
 function RadioGroup(p) {
   var st = useState(p.defaultValue || (p.options[0] && p.options[0].value)), val = p.value != null ? p.value : st[0];
