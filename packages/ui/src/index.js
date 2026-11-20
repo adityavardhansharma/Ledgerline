@@ -1176,7 +1176,7 @@ function Menu(p) {
   if (p.trigger) {
     var state = p.open != null ? { open: p.open } : {};
     return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
-      h(MenuTrigger, { render: p.trigger }),
+      h(MenuTrigger, { render: p.trigger, disabled: !!(p.trigger.props.disabled || p.trigger.props.loading) }),
       h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
         menuGroups(p.items).map(menuEntry)));
   }

@@ -2,7 +2,7 @@
 
 import { Banner, Button, Menu, type MenuItem } from "@ledgerline/ui";
 import { useConvex } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { downloadCsvText, euro, toCsv } from "@/lib/csv";
 import { exportName, exportPageHtml } from "@/lib/exportHtml";
@@ -23,26 +23,10 @@ export function ExportMenu({ title, csv, html = true, disabled }: { title: strin
   const workspace = useWorkspace();
   const organisation = workspace?.org.name;
   const asOf = workspace?.org.asOf ?? undefined;
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
 
   const run = async (label: string, job: () => Promise<void>) => {
-    setOpen(false);
     setBusy(label);
     setError(null);
     try {
@@ -77,11 +61,15 @@ export function ExportMenu({ title, csv, html = true, disabled }: { title: strin
   }
 
   return (
-    <span className="ll-export-menu" ref={ref} data-export="skip">
-      <Button icon="download" iconRight="chevron-down" disabled={disabled} loading={Boolean(busy)} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        Export
-      </Button>
-      {open ? <Menu label="Export" items={items} /> : null}
+    <span className="ll-export-menu" data-export="skip">
+      <Menu
+        items={items}
+        trigger={
+          <Button icon="download" iconRight="chevron-down" disabled={disabled} loading={Boolean(busy)}>
+            Export
+          </Button>
+        }
+      />
       {error ? (
         <span className="ll-export-error">
           <Banner tone="negative" title="Export failed." onClose={() => setError(null)}>{error}</Banner>
