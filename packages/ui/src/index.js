@@ -6,6 +6,7 @@ import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
 import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
+import { Tabs as TabsRoot, TabsList, TabsTab } from '@ui-sdk/react/tabs';
 
 const ICONS = {
 "overview": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"8\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1.5\"/><rect x=\"3\" y=\"15\" width=\"7\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1.5\"/>",
@@ -251,14 +252,12 @@ function SegmentedControl(p) {
     }));
 }
 function Tabs(p) {
-  var st = useState(p.defaultValue || p.tabs[0].id), val = p.value != null ? p.value : st[0];
-  return h('div', { className: 'll-tabs', role: 'tablist', 'aria-label': p.label },
-    p.tabs.map(function (t) {
-      var on = t.id === val;
-      return h('button', { key: t.id, type: 'button', role: 'tab', 'aria-selected': on, className: cx('ll-tab', on && 'is-on'),
-        onClick: function () { st[1](t.id); p.onChange && p.onChange(t.id); } },
-        t.label, t.count != null ? h('span', { className: 'll-tab-count' }, t.count) : null);
-    }));
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || p.tabs[0].id };
+  return h(TabsRoot, Object.assign({ className: 'll-tabs-root', onValueChange: function (v) { if (v != null && p.onChange) p.onChange(v); } }, state),
+    h(TabsList, { className: 'll-tabs', 'aria-label': p.label },
+      p.tabs.map(function (t) {
+        return h(TabsTab, { key: t.id, value: t.id, className: 'll-tab' }, t.label, t.count != null ? h('span', { className: 'll-tab-count' }, t.count) : null);
+      })));
 }
 
 /* ---------- status ---------- */
