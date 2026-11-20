@@ -1,7 +1,7 @@
 "use client";
 
 import { PeriodPicker, ScenarioSwitcher, SegmentedControl } from "@ledgerline/ui";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu } from "@/components/app/ExportMenu";

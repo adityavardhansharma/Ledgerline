@@ -2,7 +2,7 @@
 
 import { Amount, Banner, Button } from "@ledgerline/ui";
 import Link from "next/link";
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { AppPage } from "@/components/app/AppPage";
 import { ExportMenu, useLedgerCsv } from "@/components/app/ExportMenu";
