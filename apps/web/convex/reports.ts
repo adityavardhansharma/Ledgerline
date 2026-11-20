@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import { internalAction, internalMutation, internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { currentOrg } from "./lib/auth";
 import { ageItems, importedOpenItems, monthEnd } from "./lib/openItems";
 import { engine } from "./lib/engine";
@@ -53,6 +53,7 @@ export const rebuild = internalAction({
       as_of: input.asOf,
     });
     await ctx.runMutation(internal.reports.storeSnapshot, { orgId, kind: "statements", data, bumpVersion: true, asOf: input.asOf });
+    await ctx.runMutation(internal.reports.ageImported, { orgId });
     await ctx.runMutation(internal.scenarios.ensureBase, { orgId });
   },
 });
@@ -70,16 +71,55 @@ export const storeSnapshot = internalMutation({
     if (!org) return;
     const version = bumpVersion ? org.actualsVersion + 1 : org.actualsVersion;
     if (bumpVersion) await ctx.db.patch(orgId, { actualsVersion: version, asOf });
-    await ctx.db.insert("reportSnapshots", { orgId, kind, version, data, createdAt: Date.now() });
-    // Keep the three most recent snapshots of each kind.
-    const old = await ctx.db
-      .query("reportSnapshots")
-      .withIndex("by_org_kind", (q) => q.eq("orgId", orgId).eq("kind", kind))
-      .order("desc")
-      .collect();
-    for (const row of old.slice(3)) await ctx.db.delete(row._id);
+    await insertSnapshot(ctx, orgId, kind, version, data);
   },
 });
+
+type SnapshotKind = "statements" | "ageing" | "reconciliation";
+
+async function insertSnapshot(ctx: MutationCtx, orgId: Id<"organizations">, kind: SnapshotKind, version: number, data: unknown) {
+  await ctx.db.insert("reportSnapshots", { orgId, kind, version, data, createdAt: Date.now() });
+  // Keep the three most recent snapshots of each kind.
+  const old = await ctx.db
+    .query("reportSnapshots")
+    .withIndex("by_org_kind", (q) => q.eq("orgId", orgId).eq("kind", kind))
+    .order("desc")
+    .collect();
+  for (const row of old.slice(3)) await ctx.db.delete(row._id);
+}
+
+const isImported = (org: Doc<"organizations">) => org.source === "csv" || org.source === "sample";
+
+/**
+ * Unpaid invoices by age for an imported company, worked out once per build of the figures. Reading every line on
+ * the debtor and creditor accounts takes thousands of reads, too many for a query that runs on every page view.
+ */
+export const ageImported = internalMutation({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, { orgId }) => {
+    const org = await ctx.db.get(orgId);
+    if (!org || !isImported(org) || !org.asOf) return;
+    const items = await importedOpenItems(ctx, orgId);
+    await insertSnapshot(ctx, orgId, "ageing", org.actualsVersion, items ? ageItems(items, monthEnd(org.asOf)) : null);
+  },
+});
+
+/**
+ * The ageing the overview and the chat show. An imported company's comes from the snapshot built with its figures;
+ * one imported before those snapshots existed is worked out on the spot until its figures are next rebuilt.
+ */
+export async function ageingFor(ctx: QueryCtx, org: Doc<"organizations">): Promise<Record<string, unknown> | null> {
+  const row = await ctx.db
+    .query("reportSnapshots")
+    .withIndex("by_org_kind", (q) => q.eq("orgId", org._id).eq("kind", "ageing"))
+    .order("desc")
+    .first();
+  if (!isImported(org)) return row ? { ...row.data, version: row.version, createdAt: row.createdAt } : null;
+  if (!org.asOf) return null;
+  if (row && row.version === org.actualsVersion && (row.data === null || row.data?.source === "journals")) return row.data;
+  const items = await importedOpenItems(ctx, org._id);
+  return items ? ageItems(items, monthEnd(org.asOf)) : null;
+}
 
 async function latest(ctx: QueryCtx, kind: "statements" | "ageing" | "reconciliation") {
   const found = await currentOrg(ctx);
@@ -98,13 +138,7 @@ export const ageing = query({
   args: {},
   handler: async (ctx) => {
     const found = await currentOrg(ctx);
-    if (!found) return null;
-    if (found.org.source === "csv" || found.org.source === "sample") {
-      if (!found.org.asOf) return null;
-      const items = await importedOpenItems(ctx, found.org._id);
-      return items ? ageItems(items, monthEnd(found.org.asOf)) : null;
-    }
-    return latest(ctx, "ageing");
+    return found ? ageingFor(ctx, found.org) : null;
   },
 });
 export const reconciliation = query({ args: {}, handler: (ctx) => latest(ctx, "reconciliation") });
