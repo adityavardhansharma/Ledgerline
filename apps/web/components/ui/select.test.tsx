@@ -43,3 +43,8 @@ test("string options work, a name submits the value, and an agent can choose by 
   expect(result.ok, result.error?.message).toBe(true);
   expect(screen.getByRole("combobox", { name: "Financial year starts" }).textContent).toBe("Jul");
 });
+
+test("a select without a visible label is named by its aria-label", () => {
+  render(<Select id="scenario-picker" aria-label="Scenario" value="b" onChange={() => {}} options={[{ value: "a", label: "Base case (base)" }, { value: "b", label: "Hire two fitters" }]} />);
+  expect(screen.getByRole("combobox", { name: "Scenario" }).textContent).toBe("Hire two fitters");
+});

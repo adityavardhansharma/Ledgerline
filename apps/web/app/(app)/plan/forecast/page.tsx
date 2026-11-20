@@ -90,6 +90,7 @@ function ForecastScreen() {
         <>
           <Select
             id="scenario-picker"
+            aria-label="Scenario"
             value={scenarioId ?? ""}
             onChange={(e) => router.push(`${ROUTES.forecast}?scenario=${e.target.value}`)}
             options={(scenarios ?? []).map((s) => ({ value: s.id, label: s.isBase ? `${s.name} (base)` : s.name }))}
