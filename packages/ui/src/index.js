@@ -2,6 +2,7 @@
 /* Ledgerline design system: every component, chart and helper. Generated from the published system, now the source of truth. */
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { Button as ButtonPart } from '@ui-sdk/react/button';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Dialog as DialogRoot, DialogBackdrop, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
 import { Menu as MenuRoot, MenuContent, MenuGroup, MenuGroupLabel, MenuItem as MenuItemPart, MenuItemIndicator, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from '@ui-sdk/react/menu';
@@ -162,10 +163,12 @@ function AiOrb(p) {
 function Spinner(p) {
   return h('span', { className: cx('ll-spinner', p && p.className), role: 'status', 'aria-label': (p && p.label) || 'Loading' });
 }
+// Passed as another part's render, like a menu trigger, the button is that part's element; otherwise it's ui-sdk's.
+function buttonTag(p) { return p['data-slot'] ? 'button' : ButtonPart; }
 function Button(p) {
   var variant = p.variant || 'secondary', size = p.size || 'md';
   var rest = omit(p, ['variant', 'size', 'icon', 'iconRight', 'loading', 'children', 'className', 'block']);
-  return h('button', Object.assign({ type: 'button' }, rest, {
+  return h(buttonTag(p), Object.assign({ type: 'button' }, rest, {
     className: cx('ll-btn', 'll-btn-' + variant, 'll-btn-' + size, p.block && 'll-btn-block', p.loading && 'is-loading', p.className),
     disabled: p.disabled || p.loading, 'aria-busy': p.loading || undefined
   }),
@@ -175,7 +178,7 @@ function Button(p) {
 }
 function IconButton(p) {
   var rest = omit(p, ['icon', 'label', 'variant', 'size', 'className']);
-  return h('button', Object.assign({ type: 'button' }, rest, {
+  return h(buttonTag(p), Object.assign({ type: 'button' }, rest, {
     className: cx('ll-iconbtn', 'll-iconbtn-' + (p.variant || 'ghost'), p.size === 'sm' && 'll-iconbtn-sm', p.className),
     'aria-label': p.label, title: p.label
   }), h(Icon, { name: p.icon, size: p.size === 'sm' ? 16 : 18 }));
