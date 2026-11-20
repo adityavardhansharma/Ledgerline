@@ -1131,14 +1131,15 @@ function Dialog(p) {
     p.inline ? h('div', { className: 'll-scrim is-inline' }, content) : [h(DialogBackdrop, { key: 'b', className: 'll-scrim' }), h(React.Fragment, { key: 'c' }, content)]);
 }
 function Drawer(p) {
-  return h('div', { className: cx('ll-drawer-layer', p.inline && 'is-inline') },
-    p.inline ? null : h('div', { className: 'll-scrim-plain', onClick: p.onClose }),
-    h('aside', { className: 'll-drawer', role: 'dialog', 'aria-label': p.title },
-      h('div', { className: 'll-drawer-head' },
-        h('div', null, p.eyebrow ? h('div', { className: 'll-eyebrow' }, p.eyebrow) : null, h('h2', { className: 'll-drawer-title' }, p.title), p.subtitle ? h('div', { className: 'll-drawer-sub' }, p.subtitle) : null),
-        h(IconButton, { icon: 'close', label: 'Close', onClick: p.onClose })),
-      h('div', { className: 'll-drawer-body' }, p.children),
-      p.footer ? h('div', { className: 'll-drawer-foot' }, p.footer) : null));
+  useReturnFocus();
+  var content = h(DialogContent, { render: h('aside'), className: 'll-drawer', inline: p.inline, initialFocus: p.inline ? 'none' : FIRST_CONTROL },
+    h('div', { className: 'll-drawer-head' },
+      h('div', null, p.eyebrow ? h('div', { className: 'll-eyebrow' }, p.eyebrow) : null, h(DialogTitle, { className: 'll-drawer-title' }, p.title), p.subtitle ? h('div', { className: 'll-drawer-sub' }, p.subtitle) : null),
+      h(DialogClose, { render: h(IconButton, { icon: 'close', label: 'Close' }) })),
+    h('div', { className: 'll-drawer-body' }, p.children),
+    p.footer ? h('div', { className: 'll-drawer-foot' }, p.footer) : null);
+  return h(DialogRoot, { open: true, modal: p.inline ? false : true, onOpenChange: function (open) { if (!open && p.onClose) p.onClose(); } },
+    p.inline ? h('div', { className: 'll-drawer-layer is-inline' }, content) : [h(DialogBackdrop, { key: 'b', className: 'll-scrim-plain' }), h(React.Fragment, { key: 'c' }, content)]);
 }
 function menuItemBody(it) {
   return [it.icon ? h(Icon, { key: 'i', name: it.icon, size: 16 }) : h('span', { key: 'i', className: 'll-menu-pad' }),
