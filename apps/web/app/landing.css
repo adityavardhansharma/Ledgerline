@@ -88,7 +88,7 @@
 .lp-ask-list button .ll-icon { color: var(--ink-subtle); opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .2s; }
 .lp-ask-list button:hover { color: var(--ink); border-color: var(--rule-strong); }
 .lp-ask-list button:hover .ll-icon { opacity: 1; transform: none; }
-.lp-ask-list button.is-on { color: var(--ink); background: var(--surface); border-color: var(--rule-strong); }
+.lp-ask-list button[data-selected] { color: var(--ink); background: var(--surface); border-color: var(--rule-strong); }
 .lp-ask-list button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .lp-ask-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--brand); transform-origin: left; }
 .lp-ask-window { display: flex; flex-direction: column; height: 560px; border: 1px solid var(--rule); border-radius: 20px; background: var(--surface); box-shadow: 0 40px 80px -52px rgba(14, 22, 19, 0.4); overflow: hidden; }

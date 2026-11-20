@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@ledgerline/ui";
+import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { AnimatePresence, motion, useInView } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnswerBody, Reading, ToolOverride } from "../app/chat/Message";
@@ -99,28 +100,30 @@ export function ChatDemo({ children }: { children?: React.ReactNode }) {
     <div className="lp-ask" ref={box}>
       <div className="lp-ask-side">
       {children}
-      <ol className="lp-ask-list" role="tablist" aria-label="Example questions">
-        {CONVERSATIONS.map((q, i) => (
-          <li key={q.question}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={i === index}
-              className={i === index ? "is-on" : undefined}
-              onClick={() => {
-                setAuto(false);
-                setIndex(i);
-              }}
-            >
-              <span className="lp-ask-text">{q.question}</span>
-              <Icon name="arrow-right" size={14} />
-              {i === index && auto ? (
-                <motion.i className="lp-ask-progress" key={`${index}-${done}`} initial={{ scaleX: 0 }} animate={{ scaleX: done ? 1 : 0 }} transition={{ duration: done ? HOLD / 1000 : 0, ease: "linear" }} />
-              ) : null}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <Tabs
+        className="ll-tabs-root"
+        orientation="vertical"
+        value={String(index)}
+        onValueChange={(v) => {
+          if (v == null) return;
+          setAuto(false);
+          setIndex(Number(v));
+        }}
+      >
+        <TabsList render={<ol />} className="lp-ask-list" aria-label="Example questions">
+          {CONVERSATIONS.map((q, i) => (
+            <li key={q.question} role="presentation">
+              <TabsTab value={String(i)}>
+                <span className="lp-ask-text">{q.question}</span>
+                <Icon name="arrow-right" size={14} />
+                {i === index && auto ? (
+                  <motion.i className="lp-ask-progress" key={`${index}-${done}`} initial={{ scaleX: 0 }} animate={{ scaleX: done ? 1 : 0 }} transition={{ duration: done ? HOLD / 1000 : 0, ease: "linear" }} />
+                ) : null}
+              </TabsTab>
+            </li>
+          ))}
+        </TabsList>
+      </Tabs>
       </div>
       <div className="lp-ask-window">
         <div className="lp-ask-head">
