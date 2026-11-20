@@ -663,7 +663,7 @@ g.is-dim { opacity: .3; }
 .ll-assume-label { font-size: 13.5px; line-height: 20px; font-weight: 550; }
 .ll-assume-base { font: 400 11.5px var(--font-mono); color: var(--ink-subtle); text-decoration: line-through; text-decoration-color: var(--rule-strong); }
 .ll-assume-row { display: flex; align-items: center; gap: var(--space-3); }
-.ll-assume-row input[type=range] { flex: 1; }
+.ll-assume-range { flex: 1; }
 .ll-assume-num { width: 112px; flex: none; height: 34px; }
 .ll-assume.is-changed .ll-assume-label::after { content: 'changed'; margin-left: 8px; font: 600 10px/14px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--forecast); background: var(--forecast-tint); padding: 2px 7px; border-radius: var(--radius-pill); vertical-align: 1px; }
 .ll-assume.is-changed .ll-assume-num { border-color: var(--forecast); box-shadow: 0 0 0 3px var(--forecast-tint); }
