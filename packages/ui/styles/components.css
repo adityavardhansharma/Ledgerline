@@ -2032,13 +2032,16 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer[popover]) 
 .ll-src-pop li button:hover { background: var(--surface-hover); }
 .ll-src-pop li button:focus-visible { outline: 2px solid var(--focus); }
 .ll-src-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--surface-sunken); color: var(--ink-muted); }
-.ll-src-pop li button.is-on .ll-src-ico { background: var(--brand-tint); color: var(--brand); }
+.ll-src-pop li button[data-checked] .ll-src-ico { background: var(--brand-tint); color: var(--brand); }
 .ll-src-text b { display: block; font: 500 13px/1.3 var(--font-sans); color: var(--ink); }
 .ll-src-text small { display: block; font-size: 11.5px; line-height: 1.35; color: var(--ink-subtle); }
 .ll-src-check { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--rule-strong); color: var(--on-brand); }
-.ll-src-pop li button.is-on .ll-src-check { background: var(--brand); border-color: var(--brand); }
+.ll-src-pop li button[data-checked] .ll-src-check { background: var(--brand); border-color: var(--brand); }
 .ll-src-pop footer { padding: 8px 8px 4px; margin-top: 4px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-subtle); }
-.ll-src-pop { position: fixed; left: auto; bottom: auto; z-index: 1000; }
+.ll-src-pop { margin: 0; transform-origin: var(--transform-origin); transition: opacity .2s cubic-bezier(.22, 1, .36, 1), translate .2s cubic-bezier(.22, 1, .36, 1), scale .2s cubic-bezier(.22, 1, .36, 1); }
+.ll-src-pop[data-starting-style] { opacity: 0; translate: 0 6px; scale: .98; }
+.ll-src-pop[data-ending-style] { opacity: 0; translate: 0 4px; scale: .98; transition-duration: .12s; }
+@media (prefers-reduced-motion: reduce) { .ll-src-pop { transition: none; } }
 .ll-versions button > .ll-ver-tags { flex: none; display: inline-flex; flex-direction: row; gap: 6px; }
 .ll-report-pair.is-wide-left { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; }
 @container main (max-width: 760px) { .ll-report-pair.is-wide-left { grid-template-columns: minmax(0, 1fr); } }
