@@ -1,6 +1,7 @@
 "use client";
 
 import { AiOrb, Badge, Banner, Button, Dialog, Icon, IconButton, SegmentedControl, Skeleton } from "@ledgerline/ui";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@ui-sdk/react/collapsible";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { AnimatePresence, motion } from "motion/react";
@@ -286,24 +287,22 @@ export function BoardCommentary({ commentary, busy, onRedraft }: { commentary: C
           </section>
         );
       })}
-      <footer className="ll-bc-foot no-print">
-        <button type="button" className="ll-bc-figures-toggle" onClick={() => setFigures((x) => !x)} aria-expanded={figures}>
+      <Collapsible render={<footer />} className="ll-bc-foot no-print" open={figures} onOpenChange={setFigures}>
+        <CollapsibleTrigger className="ll-bc-figures-toggle">
           <Icon name={figures ? "chevron-up" : "chevron-down"} size={14} /> Every figure cited ({used.length})
-        </button>
-        {figures ? (
-          <table className="ll-bc-figures">
-            <tbody>
-              {used.map((f) => (
-                <tr key={f.id}>
-                  <td>{f.label}</td>
-                  <td className="ll-mono">{f.value}</td>
-                  <td>{f.source}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </footer>
+        </CollapsibleTrigger>
+        <CollapsiblePanel render={<table />} className="ll-bc-figures">
+          <tbody>
+            {used.map((f) => (
+              <tr key={f.id}>
+                <td>{f.label}</td>
+                <td className="ll-mono">{f.value}</td>
+                <td>{f.source}</td>
+              </tr>
+            ))}
+          </tbody>
+        </CollapsiblePanel>
+      </Collapsible>
     </article>
   );
 }
