@@ -4,6 +4,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox as CheckboxRoot } from '@ui-sdk/react/checkbox';
 import { Radio, RadioGroup as RadioGroupRoot } from '@ui-sdk/react/radio';
+import { SegmentedControl as SegmentedRoot, SegmentedControlItem } from '@ui-sdk/react/segmented-control';
 import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 
 const ICONS = {
@@ -242,12 +243,11 @@ function Slider(p) {
     p.marks ? h('div', { className: 'll-slider-marks', 'aria-hidden': true }, p.marks.map(function (m) { return h('span', { key: m }, p.format ? p.format(m) : m); })) : null);
 }
 function SegmentedControl(p) {
-  var st = useState(p.defaultValue || p.options[0].value), val = p.value != null ? p.value : st[0];
-  return h('div', { className: cx('ll-seg', p.size === 'sm' && 'll-seg-sm'), role: 'radiogroup', 'aria-label': p.label },
+  var state = p.value != null ? { value: p.value } : { defaultValue: p.defaultValue || p.options[0].value };
+  return h(SegmentedRoot, Object.assign({ className: cx('ll-seg', p.size === 'sm' && 'll-seg-sm'), 'aria-label': p.label,
+    onValueChange: function (v) { if (v != null && p.onChange) p.onChange(v); } }, state),
     p.options.map(function (o) {
-      var on = o.value === val;
-      return h('button', { key: o.value, type: 'button', role: 'radio', 'aria-checked': on, className: cx('ll-seg-opt', on && 'is-on'),
-        onClick: function () { st[1](o.value); p.onChange && p.onChange(o.value); } }, o.icon ? h(Icon, { name: o.icon, size: 16 }) : null, o.label);
+      return h(SegmentedControlItem, { key: o.value, value: o.value, className: 'll-seg-opt' }, o.icon ? h(Icon, { name: o.icon, size: 16 }) : null, o.label);
     }));
 }
 function Tabs(p) {

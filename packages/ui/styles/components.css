@@ -117,7 +117,7 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .ll-seg-opt { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-muted); font: 500 13px/18px var(--font-sans); cursor: pointer; transition: all .15s; }
 .ll-seg-sm .ll-seg-opt { height: 24px; padding: 0 9px; font-size: 12px; }
 .ll-seg-opt:hover { color: var(--ink); }
-.ll-seg-opt.is-on { background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-xs), 0 0 0 1px var(--rule); font-weight: 600; }
+.ll-seg-opt[data-checked] { background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-xs), 0 0 0 1px var(--rule); font-weight: 600; }
 .ll-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); overflow-x: auto; }
 .ll-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--ink-muted); font: 500 14px/20px var(--font-sans); cursor: pointer; white-space: nowrap; border-radius: 8px 8px 0 0; }
 .ll-tab:hover { color: var(--ink); background: var(--surface-hover); }
