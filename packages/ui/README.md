@@ -27,14 +27,14 @@ not from hidden native inputs.
 | SegmentedControl, Tabs                      | SegmentedControl, Tabs                    |
 | Slider, AssumptionField                     | Slider                                    |
 | Select                                      | Select                                    |
-| Menu (with `trigger`), ScenarioSwitcher     | Menu, MenuRadioGroup                      |
+| Menu, ScenarioSwitcher                      | Menu, MenuRadioGroup                      |
 | Dialog, Drawer                              | Dialog                                    |
 | Tooltip                                     | Tooltip                                   |
 
 What changed for callers:
 
-- `Menu` takes a `trigger` element and becomes a whole menu that opens from it, named by the trigger. Without one it
-  still renders the open list on its own.
+- `Menu` needs a `trigger` element: it's a whole menu that opens from it, named by the trigger. An item's `confirm`
+  marks it with `data-agent-confirm`, so an agent has to ask a person before running it.
 - `Select` calls `onChange` with `{ target: { value } }`, as a native select did, and `onValueChange` with the value.
 - `Tooltip` makes a single element child its trigger; text becomes a focusable info button. `focusable` is no longer
   needed.

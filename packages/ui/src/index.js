@@ -1173,18 +1173,11 @@ function menuEntry(it, i) {
   return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, 'data-agent-confirm': it.confirm, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
 }
 function Menu(p) {
-  if (p.trigger) {
-    var state = p.open != null ? { open: p.open } : {};
-    return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
-      h(MenuTrigger, { render: p.trigger, disabled: !!(p.trigger.props.disabled || p.trigger.props.loading) }),
-      h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
-        menuGroups(p.items).map(menuEntry)));
-  }
-  return h('div', { className: 'll-menu', role: 'menu', 'aria-label': p.label }, p.items.map(function (it, i) {
-    if (it.divider) return h('div', { key: i, className: 'll-menu-div', role: 'separator' });
-    if (it.heading) return h('div', { key: i, className: 'll-menu-head' }, it.heading);
-    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick }, menuItemBody(it));
-  }));
+  var state = p.open != null ? { open: p.open } : {};
+  return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
+    h(MenuTrigger, { render: p.trigger, disabled: !!(p.trigger.props.disabled || p.trigger.props.loading) }),
+    h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
+      menuGroups(p.items).map(menuEntry)));
 }
 function CommandPalette(p) {
   return h('div', { className: 'll-cmd', role: 'dialog', 'aria-label': 'Command palette' },

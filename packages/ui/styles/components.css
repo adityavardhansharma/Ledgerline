@@ -915,7 +915,7 @@ g.is-dim { opacity: .3; }
 
 /* ---------- export ---------- */
 .ll-export-menu { position: relative; display: inline-flex; }
-.ll-export-menu > .ll-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 240px; }
+.ll-export-menu .ll-menu { width: 240px; }
 .ll-export-error { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 320px; }
 @media print { .ll-export-menu { display: none !important; } }
 .ll-drop.is-invalid { border-color: var(--negative); }
@@ -1122,7 +1122,7 @@ g.is-dim { opacity: .3; }
 .ll-tm-lval { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
 .ll-tm-lpct { font-family: var(--font-mono); text-align: right; color: var(--ink-subtle); }
 .ll-picker-wrap { position: relative; display: inline-flex; }
-.ll-picker-wrap > .ll-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 240px; }
+.ll-picker-wrap .ll-menu { width: 240px; }
 .ll-picker:disabled { cursor: default; }
 .ll-picker.is-static { cursor: default; } .ll-picker.is-static:hover { border-color: var(--rule); }
 
@@ -1218,7 +1218,7 @@ g.is-dim { opacity: .3; }
 .ll-ai-changes li > div strong { font-weight: 600; }
 .ll-ai-changes li p { margin: 4px 0 0; font-size: 13.5px; line-height: 20px; color: var(--ink-muted); }
 .ll-ai-pop-wrap { position: relative; display: inline-flex; }
-.ll-ai-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-overlay); width: 260px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--rule); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; }
+.ll-ai-pop { margin: 0; width: 260px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--rule); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; }
 .ll-ai-pop button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; line-height: 19px; }
 .ll-ai-pop button:hover { background: var(--surface-hover); }
 .ll-ai-pop .ll-ai-error { padding: 8px 10px; }
@@ -1949,7 +1949,6 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-scn-num.is-bad { color: var(--negative); }
 .ll-scn-actions { position: relative; display: flex; justify-content: flex-end; }
 .ll-scn-name[data-slot="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
-.ll-scn-menu { position: absolute; right: 0; top: 36px; z-index: 30; }
 @container main (max-width: 820px) {
   .ll-scn-row { grid-template-columns: minmax(0, 1fr) auto 40px; }
   .ll-scn-row.is-head, .ll-scn-spark, .ll-scn-row > .ll-scn-num:nth-of-type(3), .ll-scn-row > .ll-scn-num:nth-of-type(4) { display: none; }
@@ -2017,7 +2016,7 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer[popover]) 
 .ll-src-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ll-src-clear { all: unset; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--ink-subtle); cursor: pointer; }
 .ll-src-clear:hover { background: var(--surface-hover); color: var(--ink); }
-.ll-src-pop { position: absolute; left: -6px; bottom: calc(100% + 10px); z-index: 10; width: 320px; padding: 8px; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface-raised); box-shadow: var(--shadow-modal); transform-origin: 20% 100%; }
+.ll-src-pop { width: 320px; padding: 8px; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface-raised); box-shadow: var(--shadow-modal); transform-origin: 20% 100%; }
 .ll-src-pop header { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 8px; }
 .ll-src-pop header b { font: 600 13px/1 var(--font-sans); }
 .ll-src-pop header button { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 999px; font: 500 12px/1 var(--font-sans); color: var(--ink-muted); border: 1px solid var(--rule); }
@@ -2275,7 +2274,7 @@ body:has(.ll-scrim:not(.is-inline)) .ll-ask-pill, body:has(.ll-drawer[popover]) 
   .ll-drawer[popover] { inset: 0; width: 100%; max-width: 100%; border-radius: 0; border: 0; padding-bottom: env(safe-area-inset-bottom); }
   .ll-dialog { max-height: calc(100dvh - 24px); }
   .ll-export-error { width: min(320px, calc(100vw - 32px)); }
-  .ll-export-menu > .ll-menu { width: min(240px, calc(100vw - 32px)); }
+  .ll-export-menu .ll-menu { width: min(240px, calc(100vw - 32px)); }
 }
 
 /* Touch screens: comfortable targets, controls that don't hide behind hover, no zoom on focus. */
