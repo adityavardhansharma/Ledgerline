@@ -1618,8 +1618,8 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-settings-nav button b { display: block; font: 500 14px/1.35 var(--font-sans); }
 .ll-settings-nav button small { display: block; font-size: 12px; line-height: 1.4; color: var(--ink-subtle); }
 .ll-settings-nav button:hover { background: var(--surface-hover); color: var(--ink); }
-.ll-settings-nav button.is-on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--rule); }
-.ll-settings-nav button.is-on .ll-icon { color: var(--brand); }
+.ll-settings-nav button[data-selected] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--rule); }
+.ll-settings-nav button[data-selected] .ll-icon { color: var(--brand); }
 .ll-settings-nav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ll-settings-body { display: flex; flex-direction: column; gap: 32px; max-width: 820px; min-width: 0; }
 .ll-setting-group > h2 { margin: 0 0 4px; font: 600 13px/1.4 var(--font-sans); color: var(--ink-subtle); }
