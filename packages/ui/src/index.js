@@ -985,7 +985,7 @@ function FinancialStatement(p) {
     // An unusual movement: a dot with its reason on hover.
     if (flag) inner = h('span', { className: 'll-fs-flagged' }, h('span', { className: 'll-fs-flag', 'data-tip': flag.text, 'aria-label': flag.text, tabIndex: 0 }), inner);
     return h('td', { key: ci, className: cx('ll-fs-num', isF && 'is-forecast', p.totalColumn && ci === cols.length - 1 && 'is-totalcol', sel === key && 'is-selected') },
-      clickable && !isF ? h('button', { type: 'button', className: 'll-fs-drill', 'aria-label': 'Show ledger lines for ' + row.label + ', ' + cols[ci].label,
+      clickable && !isF ? h(ButtonPart, { type: 'button', className: 'll-fs-drill', 'aria-label': 'Show ledger lines for ' + row.label + ', ' + cols[ci].label,
         onClick: function () { st[1](key); p.onDrill && p.onDrill(row, ci); } }, inner) : inner);
   }
   return h('div', { className: 'll-fs-wrap' },
@@ -1297,12 +1297,12 @@ function Sidebar(p) {
   return h('nav', { className: cx('ll-sidebar', collapsed && 'is-collapsed'), 'aria-label': 'Main' },
     h('div', { className: 'll-sidebar-top' },
       h(Link, { href: p.homeHref || '#', className: 'll-sidebar-logo', 'aria-label': 'Ledgerline home' }, h(Logo, { size: 26, variant: collapsed ? 'mark' : undefined })),
-      p.onCollapse ? h('button', { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
+      p.onCollapse ? h(ButtonPart, { type: 'button', className: 'll-sidebar-toggle', onClick: p.onCollapse, 'aria-label': collapsed ? 'Expand sidebar' : 'Collapse sidebar', 'aria-expanded': !collapsed, title: (collapsed ? 'Expand' : 'Collapse') + ' sidebar  [' },
         h(Icon, { name: collapsed ? 'chevron-right' : 'chevron-left', size: 15 })) : null),
     h('div', { className: 'll-sidebar-org' },
       p.orgSwitcher || (collapsed ? h('span', { className: 'll-org-avatar', title: p.org || '' }, initials(p.org || '?')) : h(OrgSwitcher, { name: p.org || 'Kestrel Joinery Ltd', meta: p.orgMeta || 'Xero · EUR · FY Jan–Dec' }))),
-    p.onAsk ? h('button', { type: 'button', className: 'll-sidebar-ask', onClick: p.onAsk, 'aria-label': 'Ask Ledgerline', 'data-label': 'Ask Ledgerline' }, h('span', { className: 'll-ask-orb', 'aria-hidden': true }), h('span', { className: 'll-sidebar-ask-text' }, 'Ask Ledgerline'), h('kbd', null, p.askShortcut || 'Ctrl J')) : null,
-    p.onSearch ? h('button', { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
+    p.onAsk ? h(ButtonPart, { type: 'button', className: 'll-sidebar-ask', onClick: p.onAsk, 'aria-label': 'Ask Ledgerline', 'data-label': 'Ask Ledgerline' }, h('span', { className: 'll-ask-orb', 'aria-hidden': true }), h('span', { className: 'll-sidebar-ask-text' }, 'Ask Ledgerline'), h('kbd', null, p.askShortcut || 'Ctrl J')) : null,
+    p.onSearch ? h(ButtonPart, { type: 'button', className: 'll-search', onClick: p.onSearch, 'aria-label': 'Search', 'data-label': 'Search' }, h(Icon, { name: 'search', size: 16 }), h('span', null, 'Search'), h(Kbd, null, 'Ctrl K')) : null,
     h('div', { className: 'll-sidebar-nav' }, items.map(function (it, i) {
       if (it.heading) return h('div', { key: i, className: 'll-nav-head' }, h('span', null, it.heading));
       return h(NavItem, Object.assign({ key: it.id, linkAs: p.linkAs }, it, { active: it.id === p.active }));
@@ -1317,7 +1317,7 @@ function Sidebar(p) {
 function PeriodPicker(p) {
   // Shows the period the page covers. It only behaves as a control once it is given a way to change it.
   if (!p.onClick) return h('span', { className: 'll-picker is-static' }, h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'));
-  return h('button', { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog', onClick: p.onClick },
+  return h(ButtonPart, { type: 'button', className: 'll-picker', 'aria-haspopup': 'dialog', onClick: p.onClick },
     h(Icon, { name: 'calendar', size: 16 }), h('span', null, p.label || 'Jan – Dec 2026'), h(Icon, { name: 'chevron-down', size: 14 }));
 }
 function MonthGrid(p) {
@@ -1354,7 +1354,7 @@ function Topbar(p) {
   // A slim bar that stays put (where you are, its status, the page's actions), then the title, which scrolls away.
   return h(React.Fragment, null,
     h('header', { className: 'll-topbar' },
-      p.onMenu ? h('button', { type: 'button', className: 'll-topbar-menu', onClick: p.onMenu, 'aria-label': 'Open navigation' }, h(Icon, { name: 'menu', size: 18 })) : null,
+      p.onMenu ? h(ButtonPart, { type: 'button', className: 'll-topbar-menu', onClick: p.onMenu, 'aria-label': 'Open navigation' }, h(Icon, { name: 'menu', size: 18 })) : null,
       h('div', { className: 'll-topbar-l' }, p.breadcrumbs ? h(Breadcrumbs, { items: p.breadcrumbs }) : null, p.status ? h('span', { className: 'll-topbar-status' }, p.status) : null),
       h('div', { className: 'll-topbar-r' }, p.children)),
     h('div', { className: 'll-pagehead' }, h('h1', { className: 'll-page-title' }, p.title), p.subtitle ? h('p', { className: 'll-page-sub' }, p.subtitle) : null));
@@ -1363,7 +1363,7 @@ function AppShell(p) {
   var sidebar = Object.assign({ active: p.active, org: p.org, rail: p.rail, runway: p.runway, syncText: p.syncText, syncing: p.syncing }, p.sidebar || {});
   return h('div', { className: cx('ll-shell', sidebar.collapsed && 'is-collapsed', p.navOpen && 'is-nav-open') },
     h(Sidebar, sidebar),
-    p.navOpen ? h('button', { type: 'button', className: 'll-nav-scrim', 'aria-label': 'Close navigation', onClick: p.onMenu }) : null,
+    p.navOpen ? h(ButtonPart, { type: 'button', className: 'll-nav-scrim', 'aria-label': 'Close navigation', onClick: p.onMenu }) : null,
     h('main', { className: 'll-main' },
       h(Topbar, { title: p.title, subtitle: p.subtitle, breadcrumbs: p.breadcrumbs, status: p.status, onMenu: p.onMenu }, p.actions),
       h('div', { className: 'll-page' }, p.children)),
@@ -1476,7 +1476,7 @@ function CommentaryCard(p) {
       h('span', { className: 'll-comm-meta' }, p.meta || 'Written from computed figures · every number links to its source')),
     h('div', { className: 'll-comm-body' }, p.paragraphs.map(function (para, i) {
       return h('p', { key: i }, para.map(function (part, j) {
-        return typeof part === 'string' ? part : h('button', { key: j, type: 'button', className: 'll-cite', title: part.source }, part.text);
+        return typeof part === 'string' ? part : h(ButtonPart, { key: j, type: 'button', className: 'll-cite', title: part.source }, part.text);
       }));
     })),
     p.actions ? h('div', { className: 'll-comm-foot' }, p.actions) : null);
