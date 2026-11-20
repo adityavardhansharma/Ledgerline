@@ -993,9 +993,9 @@ g.is-dim { opacity: .3; }
 .ll-drv-tabs { display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--surface-sunken); border: 1px solid var(--rule); }
 .ll-drv-tabs button { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; height: 32px; padding: 0 7px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-muted); font: 500 12.5px/16px var(--font-sans); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
 .ll-drv-tabs button:hover { color: var(--ink); }
-.ll-drv-tabs button.is-on { background: var(--surface-raised); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-xs), 0 0 0 1px var(--rule); }
+.ll-drv-tabs button[data-selected] { background: var(--surface-raised); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-xs), 0 0 0 1px var(--rule); }
 .ll-drv-tabs button span { font: 600 10.5px/16px var(--font-mono); min-width: 18px; padding: 0 5px; border-radius: var(--radius-pill); background: var(--surface-hover); color: var(--ink-muted); }
-.ll-drv-tabs button.is-on span { background: var(--brand-tint); color: var(--brand); }
+.ll-drv-tabs button[data-selected] span { background: var(--brand-tint); color: var(--brand); }
 .ll-drv-body { margin-top: var(--space-4); }
 .ll-plan { display: flex; flex-direction: column; gap: var(--space-3); }
 .ll-plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
@@ -1900,8 +1900,8 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 22%
 .ll-inspector .ll-drv-tabs { display: flex; gap: 12px; margin: 4px 0 0; padding: 0; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: none; }
 .ll-inspector .ll-drv-tabs button { all: unset; position: relative; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 8px 0 10px; font: 500 12.5px/1 var(--font-sans); color: var(--ink-subtle); cursor: pointer; background: none !important; box-shadow: none !important; transition: color .15s; }
 .ll-inspector .ll-drv-tabs button:hover { color: var(--ink); }
-.ll-inspector .ll-drv-tabs button.is-on { color: var(--ink); }
-.ll-inspector .ll-drv-tabs button.is-on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand); }
+.ll-inspector .ll-drv-tabs button[data-selected] { color: var(--ink); }
+.ll-inspector .ll-drv-tabs button[data-selected]::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand); }
 .ll-inspector .ll-drv-tabs button span { font: 600 10.5px/16px var(--font-mono); padding: 0 5px; border-radius: 999px; background: var(--brand-tint); color: var(--brand); }
 .ll-inspector .ll-drv-tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ll-drv-group { padding-top: 14px; }
