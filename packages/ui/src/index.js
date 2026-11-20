@@ -2,6 +2,7 @@
 /* Ledgerline design system: every component, chart and helper. Generated from the published system, now the source of truth. */
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { Switch as SwitchRoot, SwitchThumb } from '@ui-sdk/react/switch';
 
 const ICONS = {
 "overview": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"8\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1.5\"/><rect x=\"3\" y=\"15\" width=\"7\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1.5\"/>",
@@ -222,12 +223,11 @@ function RadioGroup(p) {
     }));
 }
 function Switch(p) {
-  var st = useState(!!p.defaultChecked), on = p.checked != null ? p.checked : st[0];
-  return h('label', { className: cx('ll-switch', p.disabled && 'is-disabled'), htmlFor: p.id },
-    h('input', { id: p.id, type: 'checkbox', role: 'switch', checked: on, disabled: p.disabled,
-      onChange: function (e) { st[1](e.target.checked); p.onChange && p.onChange(e.target.checked); } }),
-    h('span', { className: 'll-switch-track', 'aria-hidden': true }, h('span', { className: 'll-switch-thumb' })),
-    h('span', null, h('span', { className: 'll-switch-label' }, p.label), p.hint ? h('span', { className: 'll-switch-hint' }, p.hint) : null));
+  var state = p.checked != null ? { checked: p.checked } : { defaultChecked: !!p.defaultChecked };
+  return h('label', { className: cx('ll-switch', p.disabled && 'is-disabled') },
+    h(SwitchRoot, Object.assign({ id: p.id, className: 'll-switch-track', disabled: p.disabled, 'aria-labelledby': p.id + '-label',
+      onCheckedChange: function (on) { p.onChange && p.onChange(on); } }, state), h(SwitchThumb, { className: 'll-switch-thumb' })),
+    h('span', null, h('span', { className: 'll-switch-label', id: p.id + '-label' }, p.label), p.hint ? h('span', { className: 'll-switch-hint' }, p.hint) : null));
 }
 function Slider(p) {
   var st = useState(p.defaultValue != null ? p.defaultValue : p.min), val = p.value != null ? p.value : st[0];

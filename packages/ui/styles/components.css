@@ -11,7 +11,7 @@
 .ll-icon { flex: none; display: block; }
 :where(.ll-btn, .ll-iconbtn, .ll-seg-opt, .ll-tab, .ll-nav-item, .ll-org, .ll-picker, .ll-menu-item, .ll-fs-drill, .ll-month, .ll-cite, .ll-crumbs a, .ll-search):focus-visible,
 .ll-check input:focus-visible + .ll-check-box, .ll-radio input:focus-visible + .ll-radio-dot,
-.ll-switch input:focus-visible + .ll-switch-track, input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-switch-track:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* gradient stops and categorical fills (SVG reads these through classes) */
 .ll-stop-brand { stop-color: var(--brand); } .ll-stop-brand-deep { stop-color: var(--brand-hover); }
@@ -86,7 +86,7 @@
 .ll-select select { appearance: none; width: 100%; height: 100%; border: 0; background: transparent; padding: 0 34px 0 12px; font: 400 14px/20px var(--font-sans); color: var(--ink); cursor: pointer; }
 .ll-select-chev { position: absolute; right: 10px; pointer-events: none; color: var(--ink-muted); }
 .ll-check, .ll-radio, .ll-switch { display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; line-height: 20px; color: var(--ink); position: relative; }
-.ll-check input, .ll-radio input, .ll-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ll-check input, .ll-radio input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .ll-check-box { width: 18px; height: 18px; margin-top: 1px; border: 1.5px solid var(--rule-strong); border-radius: 5px; background: var(--surface); display: grid; place-items: center; color: transparent; flex: none; transition: all .15s; }
 .ll-check input:checked + .ll-check-box { background: var(--brand); border-color: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-glow); }
 .is-disabled { opacity: .5; cursor: not-allowed; }
@@ -99,10 +99,10 @@
 .ll-radio input:checked + .ll-radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
 .ll-radio-label, .ll-switch-label { display: block; font-weight: 550; }
 .ll-radio-hint, .ll-switch-hint { display: block; font-size: 13px; line-height: 18px; color: var(--ink-muted); }
-.ll-switch-track { width: 36px; height: 22px; border-radius: var(--radius-pill); background: var(--rule-strong); position: relative; flex: none; transition: background-color .2s; }
+.ll-switch-track { display: block; width: 36px; height: 22px; padding: 0; border: 0; border-radius: var(--radius-pill); background: var(--rule-strong); position: relative; flex: none; cursor: inherit; transition: background-color .2s; }
 .ll-switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .2s cubic-bezier(.3, 1.4, .5, 1); }
-.ll-switch input:checked + .ll-switch-track { background: var(--brand); }
-.ll-switch input:checked + .ll-switch-track .ll-switch-thumb { transform: translateX(14px); }
+.ll-switch-track[data-checked] { background: var(--brand); }
+.ll-switch-track[data-checked] .ll-switch-thumb { transform: translateX(14px); }
 .ll-slider { display: flex; flex-direction: column; gap: var(--space-2); min-width: 220px; }
 .ll-slider-head { display: flex; justify-content: space-between; align-items: baseline; }
 .ll-slider-value { font: 600 13px/18px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--forecast); background: var(--forecast-tint); padding: 1px 8px; border-radius: var(--radius-pill); }
