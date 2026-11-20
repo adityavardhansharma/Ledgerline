@@ -12,7 +12,7 @@ import {
   Tabs,
   TornadoChart,
 } from "@ledgerline/ui";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { AppPage } from "@/components/app/AppPage";

@@ -188,6 +188,75 @@ describe("forecasts", () => {
     expect(await owner.action(api.forecast.run, { scenarioId: baseId })).toEqual({ cached: false });
     expect(calls).toHaveLength(2);
     expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(14);
+
+    // The scenario list reads one small summary per scenario, not the whole run.
+    const summaries = await t.run((ctx) => ctx.db.query("forecastSummaries").collect());
+    expect(summaries).toHaveLength(1);
+    const [listed] = await owner.query(api.scenarios.list, {});
+    expect(listed.summary).toEqual({ runwayMonths: 14, cashOutPeriod: "2027-12", endCash: 0, lowestCash: 0, revenueFirst12: 0, ebitdaFirst12: 0 });
+    // New actuals make the summary stale until the next run.
+    await t.mutation(internal.reports.storeSnapshot, { orgId, kind: "statements", bumpVersion: true, asOf: "2026-10", data: {} });
+    expect((await owner.query(api.scenarios.list, {}))[0].summary).toBeNull();
+  });
+});
+
+describe("forecasts on write", () => {
+  it("rebuilds a scenario's forecast, and its branches', in the background after an edit", async () => {
+    vi.useFakeTimers();
+    const { t, owner, orgId } = await setup();
+    const runs: { debtorDays: number; bands: boolean }[] = [];
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      runs.push({ debtorDays: body.drivers.debtorDays, bands: body.bands });
+      const extra = body.bands ? { bands: { p10: [], p25: [], p75: [], p90: [] } } : {};
+      return new Response(JSON.stringify({ months: [], runwayMonths: body.drivers.debtorDays, cashOutPeriod: null, lowestCash: 0, endCash: 0, revenueFirst12: 0, ebitdaFirst12: 0, ...extra }), { status: 200 });
+    });
+    // New actuals create the base case and forecast it without anyone opening a page.
+    await t.mutation(internal.reports.storeSnapshot, {
+      orgId,
+      kind: "statements",
+      bumpVersion: true,
+      asOf: "2026-09",
+      data: { drivers: { startPeriod: "2026-10", revenueLastMonth: 22_890_000, growth: 0, grossMargin: 0.42, debtorDays: 41, creditorDays: 32, stockDays: 0, overheadGrowth: 0.04, overheadsMonthly: 6_830_000, opening: { cash: 41_230_000 } } },
+    });
+    const baseId = await t.mutation(internal.scenarios.ensureBase, { orgId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(41);
+
+    const branchId = await owner.mutation(api.scenarios.branch, { fromId: baseId, name: "Slower payers" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(41);
+
+    // An edit to the base reaches the branch that inherits it.
+    runs.length = 0;
+    await owner.mutation(api.scenarios.setOverride, { id: baseId, key: "debtorDays", value: 60 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(60);
+    expect((await owner.query(api.forecast.latest, { scenarioId: branchId }))?.runwayMonths).toBe(60);
+    // Each scenario got a quick pass first, then the full run with bands, which is what pages now show.
+    expect(runs.map((r) => r.bands).sort()).toEqual([false, false, true, true]);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.bands).toBeDefined();
+
+    // Going back to the earlier value shows its stored forecast again, without asking the engine.
+    runs.length = 0;
+    await owner.mutation(api.scenarios.setOverride, { id: baseId, key: "debtorDays", value: null });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(runs).toHaveLength(0);
+    expect((await owner.query(api.forecast.latest, { scenarioId: baseId }))?.runwayMonths).toBe(41);
+    vi.useRealTimers();
+  });
+
+  it("drops a result whose inputs changed while the engine worked", async () => {
+    const { t, owner, orgId } = await setup();
+    await t.mutation(internal.reports.storeSnapshot, { orgId, kind: "statements", bumpVersion: true, asOf: "2026-09", data: { drivers: { debtorDays: 41 } } });
+    const baseId = await t.run((ctx) => ctx.db.insert("scenarios", { orgId, name: "Base case", isBase: true, overrides: {}, hires: [], oneOffs: [], financing: [], createdBy: "test", createdAt: 0, updatedAt: 0 }));
+    vi.stubGlobal("fetch", async () => {
+      // Someone changes a driver while this run is in flight.
+      await t.run((ctx) => ctx.db.patch(baseId, { overrides: { debtorDays: 90 } }));
+      return new Response(JSON.stringify({ months: [], runwayMonths: 41 }), { status: 200 });
+    });
+    await owner.action(api.forecast.run, { scenarioId: baseId });
+    expect(await owner.query(api.forecast.latest, { scenarioId: baseId })).toBeNull();
   });
 });
 
@@ -866,10 +935,19 @@ describe("AI actions and search", () => {
   });
 
   it("works out unpaid invoices from imported journals and drafts a reminder from them", async () => {
-    const { owner, calls } = await books();
+    const { t, owner, orgId, calls } = await books();
     const ageing = (await owner.query(api.reports.ageing, {})) as { receivableTop: { contact: string; value: number }[]; receivable: { value: number }[] };
     expect(ageing.receivableTop).toEqual([{ contact: "Seaview Hotel", value: 25_000 }]);
     expect(ageing.receivable.reduce((s, b) => s + b.value, 0)).toBe(25_000);
+    // Worked out once when the figures were built, so the overview doesn't reread the ledger on every view.
+    const stored = await t.run((ctx) => ctx.db.query("reportSnapshots").withIndex("by_org_kind", (q) => q.eq("orgId", orgId).eq("kind", "ageing")).collect());
+    expect(stored).toHaveLength(1);
+    expect(stored[0].data).toEqual(ageing);
+    // A company imported before those snapshots existed still gets its ageing, worked out on the spot.
+    await t.run(async (ctx) => {
+      for (const row of stored) await ctx.db.delete(row._id);
+    });
+    expect(await owner.query(api.reports.ageing, {})).toEqual(ageing);
     await owner.action(api.aiActions.reminder, { contact: "Seaview Hotel" });
     const body = calls.find((c) => c.url.endsWith("/actions/reminder"))!.body;
     expect(body).toMatchObject({ contact: "Seaview Hotel", as_of: "2026-09-30", items: [{ number: "INV-2", due_date: "2026-10-04", amount_due_cents: 25_000 }] });

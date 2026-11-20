@@ -1,22 +1,20 @@
 "use client";
 
-import { OrganizationSwitcher, UserButton, useAuth, useUser } from "@clerk/nextjs";
-import { AppShell, Banner, Button, EmptyState, Icon, StatusPill } from "@ledgerline/ui";
+import { Banner, Button, EmptyState, Icon } from "@ledgerline/ui";
 import { useAction } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/convex/_generated/api";
 import { ago, periodLabel } from "@/lib/format";
-import { NAV_ITEMS, ROUTES, type NavId } from "@/lib/nav";
+import { ROUTES, type NavId } from "@/lib/nav";
 import { clerkConfigured, convexConfigured } from "@/lib/config";
-import { ThemeToggle } from "../ThemeToggle";
 import { BackendStatus } from "./BackendStatus";
+import { useFrame } from "./AppFrame";
 import { ImportProgress, useImport } from "./ImportPanel";
 import { SetupNeeded } from "./SetupNeeded";
-import { useGlide } from "./useGlide";
-import { useCompanyLimit, useWorkspace, type Workspace } from "./useWorkspace";
-
+import type { Workspace } from "./useWorkspace";
 
 interface Props {
   active: NavId | "settings";
@@ -30,148 +28,18 @@ interface Props {
   children: (workspace: Workspace) => ReactNode;
 }
 
-const COLLAPSED_KEY = "ll-sidebar-collapsed";
-
-// What glides when a page's layout jumps (see useGlide): every block the pages are built from, and any top-level
-// block that holds none of them. Only the innermost match moves, so nothing glides twice.
-const GLIDES = ".ll-flow > *, .ll-summary > div, .ll-takeaway, .ll-brief, .ll-glide, .ll-report-hero, .ll-rail-block, .ll-panel, .ll-banner";
-
-/**
- * Between 901 and 1319px of window the sidebar shows as icons unless it's opened. The page's main column is the width
- * every page lays itself out by, and a full sidebar arriving at 900px would take 262px from it at once: the column
- * would grow to 899px, drop to 638px and grow again, so every fold between those widths (two figures across, a rail
- * beside a chart, a list beside a form) would happen, undo itself and happen again as the window widened. The icons
- * take 72px, from 899 to about 829, where no page folds; the full sidebar arrives at 1320px, taking the column from
- * about 1246 to 1058, where no page folds either. So the column only grows between jumps, and each fold happens once.
- */
-const ICONS_BETWEEN = "(min-width: 901px) and (max-width: 1319px)";
-
-const inIconsBand = () => window.matchMedia(ICONS_BETWEEN).matches;
-
-function useIconsBand() {
-  return useSyncExternalStore(
-    (changed) => {
-      const query = window.matchMedia(ICONS_BETWEEN);
-      query.addEventListener("change", changed);
-      return () => query.removeEventListener("change", changed);
-    },
-    inIconsBand,
-    () => false,
-  );
-}
-
-/**
- * Whether the sidebar is narrowed to icons: remembered per browser, toggled with "[" anywhere but a text field. In the
- * icons band it starts narrowed, and the toggle opens it for this visit without changing what's remembered.
- */
-function useCollapsed() {
-  const [remembered, setRemembered] = useState(false);
-  const [opened, setOpened] = useState(false);
-  const band = useIconsBand();
-  useEffect(() => {
-    try {
-      setRemembered(localStorage.getItem(COLLAPSED_KEY) === "1");
-    } catch {}
-  }, []);
-  const toggle = () => {
-    if (inIconsBand()) return setOpened((was) => !was);
-    setRemembered((was) => {
-      try {
-        localStorage.setItem(COLLAPSED_KEY, was ? "0" : "1");
-      } catch {}
-      return !was;
-    });
-  };
-  const collapsed = band ? !opened : remembered;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
-      toggle();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-  return [collapsed, toggle] as const;
-}
-
-function NextLink({ href, ...rest }: { href: string } & Record<string, unknown>) {
-  return <Link href={href} {...rest} />;
-}
-
 export function AppPage(props: Props) {
   if (!convexConfigured || !clerkConfigured) return <SetupNeeded />;
-  return <ConnectedPage {...props} />;
+  return <PageInFrame {...props} />;
 }
 
-function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay, needsData, children }: Props) {
-  const workspace = useWorkspace();
-  const companyLimit = useCompanyLimit(workspace);
-  const { orgId, isLoaded } = useAuth();
-  const { user } = useUser();
-  const userName = user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || workspace?.user || "";
-  const roleName = workspace ? { owner: "Owner", editor: "Editor", accountant: "Accountant" }[workspace.role] : "";
-  const router = useRouter();
-  const [collapsed, toggleCollapsed] = useCollapsed();
-  const [navOpen, setNavOpen] = useState(false);
-  useEffect(() => {
-    if (isLoaded && !orgId) router.replace("/onboarding");
-  }, [isLoaded, orgId, router]);
-
-  const syncing = workspace?.lastSync && ["queued", "running", "backingOff"].includes(workspace.lastSync.status);
-  const imported = workspace?.org.source === "csv" || workspace?.org.source === "sample";
-  const sidebar = {
-    linkAs: NextLink,
-    items: NAV_ITEMS,
-    homeHref: ROUTES.overview,
-    collapsed: collapsed && !navOpen,
-    onCollapse: navOpen ? () => setNavOpen(false) : toggleCollapsed,
-    org: workspace?.org.name,
-    settingsHref: ROUTES.settings,
-    runway: null as number | null,
-    user: userName || " ",
-    role: roleName || " ",
-    syncing: Boolean(syncing),
-    syncText: syncing
-      ? `${workspace?.lastSync?.source === "xero" ? "Syncing" : "Importing"} · ${workspace?.lastSync?.journalsStored ?? 0} journals`
-      : imported
-        ? `Imported ${ago(workspace?.org.importedAt)}`
-        : workspace?.connection
-          ? `Synced ${ago(workspace.connection.lastSyncAt)}`
-          : "No figures yet",
-    orgSwitcher: (
-      <OrganizationSwitcher
-        hidePersonal
-        afterSelectOrganizationUrl="/overview"
-        afterCreateOrganizationUrl="/onboarding"
-        appearance={{
-          elements: {
-            rootBox: "ll-orgswitch",
-            organizationSwitcherTrigger: "ll-orgswitch-trigger",
-            organizationPreviewAvatarBox: "ll-orgswitch-avatar",
-            organizationPreviewMainIdentifier: "ll-orgswitch-name",
-            organizationSwitcherTriggerIcon: "ll-orgswitch-chev",
-          },
-        }}
-      />
-    ),
-    userAvatar: <UserButton />,
-    userMenu: <ThemeToggle />,
-  };
-
-  const status = imported && !syncing ? (
-    <StatusPill status="synced">{workspace?.org.source === "sample" ? "Sample company" : "Imported"} {ago(workspace?.org.importedAt)}</StatusPill>
-  ) : workspace?.connection ? (
-    syncing ? (
-      <StatusPill status="syncing">Syncing</StatusPill>
-    ) : workspace.connection.status !== "connected" ? (
-      <StatusPill status="disconnected" />
-    ) : workspace.lastSync?.status === "needsReview" ? (
-      <StatusPill status="mismatch" />
-    ) : (
-      <StatusPill status="synced">Synced {ago(workspace.connection.lastSyncAt)}</StatusPill>
-    )
-  ) : null;
+/** One page inside the app frame: its title and actions go to the frame's top bar, its body to the page area. */
+function PageInFrame({ active, title, subtitle, breadcrumbs, actions, overlay, needsData, children }: Props) {
+  const { workspace, companyLimit, setHead, actionsSlot, overlaySlot } = useFrame();
+  const crumbs = breadcrumbs?.join("\u0000");
+  useLayoutEffect(() => {
+    setHead({ active, title, subtitle, breadcrumbs: crumbs ? crumbs.split("\u0000") : undefined });
+  }, [setHead, active, title, subtitle, crumbs]);
 
   let body: ReactNode;
   if (workspace === null && companyLimit) {
@@ -196,26 +64,13 @@ function ConnectedPage({ active, title, subtitle, breadcrumbs, actions, overlay,
       </>
     );
   }
-  const flow = useRef<HTMLDivElement>(null);
-  useGlide(flow, GLIDES);
 
   return (
-    <AppShell
-      active={active}
-      title={title}
-      subtitle={subtitle}
-      breadcrumbs={breadcrumbs}
-      status={status}
-      actions={actions}
-      overlay={overlay}
-      sidebar={sidebar}
-      navOpen={navOpen}
-      onMenu={() => setNavOpen((open) => !open)}
-    >
-      <div className="ll-flow" ref={flow}>
-        {body}
-      </div>
-    </AppShell>
+    <>
+      {actions && actionsSlot ? createPortal(actions, actionsSlot) : null}
+      {overlay && overlaySlot ? createPortal(overlay, overlaySlot) : null}
+      {body}
+    </>
   );
 }
 
