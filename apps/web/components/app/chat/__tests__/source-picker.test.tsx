@@ -5,6 +5,7 @@ import { settle } from "@ui-sdk/core/testing";
 import { useState } from "react";
 import { expect, test, vi } from "vitest";
 
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => undefined }));
 vi.mock("convex/react", () => ({ useQuery: () => undefined, useMutation: () => vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/overview", useRouter: () => ({ push: vi.fn() }) }));
 const { SourcePicker } = await import("@/components/app/chat/ChatPanel");

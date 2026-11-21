@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
 import { expect, test, vi } from "vitest";
 
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => undefined }));
 vi.mock("convex/react", () => ({ useQuery: () => undefined, useMutation: () => vi.fn(), useAction: () => vi.fn(), useConvex: () => ({}) }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/overview", useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/app/chat/useChatStream", () => ({ useChatStream: () => ({ live: null, send: vi.fn(), stop: vi.fn(), reset: vi.fn() }) }));

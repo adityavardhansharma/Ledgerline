@@ -5,6 +5,7 @@ import { createAgent } from "@ui-sdk/react/agent";
 import { settle } from "@ui-sdk/core/testing";
 import { expect, test, vi } from "vitest";
 
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => ({ months: [{ cash: 1_000_00 }, { cash: 2_000_00 }], cashOutPeriod: null }) }));
 vi.mock("convex/react", () => ({ useQuery: () => ({ months: [{ cash: 1_000_00 }, { cash: 2_000_00 }], cashOutPeriod: null }) }));
 const { ScenarioRow } = await import("@/components/app/ScenarioRow");
 

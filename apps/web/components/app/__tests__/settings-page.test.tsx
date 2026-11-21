@@ -9,12 +9,13 @@ import { expect, test, vi } from "vitest";
 const update = vi.hoisted(() => vi.fn(async () => {}));
 const role = vi.hoisted(() => ({ current: "owner" }));
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => ({ organization: null, memberships: { data: [] }, invitations: { data: [] } }) }));
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => undefined }));
 vi.mock("convex/react", () => ({ useMutation: () => update, useQuery: () => undefined, useAction: () => vi.fn() }));
 vi.mock("@/components/app/AppPage", () => ({
   AppPage: ({ children }: { children: (w: unknown) => ReactNode }) =>
     children({ role: role.current, org: { name: "Kestrel Joinery Ltd", currency: "EUR", fyStartMonth: 1, basis: "accrual", alerts: { runwayUnder6: false, syncFailsTwice: true, differsFromXero: false } } }),
 }));
-const { default: SettingsPage } = await import("@/app/(app)/settings/page");
+const { default: SettingsPage } = await import("@/app/(account)/(app)/settings/page");
 
 test("the sections are vertical tabs, and an owner's reporting and alert settings save as they change", async () => {
   const agent = createAgent();

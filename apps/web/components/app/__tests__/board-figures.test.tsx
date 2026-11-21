@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => undefined }));
 vi.mock("convex/react", () => ({ useMutation: () => vi.fn(), useQuery: () => undefined }));
 const { BoardCommentary } = await import("@/components/app/BoardCommentary");
 

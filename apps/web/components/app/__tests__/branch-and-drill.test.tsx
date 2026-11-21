@@ -5,6 +5,7 @@ import { settle } from "@ui-sdk/core/testing";
 import { expect, test, vi } from "vitest";
 
 const branch = vi.hoisted(() => vi.fn());
+vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => ({ lines: [{ date: "2026-09-04", journalNumber: 812, code: "200", account: "Sales", contact: "Coyle Builders", description: "Kitchen fit-out", debitCents: 0, creditCents: 1_250_00 }] }) }));
 vi.mock("convex/react", () => ({
   useMutation: () => branch,
   useAction: () => vi.fn(async () => null),
