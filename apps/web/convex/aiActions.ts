@@ -2,9 +2,9 @@ import type { FunctionReturnType } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { action, internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "./_generated/server";
+import { action, internalMutation, internalQuery, query, type ActionCtx, type QueryCtx } from "./_generated/server";
 import { describe, type Prose } from "./commentary";
-import { requireOrg } from "./lib/auth";
+import { currentOrg, requireOrg } from "./lib/auth";
 import { EngineError, engine } from "./lib/engine";
 import { toNumber } from "./lib/money";
 import { limitError, remaining } from "./lib/plan";
@@ -333,6 +333,24 @@ export const ledgerForOrg = internalQuery({
 
 export type Anomaly = { accountId: string; name: string; kind: string; period: string; nowCents: number; typicalCents: number; reason: Prose | null };
 
+/**
+ * The unusual movements already found for the current figures, read like any other query so the P&L shows them
+ * with the table. Null when they haven't been checked for this version of the figures yet.
+ */
+export const storedAnomalies = query({
+  args: {},
+  handler: async (ctx): Promise<Anomaly[] | null> => {
+    const found = await currentOrg(ctx);
+    if (!found?.org.asOf) return null;
+    const { org } = found;
+    const row = await ctx.db
+      .query("aiCache")
+      .withIndex("by_org_key", (q) => q.eq("orgId", org._id).eq("key", `anomalies:${org.asOf}`))
+      .first();
+    return row && row.version === org.actualsVersion ? (row.data as Anomaly[]) : null;
+  },
+});
+
 export const anomalies = action({
   args: {},
   handler: async (ctx): Promise<Anomaly[]> => {
@@ -400,8 +418,7 @@ export const downsideInput = internalQuery({
       .first();
     const base = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", org._id))
-      .filter((q) => q.eq(q.field("isBase"), true))
+      .withIndex("by_org_base", (q) => q.eq("orgId", org._id).eq("isBase", true))
       .first();
     const drivers = { ...((snapshot?.data as { drivers?: Record<string, unknown> } | undefined)?.drivers ?? {}), ...(base?.overrides ?? {}) };
     return { baseId: base?._id ?? null, drivers: Object.fromEntries(Object.entries(drivers).filter(([, value]) => typeof value === "number")) as Record<string, number> };

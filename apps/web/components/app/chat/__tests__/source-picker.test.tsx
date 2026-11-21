@@ -7,7 +7,7 @@ import { expect, test, vi } from "vitest";
 
 vi.mock("convex/react", () => ({ useQuery: () => undefined, useMutation: () => vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/overview", useRouter: () => ({ push: vi.fn() }) }));
-const { SourcePicker } = await import("@/components/app/chat/AskLedgerline");
+const { SourcePicker } = await import("@/components/app/chat/ChatPanel");
 const { CHAT_SOURCES } = await import("@/convex/lib/chatSpec");
 
 function Picker() {

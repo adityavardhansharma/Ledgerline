@@ -2,7 +2,7 @@
 
 import { Badge, formatMoney, IconButton, Menu, Sparkline } from "@ledgerline/ui";
 import { Button } from "@ui-sdk/react/button";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { api } from "@/convex/_generated/api";
 import type { ForecastRun } from "@/lib/types";
 import type { useScenarios } from "./useForecast";

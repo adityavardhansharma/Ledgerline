@@ -5,9 +5,9 @@ import { expect, test, vi } from "vitest";
 
 vi.mock("@clerk/nextjs", () => ({}));
 vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useQuery: () => undefined }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }), usePathname: () => "/overview" }));
 window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as never;
-const { useCollapsed } = await import("@/components/app/AppPage");
+const { useCollapsed } = await import("@/components/app/AppFrame");
 
 function Shell() {
   const [collapsed] = useCollapsed();

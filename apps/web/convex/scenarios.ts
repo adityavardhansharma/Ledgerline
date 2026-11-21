@@ -4,6 +4,7 @@ import { internalMutation, internalQuery, mutation, query, type QueryCtx } from 
 import { financing, hire, oneOff } from "./schema";
 import { audit } from "./lib/audit";
 import { currentOrg, requireOrg } from "./lib/auth";
+import { scheduleRefresh } from "./forecast";
 
 /** Drivers a scenario may override, with the range a person can set. */
 export const DRIVER_LIMITS: Record<string, [number, number, string]> = {
@@ -59,12 +60,11 @@ export const ensureBase = internalMutation({
   handler: async (ctx, { orgId }) => {
     const base = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .filter((q) => q.eq(q.field("isBase"), true))
+      .withIndex("by_org_base", (q) => q.eq("orgId", orgId).eq("isBase", true))
       .first();
     if (base) return base._id;
     const now = Date.now();
-    return ctx.db.insert("scenarios", {
+    const id = await ctx.db.insert("scenarios", {
       orgId,
       name: "Base case",
       isBase: true,
@@ -76,8 +76,40 @@ export const ensureBase = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+    await scheduleRefresh(ctx, orgId, id);
+    return id;
   },
 });
+
+/** A scenario's headline figures from its newest forecast, if that forecast was built on the current actuals. */
+async function summaryOf(ctx: QueryCtx, scenarioId: Id<"scenarios">, actualsVersion: number) {
+  const row = await ctx.db
+    .query("forecastSummaries")
+    .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+    .first();
+  if (row) {
+    if (row.actualsVersion !== actualsVersion) return null;
+    const { runwayMonths, cashOutPeriod, endCash, lowestCash, revenueFirst12, ebitdaFirst12 } = row;
+    return { runwayMonths, cashOutPeriod, endCash, lowestCash, revenueFirst12, ebitdaFirst12 };
+  }
+  // Forecasts run before summaries existed: read the run itself until the scenario's next run writes one.
+  const run = await ctx.db
+    .query("forecastRuns")
+    .withIndex("by_scenario", (q) => q.eq("scenarioId", scenarioId))
+    .order("desc")
+    .first();
+  const fresh = run && run.actualsVersion === actualsVersion ? run.data : null;
+  return fresh
+    ? {
+        runwayMonths: fresh.runwayMonths,
+        cashOutPeriod: fresh.cashOutPeriod,
+        endCash: fresh.endCash,
+        lowestCash: fresh.lowestCash,
+        revenueFirst12: fresh.revenueFirst12,
+        ebitdaFirst12: fresh.ebitdaFirst12,
+      }
+    : null;
+}
 
 export const list = query({
   args: {},
@@ -91,12 +123,6 @@ export const list = query({
     const byId = new Map(rows.map((r) => [r._id, r]));
     const out = [];
     for (const s of rows) {
-      const run = await ctx.db
-        .query("forecastRuns")
-        .withIndex("by_scenario", (q) => q.eq("scenarioId", s._id))
-        .order("desc")
-        .first();
-      const fresh = run && run.actualsVersion === found.org.actualsVersion ? run.data : null;
       out.push({
         id: s._id,
         name: s.name,
@@ -105,16 +131,7 @@ export const list = query({
         parentName: s.parentId ? (byId.get(s.parentId)?.name ?? null) : null,
         changes: Object.keys(s.overrides).length + s.hires.length + s.oneOffs.length + s.financing.length,
         updatedAt: s.updatedAt,
-        summary: fresh
-          ? {
-              runwayMonths: fresh.runwayMonths,
-              cashOutPeriod: fresh.cashOutPeriod,
-              endCash: fresh.endCash,
-              lowestCash: fresh.lowestCash,
-              revenueFirst12: fresh.revenueFirst12,
-              ebitdaFirst12: fresh.ebitdaFirst12,
-            }
-          : null,
+        summary: await summaryOf(ctx, s._id, found.org.actualsVersion),
       });
     }
     return out.sort((a, b) => Number(b.isBase) - Number(a.isBase) || a.name.localeCompare(b.name));
@@ -170,6 +187,7 @@ export const branch = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await scheduleRefresh(ctx, org._id, id);
     await audit(ctx, org._id, { actor: who.name, action: "branched", target: trimmed, detail: `From ${scenario.name}`, icon: "branch", tone: "forecast" });
     return id;
   },
@@ -193,8 +211,7 @@ export const remove = mutation({
     if (scenario.isBase) throw new ConvexError("The base case can't be deleted.");
     const children = await ctx.db
       .query("scenarios")
-      .withIndex("by_org", (q) => q.eq("orgId", org._id))
-      .filter((q) => q.eq(q.field("parentId"), id))
+      .withIndex("by_parent", (q) => q.eq("parentId", id))
       .collect();
     // Children keep their changes and move up to this scenario's parent, with its changes folded in.
     for (const child of children) {
@@ -211,6 +228,11 @@ export const remove = mutation({
       .withIndex("by_scenario", (q) => q.eq("scenarioId", id))
       .collect();
     for (const run of runs) await ctx.db.delete(run._id);
+    const summaries = await ctx.db
+      .query("forecastSummaries")
+      .withIndex("by_scenario", (q) => q.eq("scenarioId", id))
+      .collect();
+    for (const row of summaries) await ctx.db.delete(row._id);
     await ctx.db.delete(id);
     await audit(ctx, org._id, { actor: who.name, action: "deleted scenario", target: scenario.name, icon: "trash", tone: "negative" });
   },
@@ -236,6 +258,7 @@ export const setOverride = mutation({
       overrides[key] = value;
     }
     await ctx.db.patch(id, { overrides, updatedAt: Date.now() });
+    await scheduleRefresh(ctx, org._id, id);
     const before = scenario.overrides[key];
     await audit(ctx, org._id, {
       actor: who.name,
@@ -265,17 +288,9 @@ export const setPlanItems = mutation({
     if (items.oneOffs) patch.oneOffs = items.oneOffs;
     if (items.financing) patch.financing = items.financing;
     await ctx.db.patch(id, patch);
+    await scheduleRefresh(ctx, org._id, id);
     const what = items.hires ? "hires" : items.oneOffs ? "one-off items" : "financing";
     await audit(ctx, org._id, { actor: who.name, action: `updated ${what} in`, target: scenario.name, icon: items.hires ? "hire" : "edit", tone: "forecast" });
   },
 });
 
-export const forForecast = internalQuery({
-  args: { id: v.id("scenarios") },
-  handler: async (ctx, { id }) => {
-    const scenario = await ctx.db.get(id);
-    if (!scenario) return null;
-    const resolved = await resolve(ctx, scenario);
-    return { scenario, overrides: resolved.overrides, hires: resolved.hires, oneOffs: resolved.oneOffs, financing: resolved.financing };
-  },
-});
