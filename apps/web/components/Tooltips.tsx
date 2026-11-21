@@ -1,18 +1,16 @@
 "use client";
 
+import { createTooltipController, Tooltip, TooltipContent } from "@ui-sdk/react/tooltip";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-
-type Tip = { text: string; x: number; y: number; below: boolean };
 
 /**
  * One tooltip for the whole app. Any element with a title shows it in the design system's style instead of the
  * browser's: after a short pause on hover, at once on keyboard focus, above the element unless there's no room.
  * The title moves to data-title so the native one never appears; text like "Label · source" puts the part before
- * the dot first, in bold.
+ * the dot first, in bold. One ui-sdk tooltip shows them all, anchored to whichever element is pointed at.
  */
 export function Tooltips() {
-  const [tip, setTip] = useState<Tip | null>(null);
+  const [tip] = useState(() => createTooltipController<string>());
   const current = useRef<HTMLElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -20,14 +18,12 @@ export function Tooltips() {
     const hide = () => {
       clearTimeout(timer.current);
       current.current = null;
-      setTip(null);
+      tip.close();
     };
     const show = (el: HTMLElement) => {
       const text = el.dataset.title;
       if (!text || !el.isConnected) return;
-      const r = el.getBoundingClientRect();
-      const below = r.top < 64;
-      setTip({ text, x: r.left + r.width / 2, y: below ? r.bottom + 8 : r.top - 8, below });
+      void tip.open({ payload: text, anchor: el });
     };
     const target = (node: EventTarget | null) => {
       const el = (node as HTMLElement | null)?.closest?.("[title], [data-title]") as HTMLElement | null;
@@ -72,24 +68,23 @@ export function Tooltips() {
       window.removeEventListener("keydown", key, true);
       clearTimeout(timer.current);
     };
-  }, []);
+  }, [tip]);
 
-  if (!tip || typeof document === "undefined") return null;
-  const [head, ...rest] = tip.text.split(" · ");
-  // Keep the bubble on screen near the edges; the arrow still points at the element.
-  const half = Math.min(150, (tip.text.length * 6.5 + 20) / 2);
-  const left = Math.min(window.innerWidth - half - 8, Math.max(half + 8, tip.x));
-  return createPortal(
-    <div className={`ll-tooltip${tip.below ? " is-below" : ""}`} role="tooltip" style={{ left, top: tip.y, "--arrow": `${tip.x - left}px` } as React.CSSProperties}>
-      {rest.length ? (
-        <>
-          <b>{head}</b>
-          <span>{rest.join(" · ")}</span>
-        </>
-      ) : (
-        head
-      )}
-    </div>,
-    document.body,
+  return (
+    <Tooltip controller={tip}>
+      <TooltipContent className="ll-tooltip" side="top" sideOffset={8} collisionPadding={8}>
+        {(state: { payload?: unknown }) => {
+          const [head, ...rest] = String(state.payload ?? "").split(" · ");
+          return rest.length ? (
+            <>
+              <b>{head}</b>
+              <span>{rest.join(" · ")}</span>
+            </>
+          ) : (
+            head
+          );
+        }}
+      </TooltipContent>
+    </Tooltip>
   );
 }

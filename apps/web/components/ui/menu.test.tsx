@@ -57,3 +57,21 @@ test("Escape closes without running anything, and an agent can run an item by na
   expect(result.ok, result.error?.message).toBe(true);
   expect(csv).toHaveBeenCalledOnce();
 });
+
+test("an item marked confirm needs a person before an agent can run it", async () => {
+  let approve = false;
+  const gated = createAgent({ allow: (step) => !step.confirm || approve });
+  const remove = vi.fn();
+  render(
+    <Menu
+      trigger={<Button icon="more">Actions for Hire two fitters</Button>}
+      items={[{ label: "Open in forecast" }, { divider: true }, { label: "Delete scenario", danger: true, confirm: "Deletes the scenario Hire two fitters", onClick: remove }]}
+    />,
+  );
+  const step = { steps: [{ ref: "Actions for Hire two fitters", action: "press", args: ["Delete scenario"] }] };
+  expect((await gated.act(step)).ok).toBe(false);
+  expect(remove).not.toHaveBeenCalled();
+  approve = true;
+  expect((await gated.act(step)).ok).toBe(true);
+  expect(remove).toHaveBeenCalledOnce();
+});

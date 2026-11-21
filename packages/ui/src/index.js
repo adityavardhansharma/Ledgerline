@@ -1170,21 +1170,14 @@ function menuGroups(items) {
 function menuEntry(it, i) {
   if (it.divider) return h(MenuSeparator, { key: it.key, className: 'll-menu-div' });
   if (it.heading) return h(MenuGroup, { key: it.key }, h(MenuGroupLabel, { className: 'll-menu-head' }, it.heading), it.items.map(menuEntry));
-  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
+  return h(MenuItemPart, { key: it.key || i, value: it.label, destructive: it.danger, onSelect: it.onClick, 'data-agent-confirm': it.confirm, className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active') }, menuItemBody(it));
 }
 function Menu(p) {
-  if (p.trigger) {
-    var state = p.open != null ? { open: p.open } : {};
-    return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
-      h(MenuTrigger, { render: p.trigger }),
-      h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
-        menuGroups(p.items).map(menuEntry)));
-  }
-  return h('div', { className: 'll-menu', role: 'menu', 'aria-label': p.label }, p.items.map(function (it, i) {
-    if (it.divider) return h('div', { key: i, className: 'll-menu-div', role: 'separator' });
-    if (it.heading) return h('div', { key: i, className: 'll-menu-head' }, it.heading);
-    return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('ll-menu-item', it.danger && 'is-danger', it.active && 'is-active'), onClick: it.onClick }, menuItemBody(it));
-  }));
+  var state = p.open != null ? { open: p.open } : {};
+  return h(MenuRoot, Object.assign({ onOpenChange: p.onOpenChange && function (open) { p.onOpenChange(open); } }, state),
+    h(MenuTrigger, { render: p.trigger, disabled: !!(p.trigger.props.disabled || p.trigger.props.loading) }),
+    h(MenuContent, { className: cx('ll-menu', p.className), side: p.side || 'bottom', align: p.align || 'end', sideOffset: 6 },
+      menuGroups(p.items).map(menuEntry)));
 }
 function CommandPalette(p) {
   return h('div', { className: 'll-cmd', role: 'dialog', 'aria-label': 'Command palette' },
@@ -1390,7 +1383,7 @@ function AssumptionField(p) {
     h('div', { className: 'll-assume-row' },
       h(SliderRoot, { className: 'll-assume-range', value: val, min: p.min, max: p.max, step: p.step || 1, format: p.format || plain,
         onValueChange: function (v) { st[1](v); p.onChange && p.onChange(v); } },
-        h(RangeControl, { value: val, min: p.min, max: p.max, label: p.label })),
+        h(RangeControl, { value: val, min: p.min, max: p.max, label: 'Adjust ' + p.label })),
       h('div', { className: 'll-input is-numeric ll-assume-num' },
         h(InputPart, { id: p.id, type: 'text', inputMode: 'decimal', value: String(val), 'aria-labelledby': p.id + '-label', onValueChange: function (text) { var v = parseFloat(text); if (!isNaN(v)) { st[1](v); p.onChange && p.onChange(v); } } }),
         p.unit ? h('span', { className: 'll-input-affix' }, p.unit) : null)),

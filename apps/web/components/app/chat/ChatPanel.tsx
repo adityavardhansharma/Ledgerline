@@ -1,12 +1,14 @@
 "use client";
 
 import { Icon } from "@ledgerline/ui";
+import { Button } from "@ui-sdk/react/button";
+import { Checkbox } from "@ui-sdk/react/checkbox";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@ui-sdk/react/popover";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { AnimatePresence, m as motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CHAT_SOURCES } from "@/convex/lib/chatSpec";
@@ -353,91 +355,53 @@ function Welcome({ onAsk, suggestions, composer }: { onAsk: (q: string) => void;
  * Where the answer may look. Nothing chosen means everything; choosing sources limits the assistant to their
  * tools, and it says so when a question needs one that isn't chosen.
  */
-function SourcePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const [spot, setSpot] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
-  const box = useRef<HTMLDivElement>(null);
-  const pop = useRef<HTMLDivElement>(null);
-  // Float the list above everything, opening upward unless there isn't room.
-  useLayoutEffect(() => {
-    if (!open || !box.current) return;
-    const r = box.current.getBoundingClientRect();
-    const height = 400;
-    const left = Math.min(window.innerWidth - 336, Math.max(16, r.left - 6));
-    setSpot(r.top > height + 16 ? { left, bottom: window.innerHeight - r.top + 10 } : { left, top: r.bottom + 10 });
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", away);
-    document.addEventListener("keydown", esc, true);
-    return () => {
-      document.removeEventListener("mousedown", away);
-      document.removeEventListener("keydown", esc, true);
-    };
-  }, [open]);
+export function SourcePicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
   const chosen = CHAT_SOURCES.filter((s) => value.includes(s.id));
   const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
   return (
-    <div className="ll-src" ref={box}>
-      <button type="button" className={`ll-src-btn${chosen.length ? " is-set" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Icon name="database" size={13} />
-        {chosen.length ? (chosen.length === 1 ? chosen[0].label : `${chosen.length} sources`) : "All sources"}
-        <Icon name="chevron-down" size={12} />
-      </button>
-      {chosen.length ? (
-        <button type="button" className="ll-src-clear" aria-label="Search all sources again" title="Search everything again" onClick={() => onChange([])}>
-          <Icon name="close" size={12} />
-        </button>
-      ) : null}
-      {typeof document !== "undefined"
-        ? createPortal(
-      <AnimatePresence>
-        {open && spot ? (
-          <motion.div ref={pop} className="ll-src-pop" style={spot} role="group" aria-label="Sources to look in" initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.98, transition: { duration: 0.12 } }} transition={{ duration: 0.2, ease: EASE }}>
-            <header>
-              <b>Look only in</b>
-              <button type="button" className={chosen.length ? undefined : "is-on"} onClick={() => onChange([])}>
-                Everything
-              </button>
-            </header>
-            <ul>
-              {CHAT_SOURCES.map((s) => {
-                const on = value.includes(s.id);
-                return (
-                  <li key={s.id}>
-                    <button type="button" role="checkbox" aria-checked={on} className={on ? "is-on" : undefined} onClick={() => toggle(s.id)}>
-                      <span className="ll-src-ico">
-                        <Icon name={s.icon} size={15} />
-                      </span>
-                      <span className="ll-src-text">
-                        <b>{s.label}</b>
-                        <small>{s.hint}</small>
-                      </span>
-                      <span className="ll-src-check" aria-hidden>
-                        {on ? <Icon name="check" size={13} /> : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <footer>{chosen.length ? "Answers use only what's ticked." : "Nothing ticked, so answers can use everything."}</footer>
-          </motion.div>
+    <div className="ll-src">
+      <Popover>
+        <PopoverTrigger render={<button type="button" className={`ll-src-btn${chosen.length ? " is-set" : ""}`} />}>
+          <Icon name="database" size={13} />
+          {chosen.length ? (chosen.length === 1 ? chosen[0].label : `${chosen.length} sources`) : "All sources"}
+          <Icon name="chevron-down" size={12} />
+        </PopoverTrigger>
+        {chosen.length ? (
+          <button type="button" className="ll-src-clear" aria-label="Search all sources again" title="Search everything again" onClick={() => onChange([])}>
+            <Icon name="close" size={12} />
+          </button>
         ) : null}
-      </AnimatePresence>,
-            document.body,
-          )
-        : null}
+        <PopoverContent className="ll-src-pop" side="top" align="start" alignOffset={-6} sideOffset={10}>
+          <header>
+            <PopoverTitle render={<b />}>Look only in</PopoverTitle>
+            <Button className={chosen.length ? undefined : "is-on"} aria-pressed={!chosen.length} onClick={() => onChange([])}>
+              Everything
+            </Button>
+          </header>
+          <ul>
+            {CHAT_SOURCES.map((s) => {
+              const on = value.includes(s.id);
+              return (
+                <li key={s.id}>
+                  <Checkbox checked={on} onCheckedChange={() => toggle(s.id)}>
+                    <span className="ll-src-ico">
+                      <Icon name={s.icon} size={15} />
+                    </span>
+                    <span className="ll-src-text">
+                      <b>{s.label}</b>
+                      <small>{s.hint}</small>
+                    </span>
+                    <span className="ll-src-check" aria-hidden>
+                      {on ? <Icon name="check" size={13} /> : null}
+                    </span>
+                  </Checkbox>
+                </li>
+              );
+            })}
+          </ul>
+          <footer>{chosen.length ? "Answers use only what's ticked." : "Nothing ticked, so answers can use everything."}</footer>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

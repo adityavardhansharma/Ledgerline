@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@ledgerline/ui";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@ui-sdk/react/collapsible";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useEffect, useState } from "react";
@@ -190,24 +191,22 @@ export function AnomalyStrip({ flags }: { flags: Anomaly[] | null }) {
   const [open, setOpen] = useState(false);
   if (!flags?.length) return null;
   return (
-    <section className="ll-ai-strip">
-      <button type="button" className="ll-ai-strip-head" onClick={() => setOpen((x) => !x)} aria-expanded={open}>
+    <Collapsible render={<section />} className="ll-ai-strip" open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="ll-ai-strip-head">
         <span className="ll-ai-dot" />
         <strong>
           {flags.length} unusual movement{flags.length === 1 ? "" : "s"} in {periodLabel(flags[0].period)}
         </strong>
         <span className="ll-ai-muted">Marked with a dot in the table · {open ? "hide" : "show why"}</span>
-      </button>
-      {open ? (
-        <ul className="ll-ai-list">
-          {flags.map((f) => (
-            <li key={f.accountId}>
-              <strong>{f.name}</strong>
-              <span>{f.reason ? <RevealText parts={f.reason} /> : `Far from its typical month.`}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </section>
+      </CollapsibleTrigger>
+      <CollapsiblePanel render={<ul />} className="ll-ai-list">
+        {flags.map((f) => (
+          <li key={f.accountId}>
+            <strong>{f.name}</strong>
+            <span>{f.reason ? <RevealText parts={f.reason} /> : `Far from its typical month.`}</span>
+          </li>
+        ))}
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }

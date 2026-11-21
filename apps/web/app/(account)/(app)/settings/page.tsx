@@ -2,6 +2,7 @@
 
 import { useOrganization } from "@clerk/nextjs";
 import { Avatar, Badge, Banner, Button, Icon, Input, ProgressBar, RadioGroup, Select, Switch } from "@ledgerline/ui";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
@@ -28,25 +29,31 @@ export default function SettingsPage() {
   return (
     <AppPage active="settings" title="Settings" subtitle="Your team, how the figures are reported, alerts and billing" breadcrumbs={["Settings"]}>
       {(workspace) => (
-        <div className="ll-settings">
-          <nav className="ll-settings-nav" aria-label="Settings sections">
+        <Tabs className="ll-settings" orientation="vertical" value={tab} onValueChange={(v) => v && setTab(v as typeof tab)}>
+          <TabsList className="ll-settings-nav" aria-label="Settings sections">
             {SECTIONS.map((section) => (
-              <button key={section.id} type="button" className={tab === section.id ? "is-on" : undefined} aria-current={tab === section.id ? "page" : undefined} onClick={() => setTab(section.id)}>
+              <TabsTab key={section.id} value={section.id}>
                 <Icon name={section.icon} size={16} />
                 <span>
                   <b>{section.label}</b>
                   <small>{section.hint}</small>
                 </span>
-              </button>
+              </TabsTab>
             ))}
-          </nav>
-          <div className="ll-settings-body">
-            {tab === "team" ? <Team canInvite={workspace.role === "owner"} /> : null}
-            {tab === "organisation" ? <Organisation workspace={workspace} /> : null}
-            {tab === "alerts" ? <Alerts workspace={workspace} /> : null}
-            {tab === "billing" ? <Billing /> : null}
-          </div>
-        </div>
+          </TabsList>
+          <TabsPanel value="team" className="ll-settings-body">
+            <Team canInvite={workspace.role === "owner"} />
+          </TabsPanel>
+          <TabsPanel value="organisation" className="ll-settings-body">
+            <Organisation workspace={workspace} />
+          </TabsPanel>
+          <TabsPanel value="alerts" className="ll-settings-body">
+            <Alerts workspace={workspace} />
+          </TabsPanel>
+          <TabsPanel value="billing" className="ll-settings-body">
+            <Billing />
+          </TabsPanel>
+        </Tabs>
       )}
     </AppPage>
   );

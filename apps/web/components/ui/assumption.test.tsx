@@ -7,7 +7,7 @@ import { expect, test, vi } from "vitest";
 test("the slider and the number box move together, and a change from the base is marked", async () => {
   const onChange = vi.fn();
   const { container } = render(<AssumptionField id="wi-fitters" label="Fitters hired" min={0} max={10} unit="people" defaultValue={0} base={0} onChange={onChange} />);
-  const thumb = screen.getByRole("slider", { name: "Fitters hired" });
+  const thumb = screen.getByRole("slider", { name: "Adjust Fitters hired" });
   const box = screen.getByRole<HTMLInputElement>("textbox", { name: "Fitters hired" });
   expect(container.querySelector(".ll-assume")?.classList.contains("is-changed")).toBe(false);
 

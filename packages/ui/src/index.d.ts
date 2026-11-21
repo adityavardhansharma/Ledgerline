@@ -59,9 +59,9 @@ export interface SyncProgressProps { org?: string; title?: string; pagesDone: nu
 export interface StepperProps { steps: Array<{ title: string; hint?: string }>; current: number }
 export interface DialogProps extends Children { title: string; footer?: React.ReactNode; onClose?: () => void; size?: 'sm' | 'md'; inline?: boolean }
 export interface DrawerProps extends Children { title: string; eyebrow?: string; subtitle?: string; footer?: React.ReactNode; onClose?: () => void; inline?: boolean }
-export interface MenuItem { label?: string; icon?: IconName; kbd?: string; danger?: boolean; active?: boolean; divider?: boolean; heading?: string; onClick?: () => void }
-/** With a trigger it's a full menu that opens from it, named by the trigger; without one, the open list on its own, named by `label`. */
-export interface MenuProps { items: MenuItem[]; label?: string; trigger?: React.ReactElement; open?: boolean; onOpenChange?: (open: boolean) => void; side?: 'top' | 'bottom' | 'left' | 'right'; align?: 'start' | 'center' | 'end'; className?: string }
+export interface MenuItem { label?: string; icon?: IconName; kbd?: string; danger?: boolean; active?: boolean; divider?: boolean; heading?: string; onClick?: () => void; /** What the item does, for the person an agent must ask first, like "Deletes the scenario". */ confirm?: string }
+/** A menu that opens from its trigger and is named by it. */
+export interface MenuProps { items: MenuItem[]; /** @deprecated The trigger names the menu. */ label?: string; trigger: React.ReactElement; open?: boolean; onOpenChange?: (open: boolean) => void; side?: 'top' | 'bottom' | 'left' | 'right'; align?: 'start' | 'center' | 'end'; className?: string }
 export interface CommandPaletteProps { query?: string; groups: Array<{ label: string; items: Array<{ icon: IconName; label: string; meta?: string; kbd?: string; active?: boolean }> }> }
 export interface BreadcrumbsProps { items: string[] }
 export interface PaginationProps { page: number; pages: number; from: number; to: number; total: number }

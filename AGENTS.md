@@ -17,3 +17,19 @@ Before changing any of it:
   `rendering.md` next to it.
 - Style state from ui-sdk's `data-*` attributes and `data-slot`, never generated ids. `@layer ui-sdk;` stays the first
   line of `apps/web/app/globals.css`.
+
+### Patterns this app follows
+
+- Menus open from a trigger: pass `trigger` to the design system's `Menu`. A menu, like a popover, is named by its
+  trigger or title, never by an `aria-label` on its content. Give each row its own menu with a trigger named for the
+  row ("Actions for Base case"), and put `confirm` on items an agent mustn't run alone, like deletes.
+- `Dialog` and `Drawer` from `@ledgerline/ui` are open while mounted; Escape and their close button call `onClose`,
+  and focus returns to the opener when the caller unmounts them. Put a panel animated with motion inside
+  `AnimatePresence` as a ui-sdk `Dialog` that stays `open` until its exit finishes (see `AskLedgerline`).
+- A control and the slider beside it need different names ("Debtor days" and "Adjust Debtor days"): the agent bridge
+  refuses a label that matches two components.
+- Keyboard shortcuts go through `useShortcut` from `@ui-sdk/react/shortcuts`, which skips text fields and pauses under
+  a modal. Window keydown listeners should ignore an event a popup already handled (`event.defaultPrevented`).
+- A popup that animates in and out does it in CSS on `data-starting-style` and `data-ending-style`.
+- Component tests run in jsdom (`// @vitest-environment jsdom`, stubs in `apps/web/test/setup.ts`) with
+  `__UI_SDK_STRICT__` on, and check wiring with Testing Library and `createAgent`, not ui-sdk's own behavior.

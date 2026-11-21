@@ -1,6 +1,8 @@
 "use client";
 
 import { Button, Icon, IconButton, Input, SegmentedControl, Select, type IconName } from "@ledgerline/ui";
+import { Button as UIButton } from "@ui-sdk/react/button";
+import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { useState } from "react";
 import { money, periodLabel } from "@/lib/format";
 
@@ -10,14 +12,16 @@ export const FINANCING = { loan: "Loan drawn", equity: "Equity raised", dividend
 
 export function Sections({ value, onChange, items }: { value: string; onChange: (v: string) => void; items: { id: string; label: string; count: number }[] }) {
   return (
-    <div className="ll-drv-tabs" role="tablist" aria-label="Forecast sections">
-      {items.map((t) => (
-        <button key={t.id} type="button" role="tab" aria-selected={t.id === value} className={t.id === value ? "is-on" : undefined} onClick={() => onChange(t.id)}>
-          {t.label}
-          {t.count ? <span>{t.count}</span> : null}
-        </button>
-      ))}
-    </div>
+    <Tabs className="ll-tabs-root" value={value} onValueChange={(v) => v && onChange(v)}>
+      <TabsList className="ll-drv-tabs" aria-label="Forecast sections">
+        {items.map((t) => (
+          <TabsTab key={t.id} value={t.id}>
+            {t.label}
+            {t.count ? <span>{t.count}</span> : null}
+          </TabsTab>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -61,9 +65,9 @@ function Composer({ add, title, summary, valid, onAdd, children }: { add: string
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <button type="button" className="ll-plan-add" onClick={() => setOpen(true)}>
+      <UIButton className="ll-plan-add" onClick={() => setOpen(true)}>
         <Icon name="plus" size={16} /> {add}
-      </button>
+      </UIButton>
     );
   }
   return (
