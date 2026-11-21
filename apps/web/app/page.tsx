@@ -1,4 +1,5 @@
 import { Landing } from "@/components/landing/Landing";
+import { MotionProvider } from "@/components/MotionProvider";
 import "./landing.css";
 
 export const metadata = {
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function Home() {
-  return <Landing />;
+  return (
+    <MotionProvider layout>
+      <Landing />
+    </MotionProvider>
+  );
 }
