@@ -4,8 +4,12 @@
 
 - Every change goes through a pull request. Never commit straight to `main`.
 - For each piece of work: create a branch from an up-to-date `main`, commit, push, open a PR with `gh pr create`,
-  then merge it yourself with `gh pr merge --squash --delete-branch` once typecheck and tests pass
+  then merge it yourself with `gh pr merge --merge --delete-branch` once typecheck and tests pass
   (`npm run typecheck` and `npm test` in `apps/web`). Afterwards, switch back to `main` and pull.
+- Never squash. A PR's commits each land on `main`, so its history shows every step, not one commit per PR. Bring a
+  branch up to date by merging `main` into it, never by rebasing, and write each commit to stand on its own.
+- A PR stacked on another (its base is another PR's branch) merges through the async endpoint:
+  `gh api -X PUT repos/{owner}/{repo}/pulls/{n}/merge-async -f merge_method=merge -f merge_action=direct_merge`.
 
 ## Deploys
 
